@@ -27,9 +27,6 @@ env/
 .DS_Store
 Thumbs.db
 
-# uv
-uv.lock
-
 # Data (large files)
 src/tot/data/srd/*.json
 src/tot/visuals/assets/**/*.png
