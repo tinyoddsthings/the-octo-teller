@@ -26,6 +26,7 @@ dev = [
     "pytest-asyncio>=0.25",
     "pytest-cov>=6.0",
     "ruff>=0.9",
+    "commitizen>=4.2",
 ]
 
 [build-system]
@@ -45,3 +46,12 @@ select = ["E", "F", "I", "N", "UP", "B", "A", "SIM"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
+
+[tool.commitizen]
+name = "cz_conventional_commits"
+version = "0.1.0"
+version_files = ["pyproject.toml:version"]
+tag_format = "v$version"
+update_changelog_on_bump = true
+major_version_zero = true
+allowed_prefixes = ["Merge", "Revert"]

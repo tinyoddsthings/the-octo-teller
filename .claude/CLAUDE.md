@@ -5,9 +5,12 @@
 - 文件、commit message、issue：繁體中文
 - Prompt 模板：英文
 
+## 規則基礎
+- D&D 2024 (5.5e)，非舊版 5e
+
 ## 架構概覽
 - **雙引擎**：Bone Engine（確定性規則）+ Narrator（LLM 敘事）
-- **五隻 Gremlin**：Prep / Bone Engine / Narrator / Mimic / Extension
+- **六隻 Gremlin**：Prep / Bone Engine / Narrator / Mimic / Companion / Extension
 - **三層記憶**：Working (Redis) / Episodic (PG+pgvector) / Semantic (Qdrant)
 - **介面**：Telegram Bot (aiogram 3) + Mini Apps (Phase 5+)
 
@@ -29,6 +32,6 @@
 
 ## 開發原則
 - Bone Engine 必須是純確定性的，不依賴 LLM
-- 所有 LLM 呼叫只在 Narrator / Mimic / Extension 中
+- 所有 LLM 呼叫只在 Narrator / Mimic / Companion / Extension 中
 - 記憶層對上層透明，透過 context.py 組裝 LLM context
 - Pydantic model 用於所有跨模組資料傳遞

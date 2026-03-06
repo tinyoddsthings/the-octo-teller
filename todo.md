@@ -7,8 +7,8 @@
 - [x] .gitignore / README.md / CLAUDE.md
 - [x] docker-compose.yml (Redis placeholder)
 - [x] 所有 __init__.py 與 placeholder 檔案
-- [ ] 遷移知識庫（reference / glossary / dm_settings）從 memory/dnd/
-- [ ] 遷移既有 bot.py 邏輯為參考文件
+- [x] 遷移知識庫（reference / glossary / dm_settings）從 memory/dnd/
+- [x] 遷移既有 bot.py 邏輯為參考文件 (docs/legacy/)
 
 ## Phase 1: Bone Engine 核心
 - [ ] Pydantic data models (Character, Monster, Spell, Item, Condition)
