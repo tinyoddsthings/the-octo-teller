@@ -520,6 +520,51 @@ class TerrainTile(BaseModel):
     is_difficult: bool = False     # 困難地形（移動加倍消耗）
 
 
+# ---------------------------------------------------------------------------
+# 區域拓樸
+# ---------------------------------------------------------------------------
+
+class Zone(BaseModel):
+    """命名區域，提供敘事語境給 Narrator。"""
+    name: str
+    x_min: int
+    y_min: int
+    x_max: int
+    y_max: int
+    description: str = ""
+
+
+class ZoneConnection(BaseModel):
+    """區域間的連接。"""
+    from_zone: str
+    to_zone: str
+    via: str = ""  # 對應 Prop.id（門、通道）
+
+
+# ---------------------------------------------------------------------------
+# 地圖定義與即時狀態
+# ---------------------------------------------------------------------------
+
+class MapManifest(BaseModel):
+    """地圖靜態定義，從 JSON 載入。"""
+    name: str
+    width: int
+    height: int
+    grid_size_m: float = 1.5  # 每格公尺數（D&D 標準 5ft ≈ 1.5m）
+    props: list[Prop] = Field(default_factory=list)
+    zones: list[Zone] = Field(default_factory=list)
+    zone_connections: list[ZoneConnection] = Field(default_factory=list)
+    spawn_points: dict[str, list[Position]] = Field(default_factory=dict)
+
+
+class MapState(BaseModel):
+    """戰鬥中的即時地圖狀態。"""
+    manifest: MapManifest
+    terrain: list[list[TerrainTile]] = Field(default_factory=list)  # [y][x]，y=0 為最底列
+    actors: list[Actor] = Field(default_factory=list)
+    props: list[Prop] = Field(default_factory=list)  # 執行期動態追加的物件
+
+
 class TurnState(BaseModel):
     """單一回合內的動作經濟追蹤。"""
     action_used: bool = False
@@ -543,3 +588,4 @@ class CombatState(BaseModel):
     initiative_order: list[InitiativeEntry] = Field(default_factory=list)
     is_active: bool = False
     turn_state: TurnState = Field(default_factory=TurnState)
+    map_state: MapState | None = None  # 有地圖時啟用空間系統

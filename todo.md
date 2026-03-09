@@ -17,7 +17,7 @@
 - [x] 戰鬥引擎 (combat.py) — 先攻、回合制、攻擊/傷害判定
 - [ ] 戰鬥地圖系統 — 格子座標、拓樸區域、ASCII 渲染、戰爭迷霧
   - [x] Step 1: 座標系統模型 — Position, Entity, Actor, Prop, TerrainTile
-  - [ ] Step 2: 拓樸與地圖模型 — Zone, ZoneConnection, MapManifest, MapState
+  - [x] Step 2: 拓樸與地圖模型 — Zone, ZoneConnection, MapManifest, MapState
   - [ ] Step 3: 空間邏輯核心 — grid_distance, bresenham_line, has_line_of_sight
   - [ ] Step 4: 實體查詢與移動 — get_entities_at, move_entity, has_hostile_within_melee
   - [ ] Step 5: 掩蔽與區域查詢 — determine_cover_from_grid, zone_for_position, place_actors_at_spawn
