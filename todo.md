@@ -25,11 +25,11 @@
 ### 2-A: 狀態系統重構 (conditions.py)
 > combat.py 已內聯處理 13 種狀態的攻擊/豁免效果，
 > 缺少：回合開始/結束的自動清除、堆疊規則、持續時間計時器
-- [ ] Step 1: 狀態管理 API — apply_condition, remove_condition, has_condition_effect
-- [ ] Step 2: 回合生命週期 — tick_conditions_start_of_turn, tick_conditions_end_of_turn
-- [ ] Step 3: 堆疊規則 — 同源不堆疊、力竭等級累加、擒抱來源追蹤
-- [ ] Step 4: 從 combat.py 抽取狀態查詢邏輯（保持呼叫介面不變）
-- [ ] Step 5: 單元測試 — test_conditions.py
+- [x] Step 1: 狀態管理 API — apply_condition, remove_condition, has_condition_effect
+- [x] Step 2: 回合生命週期 — tick_conditions_start_of_turn, tick_conditions_end_of_turn
+- [x] Step 3: 堆疊規則 — 同源不堆疊、力竭等級累加、擒抱來源追蹤
+- [x] Step 4: 從 combat.py 抽取狀態查詢邏輯（保持呼叫介面不變）
+- [x] Step 5: 單元測試 — test_conditions.py
 
 ### 2-B: 法術系統 (spells.py)
 > Spell model 已定義，character.py 已有法術欄位/DC/攻擊計算，
