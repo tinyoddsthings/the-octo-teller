@@ -1,19 +1,25 @@
 """ASCII 地圖渲染器。
 
-Z-index 圖層堆疊、座標軸標籤、視野裁切。
+Z-index 圖層堆疊、座標軸標籤、視野裁切、戰爭迷霧。
 座標系為左下原點，渲染時從 y=height-1 往下印到 y=0。
 
 Z-index 圖層（低到高）：
-   0  地形（. 地板）
-  10  靜態物件（# 牆壁, D 門）
-  20  屍體（%）
-  30  掉落物（!）
-  40  活著的生物（@ 玩家, E 敵人）
+   0  地形（空白地板）
+  10  靜態物件（🧱 牆壁, 🚪 門）
+  20  屍體（💀）
+  30  掉落物（💎）
+  40  活著的生物（🧙 玩家, 👹 敵人）
+
+戰爭迷霧：
+  render_viewport() 可指定 viewer_id，啟用後對視野內每格
+  執行 Bresenham LOS 判定，被遮擋的格子替換為 ❓。
+  遮擋物本身（如牆壁）仍然可見——因為角色能看見擋住自己的東西。
 """
 
 from __future__ import annotations
 
 import unicodedata
+from uuid import UUID
 
 from tot.models import MapState, Position
 
@@ -27,10 +33,14 @@ Z_LIVING = 40
 
 
 def _char_width(ch: str) -> int:
-    """判斷字元的顯示寬度（全形=2, 半形=1）。"""
-    if len(ch) != 1:
+    """判斷字元的顯示寬度（全形/emoji=2, 半形=1）。"""
+    if not ch:
         return 1
-    cat = unicodedata.east_asian_width(ch)
+    cp = ord(ch[0])
+    # emoji 範圍（常見區段）一律視為寬度 2
+    if cp >= 0x1F000:
+        return 2
+    cat = unicodedata.east_asian_width(ch[0])
     return 2 if cat in ("W", "F") else 1
 
 
@@ -46,6 +56,119 @@ class MapRenderer:
         """完整地圖（DM 視角），含座標軸標籤。"""
         grid = self._build_layer_grid()
         return self._format_grid(grid, x_offset=0, y_offset=0)
+
+    def render_viewport(
+        self,
+        center: Position,
+        radius: int,
+        viewer_id: UUID | None = None,
+    ) -> str:
+        """局部視野渲染，可選戰爭迷霧。
+
+        以 center 為中心、radius 為半徑裁切正方形視野。
+        若提供 viewer_id，對視野內每格跑 LOS 判定，
+        被遮擋的格子替換為 ❓（遮擋物本身仍可見）。
+        超出地圖邊界的格子用空白填充。
+        """
+        full_grid = self._build_layer_grid()
+
+        # 視野邊界（可能超出地圖）
+        x_min = center.x - radius
+        y_min = center.y - radius
+        x_max = center.x + radius
+        y_max = center.y + radius
+
+        # 裁切子格：超出邊界填空白
+        viewport: list[list[tuple[str, int]]] = []
+        for vy in range(y_min, y_max + 1):
+            row: list[tuple[str, int]] = []
+            for vx in range(x_min, x_max + 1):
+                if 0 <= vx < self._w and 0 <= vy < self._h:
+                    row.append(full_grid[vy][vx])
+                else:
+                    row.append((" ", Z_TERRAIN))
+            viewport.append(row)
+
+        # 戰爭迷霧
+        if viewer_id is not None:
+            viewport = self._apply_fog_of_war(
+                viewport, center, radius, x_min, y_min,
+            )
+
+        return self._format_grid(viewport, x_offset=x_min, y_offset=y_min)
+
+    def _apply_fog_of_war(
+        self,
+        grid: list[list[tuple[str, int]]],
+        viewer: Position,
+        radius: int,
+        x_offset: int,
+        y_offset: int,
+    ) -> list[list[tuple[str, int]]]:
+        """對每格跑 has_line_of_sight()，被遮擋的格子替換為 ❓。
+
+        規則：
+        - 觀察者自己的格子永遠可見
+        - 有 LOS 的格子可見
+        - 沒有 LOS 但自身是 is_blocking 的格子仍可見（能看見擋住自己的牆）
+        - 超出地圖邊界的格子保持空白（不顯示 ❓）
+        """
+        from tot.gremlins.bone_engine.spatial import has_line_of_sight
+
+        vp_h = len(grid)
+        vp_w = len(grid[0]) if grid else 0
+        fog_grid: list[list[tuple[str, int]]] = []
+
+        for vy in range(vp_h):
+            row: list[tuple[str, int]] = []
+            map_y = vy + y_offset
+            for vx in range(vp_w):
+                map_x = vx + x_offset
+                cell = grid[vy][vx]
+
+                # 超出地圖邊界 → 維持空白
+                if not (0 <= map_x < self._w and 0 <= map_y < self._h):
+                    row.append(cell)
+                    continue
+
+                # 觀察者自己的格子 → 永遠可見
+                if map_x == viewer.x and map_y == viewer.y:
+                    row.append(cell)
+                    continue
+
+                target = Position(x=map_x, y=map_y)
+                if has_line_of_sight(viewer, target, self._ms):
+                    # 有視線 → 可見
+                    row.append(cell)
+                else:
+                    # 沒有視線，但遮擋物本身可見（第一個擋住的格子）
+                    # 判定方式：該格自身是 blocking → 仍顯示
+                    if self._is_blocking_cell(map_x, map_y):
+                        row.append(cell)
+                    else:
+                        row.append(("❓", Z_TERRAIN))
+
+            fog_grid.append(row)
+
+        return fog_grid
+
+    def _is_blocking_cell(self, x: int, y: int) -> bool:
+        """檢查格子本身是否為阻擋物（用於迷霧判定中保留可見的牆壁）。"""
+        # 地形阻擋
+        if (self._ms.terrain
+                and 0 <= y < len(self._ms.terrain)
+                and 0 <= x < len(self._ms.terrain[y])
+                and self._ms.terrain[y][x].is_blocking):
+            return True
+        # 靜態 Prop 阻擋
+        for p in self._ms.manifest.props:
+            if p.x == x and p.y == y and p.is_blocking:
+                return True
+        # 動態 Prop 阻擋
+        for p in self._ms.props:
+            if p.x == x and p.y == y and p.is_blocking:
+                return True
+        return False
 
     def _build_layer_grid(self) -> list[list[tuple[str, int]]]:
         """建構含 z-index 的二維字元陣列 [y][x] = (symbol, z_index)。"""
@@ -80,7 +203,7 @@ class MapRenderer:
                 if a.is_alive:
                     self._place(grid, a.x, a.y, a.symbol, Z_LIVING)
                 else:
-                    self._place(grid, a.x, a.y, "%", Z_CORPSE)
+                    self._place(grid, a.x, a.y, "💀", Z_CORPSE)
 
         return grid
 

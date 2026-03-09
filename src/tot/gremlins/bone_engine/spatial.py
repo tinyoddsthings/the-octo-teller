@@ -318,7 +318,7 @@ def place_actors_at_spawn(
             id=f"pc_{i}",
             x=sp.x,
             y=sp.y,
-            symbol="@",
+            symbol="🧙",
             combatant_id=char.id,
             combatant_type="character",
             name=char.name,
@@ -332,8 +332,7 @@ def place_actors_at_spawn(
         if i >= len(enemy_spawns):
             break
         sp = enemy_spawns[i]
-        # 用怪物的 label 或名稱首字母作為符號
-        symbol = mon.label[0].upper() if mon.label else mon.name[0].upper() if mon.name else "E"
+        symbol = "👹"
         actor = Actor(
             id=f"mob_{i}",
             x=sp.x,

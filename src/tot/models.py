@@ -510,14 +510,21 @@ class Prop(Entity):
     """地圖上的靜態物件。
 
     is_blocking 決定是否阻擋移動與視線：
-    - wall (#)：is_blocking=True，擋移動、擋視線
-    - door (D)：關門 is_blocking=True，開門改為 False
-    - trap (^)：is_blocking=False，不擋路，踩上去由上層觸發
-    - item (!)：is_blocking=False，可撿取的掉落物
+    - wall (🧱)：is_blocking=True，擋移動、擋視線
+    - door (🚪)：關門 is_blocking=True，開門改為 False
+    - trap (⚠️)：is_blocking=False，不擋路，踩上去由上層觸發
+    - item (💎)：is_blocking=False，可撿取的掉落物
     - decoration：is_blocking 視設計而定（桌椅可擋可不擋）
+
+    cover_bonus 決定作為掩體時提供的 AC 加值：
+    - 0：無掩蔽（陷阱、掉落物）
+    - 2：半掩蔽（木箱、矮牆、家具）
+    - 5：3/4 掩蔽（石柱、厚牆壁）
+    - 99：全掩蔽（完整牆壁，完全阻擋攻擊）
     """
     prop_type: str = "decoration"  # wall / door / trap / item / decoration
     hidden: bool = False           # 隱藏物件（未被發現的陷阱等）
+    cover_bonus: int = 0           # 作為掩體的 AC 加值
 
 
 class TerrainTile(BaseModel):

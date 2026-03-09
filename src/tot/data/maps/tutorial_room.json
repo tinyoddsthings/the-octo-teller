@@ -4,14 +4,14 @@
   "height": 8,
   "grid_size_m": 1.5,
   "terrain": [
-    {"symbol": "#", "positions": [[0,0],[1,0],[2,0],[3,0],[4,0],[6,0],[7,0],[8,0],[9,0],[0,1],[9,1],[0,2],[9,2],[0,3],[9,3],[0,4],[9,4],[0,5],[9,5],[0,6],[9,6],[0,7],[1,7],[2,7],[3,7],[4,7],[6,7],[7,7],[8,7],[9,7]], "is_blocking": true, "name": "wall"},
+    {"symbol": "🧱", "positions": [[0,0],[1,0],[2,0],[3,0],[4,0],[6,0],[7,0],[8,0],[9,0],[0,1],[9,1],[0,2],[9,2],[0,3],[9,3],[0,4],[9,4],[0,5],[9,5],[0,6],[9,6],[0,7],[1,7],[2,7],[3,7],[4,7],[6,7],[7,7],[8,7],[9,7]], "is_blocking": true, "name": "wall"},
     {"symbol": " ", "fill": true, "is_blocking": false, "name": "floor"}
   ],
   "props": [
-    {"id": "door_south", "x": 5, "y": 0, "symbol": "D", "is_blocking": false, "name": "南側木門", "prop_type": "door"},
-    {"id": "door_north", "x": 5, "y": 7, "symbol": "D", "is_blocking": false, "name": "北側木門", "prop_type": "door"},
-    {"id": "pillar_1", "x": 3, "y": 3, "symbol": "#", "is_blocking": true, "name": "石柱", "prop_type": "decoration"},
-    {"id": "pillar_2", "x": 6, "y": 3, "symbol": "#", "is_blocking": true, "name": "石柱", "prop_type": "decoration"}
+    {"id": "door_south", "x": 5, "y": 0, "symbol": "🚪", "is_blocking": false, "name": "南側木門", "prop_type": "door"},
+    {"id": "door_north", "x": 5, "y": 7, "symbol": "🚪", "is_blocking": false, "name": "北側木門", "prop_type": "door"},
+    {"id": "pillar_1", "x": 3, "y": 3, "symbol": "🪨", "is_blocking": true, "name": "石柱", "prop_type": "decoration"},
+    {"id": "pillar_2", "x": 6, "y": 3, "symbol": "🪨", "is_blocking": true, "name": "石柱", "prop_type": "decoration"}
   ],
   "zones": [
     {"name": "主室", "x_min": 1, "y_min": 1, "x_max": 8, "y_max": 6, "description": "簡陋的石造房間，兩根石柱立於中央"}
