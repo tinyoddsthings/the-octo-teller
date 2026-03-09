@@ -21,12 +21,13 @@ from __future__ import annotations
 import unicodedata
 from uuid import UUID
 
-from tot.models import MapState, Position
+from tot.models import DeploymentState, MapState, Position
 
 
 # Z-index 常數
 Z_TERRAIN = 0
 Z_PROP = 10
+Z_ZONE = 15
 Z_CORPSE = 20
 Z_ITEM = 30
 Z_LIVING = 40
@@ -55,6 +56,18 @@ class MapRenderer:
     def render_full(self) -> str:
         """完整地圖（DM 視角），含座標軸標籤。"""
         grid = self._build_layer_grid()
+        return self._format_grid(grid, x_offset=0, y_offset=0)
+
+    def render_deployment(self, deployment: DeploymentState) -> str:
+        """佈陣預覽地圖——用 ✦ 標示可佈陣區域。
+
+        Z_ZONE=15 介於 Z_PROP(10) 和 Z_CORPSE(20) 之間，
+        Actor 在 Z_LIVING=40 會自動覆蓋 ✦ 標記。
+        """
+        grid = self._build_layer_grid()
+        for pos in deployment.spawn_zone:
+            if 0 <= pos.x < self._w and 0 <= pos.y < self._h:
+                self._place(grid, pos.x, pos.y, "✦", Z_ZONE)
         return self._format_grid(grid, x_offset=0, y_offset=0)
 
     def render_viewport(

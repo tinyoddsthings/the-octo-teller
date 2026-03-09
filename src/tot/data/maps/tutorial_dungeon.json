@@ -43,6 +43,7 @@
       "name": "鏽蝕鐵門",
       "is_locked": true,
       "lock_dc": 12,
+      "break_dc": 15,
       "distance_minutes": 1
     },
     {

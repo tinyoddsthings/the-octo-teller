@@ -31,6 +31,7 @@ class MoveResult:
     node: ExplorationNode | None = None     # 到達的節點
     elapsed_minutes: int = 0                # 消耗時間（分鐘）
     message: str = ""
+    noise_generated: bool = False           # 此次行動是否產生噪音
 
 
 @dataclass(frozen=True)
@@ -236,6 +237,45 @@ def unlock_edge(
     return MoveResult(
         success=False,
         message=f"開鎖失敗（{check_total} vs DC {edge.lock_dc}）",
+    )
+
+
+def force_open_edge(
+    state: ExplorationState,
+    exp_map: ExplorationMap,
+    edge_id: str,
+    str_check_total: int,
+) -> MoveResult:
+    """嘗試暴力破門（STR 檢定）。
+
+    不管成敗都會產生噪音 (noise_generated=True)。
+    break_dc == 0 表示此門無法被暴力破開。
+    """
+    edge = _get_edge(exp_map, edge_id)
+
+    if not edge.is_locked:
+        return MoveResult(success=True, message="這條路徑沒有鎖，不需要破門")
+
+    if edge.break_dc == 0:
+        return MoveResult(
+            success=False,
+            message=f"「{edge.name or edge_id}」無法被暴力破開",
+        )
+
+    noise = edge.noise_on_force
+
+    if str_check_total >= edge.break_dc:
+        edge.is_locked = False
+        return MoveResult(
+            success=True,
+            noise_generated=noise,
+            message=f"你猛力撞開了「{edge.name or edge_id}」！（DC {edge.break_dc}）",
+        )
+
+    return MoveResult(
+        success=False,
+        noise_generated=noise,
+        message=f"破門失敗（{str_check_total} vs DC {edge.break_dc}），但巨響已經傳出去了",
     )
 
 

@@ -627,6 +627,31 @@ class MapScale(StrEnum):
     WORLD = "world"         # 天
 
 
+class EncounterType(StrEnum):
+    """遭遇類型。"""
+    SURPRISE = "surprise"     # 玩家偷襲成功 → 擴大佈陣區 + 敵人劣勢先攻
+    NORMAL = "normal"         # 正常遭遇 → 標準佈陣區
+    AMBUSH = "ambush"         # 敵人伏擊 → 跳過佈陣，玩家劣勢先攻
+
+
+class EncounterResult(BaseModel):
+    """潛行對抗察覺的判定結果。"""
+    encounter_type: EncounterType
+    stealth_rolls: dict[str, int] = Field(default_factory=dict)
+    enemy_perception: int = 0
+    surprised_ids: set[UUID] = Field(default_factory=set)
+    message: str = ""
+
+
+class DeploymentState(BaseModel):
+    """佈陣階段狀態——戰鬥開始前的角色放置。"""
+    map_state: MapState
+    spawn_zone: list[Position] = Field(default_factory=list)
+    placements: dict[str, Position] = Field(default_factory=dict)
+    encounter: EncounterResult
+    is_confirmed: bool = False
+
+
 class ExplorationNode(BaseModel):
     """Pointcrawl 節點——玩家可到達的地點。"""
     id: str
@@ -663,6 +688,8 @@ class ExplorationEdge(BaseModel):
     key_item: str | None = None     # 可用鑰匙物品 id
     hidden_dc: int = 0             # 隱藏通道的偵察 DC（0=不隱藏）
     is_one_way: bool = False        # 單向通道
+    break_dc: int = 0              # STR DC 破門（0=不可破壞）
+    noise_on_force: bool = True     # 破門時是否產生噪音
 
     # 世界圖層旅行參數
     distance_days: float = 0        # 旅行天數（世界圖層）
