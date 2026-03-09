@@ -213,8 +213,27 @@ class ActiveCondition(BaseModel):
 # ---------------------------------------------------------------------------
 
 
+class SpellAttackType(StrEnum):
+    """法術攻擊類型。"""
+
+    NONE = "none"  # 無攻擊擲骰（豁免型或自動命中）
+    MELEE = "melee"  # 近戰法術攻擊
+    RANGED = "ranged"  # 遠程法術攻擊
+
+
+class SpellEffectType(StrEnum):
+    """法術主要效果類型。"""
+
+    DAMAGE = "damage"
+    HEALING = "healing"
+    CONDITION = "condition"  # 純施加狀態
+    BUFF = "buff"  # 增益效果
+    UTILITY = "utility"  # 非戰鬥用途
+
+
 class Spell(BaseModel):
-    name: str
+    name: str  # 中文名
+    en_name: str = ""  # 英文名（可選，供查詢用）
     level: int = Field(ge=0, le=9)  # 0 = 戲法
     school: SpellSchool
     casting_time: str = "1 action"
@@ -223,9 +242,15 @@ class Spell(BaseModel):
     concentration: bool = False
     ritual: bool = False
     description: str = ""
+    effect_type: SpellEffectType = SpellEffectType.DAMAGE
+    attack_type: SpellAttackType = SpellAttackType.NONE
     damage_dice: str = ""  # 例如 "1d10"，無傷害則為空字串
     damage_type: DamageType | None = None
+    healing_dice: str = ""  # 例如 "2d8"，無治療則為空字串
     save_ability: Ability | None = None  # 需要豁免的法術
+    save_half: bool = False  # 豁免成功時是否半傷
+    applies_condition: Condition | None = None  # 法術施加的狀態
+    upcast_dice: str = ""  # 升環時每環增加的骰子（如 "1d6"）
     classes: list[str] = Field(default_factory=list)
 
 
@@ -348,6 +373,8 @@ class Character(BaseModel):
     saving_throw_proficiencies: list[Ability] = Field(default_factory=list)
 
     spell_slots: SpellSlots = Field(default_factory=SpellSlots)
+    spell_dc: int = 0  # 法術豁免 DC（8 + 熟練 + 施法屬性修正）
+    spell_attack: int = 0  # 法術攻擊加值（熟練 + 施法屬性修正）
     spells_known: list[str] = Field(default_factory=list)
     spells_prepared: list[str] = Field(default_factory=list)
     concentration_spell: str | None = None

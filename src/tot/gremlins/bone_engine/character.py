@@ -577,6 +577,13 @@ def build_character(
     hp = compute_hp_at_level(cls.hit_die, con_mod, level)
     spell_slots = get_spell_slots(char_class, level)
 
+    # 計算法術 DC 和攻擊加值
+    casting_mod = 0
+    if cls.spellcasting_ability is not None:
+        casting_mod = scores.modifier(cls.spellcasting_ability)
+    spell_dc = compute_spell_dc(prof_bonus, casting_mod)
+    spell_attack = compute_spell_attack(prof_bonus, casting_mod)
+
     return Character(
         name=name,
         species=species,
@@ -597,6 +604,8 @@ def build_character(
         skill_proficiencies=skill_proficiencies or [],
         saving_throw_proficiencies=cls.saving_throws,
         spell_slots=spell_slots,
+        spell_dc=spell_dc,
+        spell_attack=spell_attack,
     )
 
 
