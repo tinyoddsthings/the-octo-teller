@@ -507,9 +507,17 @@ class Actor(Entity):
 
 
 class Prop(Entity):
-    """靜態物件（牆壁、門、陷阱、掉落物）。"""
+    """地圖上的靜態物件。
+
+    is_blocking 決定是否阻擋移動與視線：
+    - wall (#)：is_blocking=True，擋移動、擋視線
+    - door (D)：關門 is_blocking=True，開門改為 False
+    - trap (^)：is_blocking=False，不擋路，踩上去由上層觸發
+    - item (!)：is_blocking=False，可撿取的掉落物
+    - decoration：is_blocking 視設計而定（桌椅可擋可不擋）
+    """
     prop_type: str = "decoration"  # wall / door / trap / item / decoration
-    hidden: bool = False           # 隱藏物件（陷阱等）
+    hidden: bool = False           # 隱藏物件（未被發現的陷阱等）
 
 
 class TerrainTile(BaseModel):
