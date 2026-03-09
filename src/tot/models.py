@@ -109,6 +109,7 @@ class Condition(StrEnum):
     RESTRAINED = "Restrained"
     STUNNED = "Stunned"
     UNCONSCIOUS = "Unconscious"
+    SILENCED = "Silenced"  # Silence 法術範圍內，無法施放 V 成分法術
     WEAKENED = "Weakened"  # 2024 新增，傷害減半
 
 
@@ -250,7 +251,22 @@ class Spell(BaseModel):
     save_ability: Ability | None = None  # 需要豁免的法術
     save_half: bool = False  # 豁免成功時是否半傷
     applies_condition: Condition | None = None  # 法術施加的狀態
+    # 成分
+    components: list[str] = Field(default_factory=list)  # ["V", "S", "M"]
+    material_description: str = ""  # 材料描述（如「價值 50gp 的鑽石粉」）
+    material_cost: int = 0  # 材料金額（gp），0 = 可用法器替代
+    material_consumed: bool = False  # 施法後材料是否消耗
+
+    # 升環
     upcast_dice: str = ""  # 升環時每環增加的骰子（如 "1d6"）
+    upcast_additional_targets: int = 0  # 每升一環多幾個目標
+    upcast_duration_map: dict[int, int] = Field(default_factory=dict)  # {環數: 分鐘}
+    upcast_no_concentration_at: int | None = None  # 達到此環數時不需專注
+    upcast_aoe_bonus: int = 0  # 每升一環增加的半徑（呎）
+
+    # 目標
+    max_targets: int = 1
+
     classes: list[str] = Field(default_factory=list)
 
 

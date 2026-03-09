@@ -42,6 +42,7 @@ _NON_STACKABLE = frozenset(
         Condition.POISONED,
         Condition.PRONE,
         Condition.RESTRAINED,
+        Condition.SILENCED,
         Condition.STUNNED,
         Condition.UNCONSCIOUS,
         Condition.WEAKENED,

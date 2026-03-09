@@ -11,7 +11,8 @@
     "attack_type": "ranged",
     "damage_dice": "1d10",
     "damage_type": "Fire",
-    "description": "遠程法術攻擊。命中時造成 1d10 火焰傷害。",
+    "components": ["V", "S"],
+    "description": "需求：V（語言）、S（姿勢）。遠程法術攻擊。命中時造成 1d10 火焰傷害。",
     "classes": ["Wizard", "Sorcerer"]
   },
   {
@@ -26,7 +27,8 @@
     "attack_type": "ranged",
     "damage_dice": "1d10",
     "damage_type": "Force",
-    "description": "遠程法術攻擊。命中時造成 1d10 力場傷害。",
+    "components": ["V", "S"],
+    "description": "需求：V（語言）、S（姿勢）。遠程法術攻擊。命中時造成 1d10 力場傷害。",
     "classes": ["Warlock"]
   },
   {
@@ -41,7 +43,8 @@
     "save_ability": "DEX",
     "damage_dice": "1d8",
     "damage_type": "Radiant",
-    "description": "目標須進行敏捷豁免，失敗時受到 1d8 光輝傷害。無視掩護。",
+    "components": ["V", "S"],
+    "description": "需求：V（語言）、S（姿勢）。目標須進行敏捷豁免，失敗時受到 1d8 光輝傷害。無視掩護。",
     "classes": ["Cleric"]
   },
   {
@@ -56,7 +59,8 @@
     "attack_type": "melee",
     "damage_dice": "1d10",
     "damage_type": "Necrotic",
-    "description": "近戰法術攻擊。命中時造成 1d10 黯蝕傷害，目標無法恢復生命值。",
+    "components": ["V", "S"],
+    "description": "需求：V（語言）、S（姿勢）。近戰法術攻擊。命中時造成 1d10 黯蝕傷害，目標無法恢復生命值。",
     "classes": ["Wizard", "Sorcerer", "Warlock"]
   },
   {
@@ -71,7 +75,8 @@
     "attack_type": "ranged",
     "damage_dice": "1d8",
     "damage_type": "Cold",
-    "description": "遠程法術攻擊。命中時造成 1d8 寒冷傷害，目標速度降低 10ft。",
+    "components": ["V", "S"],
+    "description": "需求：V（語言）、S（姿勢）。遠程法術攻擊。命中時造成 1d8 寒冷傷害，目標速度降低 10ft。",
     "classes": ["Wizard", "Sorcerer"]
   },
   {
@@ -86,7 +91,8 @@
     "save_ability": "CON",
     "damage_dice": "1d12",
     "damage_type": "Poison",
-    "description": "目標須進行體質豁免，失敗時受到 1d12 毒素傷害。",
+    "components": ["V", "S"],
+    "description": "需求：V（語言）、S（姿勢）。目標須進行體質豁免，失敗時受到 1d12 毒素傷害。",
     "classes": ["Wizard", "Sorcerer", "Druid"]
   },
   {
@@ -101,7 +107,8 @@
     "attack_type": "melee",
     "damage_dice": "1d8",
     "damage_type": "Lightning",
-    "description": "近戰法術攻擊。命中時造成 1d8 閃電傷害，目標無法進行機會攻擊。",
+    "components": ["V", "S"],
+    "description": "需求：V（語言）、S（姿勢）。近戰法術攻擊。命中時造成 1d8 閃電傷害，目標無法進行機會攻擊。",
     "classes": ["Wizard", "Sorcerer"]
   },
   {
@@ -116,7 +123,8 @@
     "save_ability": "WIS",
     "damage_dice": "1d8",
     "damage_type": "Necrotic",
-    "description": "目標須進行感知豁免，失敗時受到 1d8 黯蝕傷害（已受傷則 1d12）。",
+    "components": ["V", "S"],
+    "description": "需求：V（語言）、S（姿勢）。目標須進行感知豁免，失敗時受到 1d8 黯蝕傷害（已受傷則 1d12）。",
     "classes": ["Cleric", "Wizard"]
   },
   {
@@ -131,7 +139,8 @@
     "save_ability": "INT",
     "damage_dice": "1d6",
     "damage_type": "Psychic",
-    "description": "目標須進行智力豁免。失敗時受到 1d6 心靈傷害，且下次豁免 -1d4。",
+    "components": ["V"],
+    "description": "需求：V（語言）。目標須進行智力豁免。失敗時受到 1d6 心靈傷害，且下次豁免 -1d4。",
     "classes": ["Wizard", "Sorcerer"]
   },
   {
@@ -146,7 +155,8 @@
     "save_ability": "WIS",
     "damage_dice": "1d6",
     "damage_type": "Psychic",
-    "description": "目標須進行感知豁免，失敗時受到 1d6 心靈傷害，且下次攻擊劣勢。",
+    "components": ["V"],
+    "description": "需求：V（語言）。目標須進行感知豁免，失敗時受到 1d6 心靈傷害，且下次攻擊劣勢。",
     "classes": ["Bard"]
   },
   {
@@ -161,7 +171,8 @@
     "save_ability": "DEX",
     "damage_dice": "1d6",
     "damage_type": "Acid",
-    "description": "5ft 半徑球體內每個生物須進行敏捷豁免，失敗時受到 1d6 酸液傷害。",
+    "components": ["V", "S"],
+    "description": "需求：V（語言）、S（姿勢）。5ft 半徑球體內每個生物須進行敏捷豁免，失敗時受到 1d6 酸液傷害。",
     "classes": ["Wizard", "Sorcerer"]
   },
   {
@@ -174,7 +185,8 @@
     "duration": "1 round",
     "concentration": true,
     "effect_type": "buff",
-    "description": "持續期間對鈍擊、穿刺和揮砍傷害具有抗性。",
+    "components": ["V", "S"],
+    "description": "需求：V（語言）、S（姿勢）。持續期間對鈍擊、穿刺和揮砍傷害具有抗性。",
     "classes": ["Wizard", "Sorcerer", "Bard", "Warlock"]
   },
   {
@@ -189,7 +201,8 @@
     "damage_dice": "3d4+3",
     "damage_type": "Force",
     "upcast_dice": "1d4+1",
-    "description": "3 枚飛鏢自動命中，每枚造成 1d4+1 力場傷害。升環每環多 1 枚。",
+    "components": ["V", "S"],
+    "description": "需求：V（語言）、S（姿勢）。三道魔力飛鏢自動命中，各造成 1d4+1 力場傷害。升環每環多 1 枚。",
     "classes": ["Wizard", "Sorcerer"]
   },
   {
@@ -206,7 +219,8 @@
     "damage_dice": "3d6",
     "damage_type": "Fire",
     "upcast_dice": "1d6",
-    "description": "15ft 錐形範圍內每個生物須進行敏捷豁免，失敗受 3d6 火焰傷害，成功減半。",
+    "components": ["V", "S"],
+    "description": "需求：V（語言）、S（姿勢）。15ft 錐形範圍內每個生物須進行敏捷豁免，失敗受 3d6 火焰傷害，成功減半。",
     "classes": ["Wizard", "Sorcerer"]
   },
   {
@@ -220,7 +234,8 @@
     "effect_type": "healing",
     "healing_dice": "2d8",
     "upcast_dice": "2d8",
-    "description": "觸碰的生物恢復 2d8 + 施法屬性調整值 HP。對不死和構裝無效。",
+    "components": ["V", "S"],
+    "description": "需求：V（語言）、S（姿勢）。觸碰的生物恢復 2d8 + 施法屬性調整值 HP。對不死和構裝無效。",
     "classes": ["Bard", "Cleric", "Druid", "Paladin", "Ranger"]
   },
   {
@@ -234,7 +249,8 @@
     "effect_type": "healing",
     "healing_dice": "2d4",
     "upcast_dice": "2d4",
-    "description": "射程內一個生物恢復 2d4 + 施法屬性調整值 HP。",
+    "components": ["V"],
+    "description": "需求：V（語言）。射程內一個生物恢復 2d4 + 施法屬性調整值 HP。",
     "classes": ["Bard", "Cleric", "Druid"]
   },
   {
@@ -246,7 +262,8 @@
     "range": "Self",
     "duration": "1 round",
     "effect_type": "buff",
-    "description": "獲得 +5 AC 加值直到下回合開始，免疫魔法飛彈。",
+    "components": ["V", "S"],
+    "description": "需求：V（語言）、S（姿勢）。獲得 +5 AC 加值直到下回合開始，免疫魔法飛彈。",
     "classes": ["Wizard", "Sorcerer"]
   },
   {
@@ -262,7 +279,8 @@
     "damage_dice": "4d6",
     "damage_type": "Radiant",
     "upcast_dice": "1d6",
-    "description": "遠程法術攻擊。命中造成 4d6 光輝傷害，對目標的下次攻擊有優勢。",
+    "components": ["V", "S"],
+    "description": "需求：V（語言）、S（姿勢）。遠程法術攻擊。命中造成 4d6 光輝傷害，對目標的下次攻擊有優勢。",
     "classes": ["Cleric"]
   },
   {
@@ -279,7 +297,8 @@
     "damage_dice": "2d8",
     "damage_type": "Thunder",
     "upcast_dice": "2d8",
-    "description": "15ft 立方區域內每個生物須進行體質豁免，失敗受 2d8 雷鳴傷害並推開 10ft。",
+    "components": ["V", "S"],
+    "description": "需求：V（語言）、S（姿勢）。15ft 立方區域內每個生物須進行體質豁免，失敗受 2d8 雷鳴傷害並推開 10ft。",
     "classes": ["Wizard", "Sorcerer", "Bard", "Druid"]
   },
   {
@@ -292,7 +311,11 @@
     "duration": "1 minute",
     "concentration": true,
     "effect_type": "buff",
-    "description": "至多 3 個生物的攻擊和豁免 +1d4。升環每環多 1 個目標。",
+    "components": ["V", "S", "M"],
+    "material_description": "一滴聖水",
+    "max_targets": 3,
+    "upcast_additional_targets": 1,
+    "description": "需求：V（語言）、S（姿勢）、M（一滴聖水，可用法器替代）。至多三個生物的攻擊和豁免 +1d4。升環每環多 1 個目標。",
     "classes": ["Cleric", "Paladin"]
   },
   {
@@ -306,7 +329,11 @@
     "concentration": true,
     "effect_type": "condition",
     "save_ability": "CHA",
-    "description": "至多 3 個目標須魅力豁免，失敗時攻擊和豁免 -1d4。升環每環多 1 目標。",
+    "components": ["V", "S", "M"],
+    "material_description": "一滴血",
+    "max_targets": 3,
+    "upcast_additional_targets": 1,
+    "description": "需求：V（語言）、S（姿勢）、M（一滴血，可用法器替代）。至多三個目標須魅力豁免，失敗時攻擊和豁免 -1d4。升環每環多 1 目標。",
     "classes": ["Bard", "Cleric"]
   },
   {
@@ -321,7 +348,10 @@
     "effect_type": "condition",
     "save_ability": "WIS",
     "applies_condition": "Unconscious",
-    "description": "目標須感知豁免，失敗時陷入魔法睡眠。受傷或被喚醒可結束。",
+    "components": ["V", "S", "M"],
+    "material_description": "一撮細沙、玫瑰花瓣或一隻蟋蟀",
+    "upcast_additional_targets": 1,
+    "description": "需求：V（語言）、S（姿勢）、M（一撮細沙、玫瑰花瓣或一隻蟋蟀，可用法器替代）。目標須感知豁免，失敗時陷入魔法睡眠。受傷或被喚醒可結束。升環每環多 1 目標。",
     "classes": ["Bard", "Sorcerer", "Wizard"]
   },
   {
@@ -333,7 +363,9 @@
     "range": "Touch",
     "duration": "8 hours",
     "effect_type": "buff",
-    "description": "未穿甲的目標基礎 AC 變為 13 + DEX 調整值。",
+    "components": ["V", "S", "M"],
+    "material_description": "一片鞣皮",
+    "description": "需求：V（語言）、S（姿勢）、M（一片鞣皮，可用法器替代）。未穿甲的目標基礎 AC 變為 13 + DEX 調整值。",
     "classes": ["Wizard", "Sorcerer"]
   },
   {
@@ -350,7 +382,8 @@
     "damage_dice": "2d10",
     "damage_type": "Necrotic",
     "upcast_dice": "2d10",
-    "description": "觸碰的生物須體質豁免，失敗受 2d10 黯蝕傷害，成功減半。",
+    "components": ["V", "S"],
+    "description": "需求：V（語言）、S（姿勢）。觸碰的生物須體質豁免，失敗受 2d10 黯蝕傷害，成功減半。",
     "classes": ["Cleric"]
   },
   {
@@ -366,7 +399,10 @@
     "damage_dice": "3d8",
     "damage_type": "Fire",
     "upcast_dice": "3d8",
-    "description": "遠程法術攻擊。命中造成 3d8 所選元素傷害（酸/寒/火/電/毒/雷）。",
+    "components": ["V", "S", "M"],
+    "material_description": "價值 50gp 的鑽石",
+    "material_cost": 50,
+    "description": "需求：V（語言）、S（姿勢）、M（價值 50gp 的鑽石，不可用法器替代）。遠程法術攻擊。命中造成 3d8 所選元素傷害（酸/寒/火/電/毒/雷）。",
     "classes": ["Wizard", "Sorcerer"]
   },
   {
@@ -380,7 +416,9 @@
     "effect_type": "condition",
     "save_ability": "CON",
     "applies_condition": "Blinded",
-    "description": "15ft 錐形範圍內每個生物須體質豁免，失敗則目盲至你下回合結束。",
+    "components": ["V", "S", "M"],
+    "material_description": "一撮紅黃藍染色的粉末或沙子",
+    "description": "需求：V（語言）、S（姿勢）、M（一撮紅黃藍染色的粉末或沙子，可用法器替代）。15ft 錐形範圍內每個生物須體質豁免，失敗則目盲至你下回合結束。",
     "classes": ["Wizard", "Sorcerer", "Bard"]
   },
   {
@@ -397,7 +435,8 @@
     "damage_type": "Poison",
     "upcast_dice": "2d8",
     "applies_condition": "Poisoned",
-    "description": "遠程法術攻擊。命中造成 2d8 毒素傷害，且目標中毒至你下回合結束。",
+    "components": ["V", "S"],
+    "description": "需求：V（語言）、S（姿勢）。遠程法術攻擊。命中造成 2d8 毒素傷害，且目標中毒至你下回合結束。",
     "classes": ["Wizard", "Sorcerer"]
   },
   {
@@ -413,7 +452,9 @@
     "damage_dice": "1d10",
     "damage_type": "Piercing",
     "upcast_dice": "2d6",
-    "description": "遠程法術攻擊。命中造成 1d10 穿刺傷害，然後爆裂，5ft 內 DEX 豁免否則 2d6 寒冷傷害。",
+    "components": ["S", "M"],
+    "material_description": "一滴水或一片冰",
+    "description": "需求：S（姿勢）、M（一滴水或一片冰，可用法器替代）。遠程法術攻擊。命中造成 1d10 穿刺傷害，然後爆裂，5ft 內 DEX 豁免否則 2d6 寒冷傷害。",
     "classes": ["Wizard", "Sorcerer", "Druid"]
   },
   {
@@ -427,7 +468,8 @@
     "concentration": true,
     "effect_type": "condition",
     "save_ability": "DEX",
-    "description": "20ft 立方區域內生物須 DEX 豁免，失敗時發光且無法隱形，對其攻擊有優勢。",
+    "components": ["V"],
+    "description": "需求：V（語言）。20ft 立方區域內生物須 DEX 豁免，失敗時發光且無法隱形，對其攻擊有優勢。",
     "classes": ["Bard", "Druid"]
   },
   {
@@ -442,7 +484,108 @@
     "effect_type": "condition",
     "save_ability": "STR",
     "applies_condition": "Restrained",
-    "description": "20ft 正方形區域內生物須力量豁免，失敗時被束縛。區域為難行地形。",
+    "components": ["V", "S"],
+    "description": "需求：V（語言）、S（姿勢）。20ft 正方形區域內生物須力量豁免，失敗時被束縛。區域為難行地形。",
     "classes": ["Druid", "Ranger"]
+  },
+  {
+    "name": "定身術",
+    "en_name": "Hold Person",
+    "level": 2,
+    "school": "Enchantment",
+    "casting_time": "1 action",
+    "range": "60ft",
+    "duration": "1 minute",
+    "concentration": true,
+    "effect_type": "condition",
+    "save_ability": "WIS",
+    "applies_condition": "Paralyzed",
+    "components": ["V", "S", "M"],
+    "material_description": "一小段直鐵條",
+    "max_targets": 1,
+    "upcast_additional_targets": 1,
+    "description": "需求：V（語言）、S（姿勢）、M（一小段直鐵條，可用法器替代）。一名類人生物須感知豁免，失敗時麻痺。每回合結束可重擲豁免。升環每環多 1 目標。",
+    "classes": ["Bard", "Cleric", "Druid", "Sorcerer", "Warlock", "Wizard"]
+  },
+  {
+    "name": "粉碎音波",
+    "en_name": "Shatter",
+    "level": 2,
+    "school": "Evocation",
+    "casting_time": "1 action",
+    "range": "60ft",
+    "duration": "Instantaneous",
+    "effect_type": "damage",
+    "save_ability": "CON",
+    "save_half": true,
+    "damage_dice": "3d8",
+    "damage_type": "Thunder",
+    "upcast_dice": "1d8",
+    "components": ["V", "S", "M"],
+    "material_description": "一片雲母",
+    "description": "需求：V（語言）、S（姿勢）、M（一片雲母，可用法器替代）。10ft 半徑球體內每個生物須體質豁免，失敗受 3d8 雷鳴傷害，成功減半。無機物質構成的生物劣勢。",
+    "classes": ["Bard", "Sorcerer", "Warlock", "Wizard"]
+  },
+  {
+    "name": "目盲/耳聾術",
+    "en_name": "Blindness/Deafness",
+    "level": 2,
+    "school": "Necromancy",
+    "casting_time": "1 action",
+    "range": "30ft",
+    "duration": "1 minute",
+    "effect_type": "condition",
+    "save_ability": "CON",
+    "applies_condition": "Blinded",
+    "components": ["V"],
+    "max_targets": 1,
+    "upcast_additional_targets": 1,
+    "description": "需求：V（語言）。一名生物須體質豁免，失敗時目盲或耳聾（施法者選擇）。每回合結束可重擲豁免。不需專注。升環每環多 1 目標。",
+    "classes": ["Bard", "Cleric", "Sorcerer", "Wizard"]
+  },
+  {
+    "name": "迷蹤步",
+    "en_name": "Misty Step",
+    "level": 2,
+    "school": "Conjuration",
+    "casting_time": "1 bonus action",
+    "range": "Self",
+    "duration": "Instantaneous",
+    "effect_type": "utility",
+    "components": ["V"],
+    "description": "需求：V（語言）。瞬間傳送至 30ft 內你能看見的未佔用空間。",
+    "classes": ["Sorcerer", "Warlock", "Wizard"]
+  },
+  {
+    "name": "反制法術",
+    "en_name": "Counterspell",
+    "level": 3,
+    "school": "Abjuration",
+    "casting_time": "1 reaction",
+    "range": "60ft",
+    "duration": "Instantaneous",
+    "effect_type": "utility",
+    "components": ["S"],
+    "description": "需求：S（姿勢）。中斷 60ft 內一個生物正在施放的法術。3 環以下自動成功，更高環需要施法屬性檢定（DC = 10 + 法術環級）。",
+    "classes": ["Sorcerer", "Warlock", "Wizard"]
+  },
+  {
+    "name": "火球術",
+    "en_name": "Fireball",
+    "level": 3,
+    "school": "Evocation",
+    "casting_time": "1 action",
+    "range": "150ft",
+    "duration": "Instantaneous",
+    "effect_type": "damage",
+    "save_ability": "DEX",
+    "save_half": true,
+    "damage_dice": "8d6",
+    "damage_type": "Fire",
+    "upcast_dice": "1d6",
+    "components": ["V", "S", "M"],
+    "material_description": "一小團蝙蝠糞和硫磺",
+    "description": "需求：V（語言）、S（姿勢）、M（一小團蝙蝠糞和硫磺，可用法器替代）。20ft 半徑球體內每個生物須敏捷豁免，失敗受 8d6 火焰傷害，成功減半。會點燃未被穿戴的可燃物。",
+    "classes": ["Sorcerer", "Wizard"]
   }
 ]

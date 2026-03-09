@@ -20,12 +20,17 @@ from tot.gremlins.bone_engine.combat import (
     resolve_saving_throw,
     roll_damage,
 )
-from tot.gremlins.bone_engine.conditions import apply_condition
+from tot.gremlins.bone_engine.conditions import (
+    apply_condition,
+    has_condition_effect,
+    is_incapacitated,
+)
 from tot.gremlins.bone_engine.dice import roll
 from tot.models import (
     Ability,
     ActiveCondition,
     Character,
+    Condition,
     DamageType,
     Monster,
     Spell,
@@ -123,10 +128,29 @@ def can_cast(
     """檢查 caster 是否能施放 spell。回傳 None 表示可施放，CastError 表示不行。
 
     檢查項目：
-    1. 戲法不消耗法術欄位
-    2. 非戲法：slot_level >= spell.level，且有剩餘欄位
-    3. 法術是否在已知/已準備列表中（Character 限定）
+    1. 成分檢查（V/S/M，Character + Monster 都適用）
+    2. 戲法不消耗法術欄位（但仍需成分檢查）
+    3. 非戲法：slot_level >= spell.level，且有剩餘欄位
+    4. 法術是否在已知/已準備列表中（Character 限定）
     """
+    # ── 成分檢查（Character + Monster 都適用）──
+    # V：被沉默 → 無法施放
+    if "V" in spell.components and has_condition_effect(caster, Condition.SILENCED):
+        return CastError("被沉默，無法施放需要語言成分的法術")
+
+    # S：被無力化 → 無法做手勢
+    if "S" in spell.components and is_incapacitated(caster):
+        return CastError("無力化狀態，無法施放需要姿勢成分的法術")
+
+    # M：有金額材料 → 檢查背包（僅 Character，Monster 不追蹤物品）
+    if (
+        "M" in spell.components
+        and spell.material_cost > 0
+        and isinstance(caster, Character)
+        and not _has_material(caster, spell)
+    ):
+        return CastError(f"缺少材料成分：{spell.material_description}")
+
     # 戲法不需要欄位
     if spell.level == 0:
         return None
@@ -227,7 +251,11 @@ def cast_spell(
     # 專注管理
     concentration_broken: str | None = None
     concentration_started = False
-    if spell.concentration:
+    needs_concentration = spell.concentration
+    if spell.upcast_no_concentration_at and actual_slot >= spell.upcast_no_concentration_at:
+        needs_concentration = False
+
+    if needs_concentration:
         if isinstance(caster, Character) and caster.concentration_spell:
             concentration_broken = break_concentration(caster)
         if isinstance(caster, Character):
@@ -235,8 +263,10 @@ def cast_spell(
             concentration_started = True
 
     # 效果分支
+    result: CastResult | None = None
+
     if spell.effect_type == SpellEffectType.DAMAGE:
-        return _resolve_damage_spell(
+        result = _resolve_damage_spell(
             caster,
             spell,
             target,
@@ -246,8 +276,8 @@ def cast_spell(
             rng=rng,
         )
 
-    if spell.effect_type == SpellEffectType.HEALING:
-        return _resolve_healing_spell(
+    elif spell.effect_type == SpellEffectType.HEALING:
+        result = _resolve_healing_spell(
             caster,
             spell,
             target,
@@ -257,8 +287,8 @@ def cast_spell(
             rng=rng,
         )
 
-    if spell.effect_type == SpellEffectType.CONDITION:
-        return _resolve_condition_spell(
+    elif spell.effect_type == SpellEffectType.CONDITION:
+        result = _resolve_condition_spell(
             caster,
             spell,
             target,
@@ -267,6 +297,16 @@ def cast_spell(
             concentration_broken=concentration_broken,
             rng=rng,
         )
+
+    if result is not None:
+        # 材料消耗（施法成功後）
+        if result.success and spell.material_consumed and isinstance(caster, Character):
+            _consume_material(caster, spell)
+        return result
+
+    # 材料消耗
+    if spell.material_consumed and isinstance(caster, Character):
+        _consume_material(caster, spell)
 
     # BUFF / UTILITY — 目前只回傳成功訊息
     return CastResult(
@@ -741,3 +781,40 @@ def _upcast_damage(
     if base_dice:
         return f"{base_dice}+{extra}"
     return extra
+
+
+# ---------------------------------------------------------------------------
+# 升環——目標數計算
+# ---------------------------------------------------------------------------
+
+
+def get_max_targets(spell: Spell, slot_level: int) -> int:
+    """計算升環後的最大目標數。"""
+    base = spell.max_targets
+    if spell.upcast_additional_targets and spell.level > 0:
+        extra = (slot_level - spell.level) * spell.upcast_additional_targets
+        return base + extra
+    return base
+
+
+# ---------------------------------------------------------------------------
+# 材料成分輔助函式
+# ---------------------------------------------------------------------------
+
+
+def _has_material(caster: Character, spell: Spell) -> bool:
+    """檢查角色是否持有法術所需的材料成分。"""
+    if spell.material_cost <= 0:
+        return True
+    return any(item.name == spell.material_description for item in caster.inventory)
+
+
+def _consume_material(caster: Character, spell: Spell) -> None:
+    """消耗法術所需的材料成分。"""
+    for item in caster.inventory:
+        if item.name == spell.material_description:
+            if item.quantity > 1:
+                item.quantity -= 1
+            else:
+                caster.inventory.remove(item)
+            break

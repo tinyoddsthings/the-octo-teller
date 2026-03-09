@@ -6,10 +6,12 @@ import random
 
 import pytest
 
+from tot.gremlins.bone_engine.conditions import apply_condition
 from tot.gremlins.bone_engine.spells import (
     CastError,
     can_cast,
     cast_spell,
+    get_max_targets,
     get_spell_by_name,
     is_concentrating,
     list_spells,
@@ -20,7 +22,9 @@ from tot.models import (
     AbilityScores,
     Character,
     Condition,
+    Item,
     Monster,
+    Spell,
     SpellSlots,
 )
 
@@ -41,10 +45,14 @@ def wizard():
         spell_attack=5,
         proficiency_bonus=2,
         spell_slots=SpellSlots(
-            max_slots={1: 4, 2: 3},
-            current_slots={1: 4, 2: 3},
+            max_slots={1: 4, 2: 3, 3: 2},
+            current_slots={1: 4, 2: 3, 3: 2},
         ),
-        spells_known=["火焰箭", "魔法飛彈", "燃燒之手", "護盾術", "睡眠術"],
+        spells_known=[
+            "火焰箭", "魔法飛彈", "燃燒之手", "護盾術", "睡眠術",
+            "定身術", "粉碎音波", "目盲/耳聾術", "迷蹤步",
+            "反制法術", "火球術",
+        ],
     )
 
 
@@ -433,3 +441,276 @@ class TestCastFailure:
         result = cast_spell(wizard, spell, goblin, rng=seeded_rng)
         assert not result.success
         assert "未在已知" in result.message
+
+
+# ---------------------------------------------------------------------------
+# TestComponents（成分檢查）
+# ---------------------------------------------------------------------------
+
+
+class TestComponents:
+    """法術成分系統。"""
+
+    def test_spell_has_components(self):
+        """確認 JSON 載入後法術有 components。"""
+        db = load_spell_db()
+        fire_bolt = db["火焰箭"]
+        assert fire_bolt.components == ["V", "S"]
+        bless = db["祝福術"]
+        assert "M" in bless.components
+
+    def test_silenced_blocks_verbal(self, wizard, goblin):
+        """被沉默 → V 法術不可施放。"""
+        apply_condition(wizard, Condition.SILENCED, source="Silence")
+        spell = get_spell_by_name("火焰箭")  # V, S
+        error = can_cast(wizard, spell)
+        assert isinstance(error, CastError)
+        assert "沉默" in error.reason
+
+    def test_silenced_allows_no_verbal(self, wizard):
+        """被沉默 → 無 V 成分法術仍可施放。"""
+        apply_condition(wizard, Condition.SILENCED, source="Silence")
+        # 冰刃術只有 S, M（無 V）
+        spell = get_spell_by_name("冰刃術")
+        wizard.spells_known.append("冰刃術")
+        error = can_cast(wizard, spell, slot_level=1)
+        assert error is None
+
+    def test_incapacitated_blocks_somatic(self, wizard):
+        """被無力化 → S 法術不可施放。"""
+        apply_condition(wizard, Condition.STUNNED, source="Hold Person")
+        spell = get_spell_by_name("火焰箭")  # V, S
+        error = can_cast(wizard, spell)
+        assert isinstance(error, CastError)
+        assert "無力化" in error.reason
+
+    def test_material_cost_check(self, wizard):
+        """有金額材料但背包沒有 → 不可施放。"""
+        spell = get_spell_by_name("繽紛寶珠")  # M: 價值 50gp 的鑽石
+        wizard.spells_known.append("繽紛寶珠")
+        error = can_cast(wizard, spell, slot_level=1)
+        assert isinstance(error, CastError)
+        assert "材料" in error.reason
+
+    def test_material_cost_with_item(self, wizard, goblin, seeded_rng):
+        """有金額材料且背包有 → 可施放。"""
+        spell = get_spell_by_name("繽紛寶珠")
+        wizard.spells_known.append("繽紛寶珠")
+        wizard.inventory.append(Item(name="價值 50gp 的鑽石"))
+        error = can_cast(wizard, spell, slot_level=1)
+        assert error is None
+
+    def test_material_no_cost_always_ok(self, wizard):
+        """無金額材料 → 不檢查背包。"""
+        spell = get_spell_by_name("祝福術")  # M: 一滴聖水（cost=0）
+        wizard.spells_known.append("祝福術")
+        # 背包空的也可以（0 cost 可用法器替代）
+        error = can_cast(wizard, spell, slot_level=1)
+        assert error is None
+
+
+# ---------------------------------------------------------------------------
+# TestUpcastAdvanced（進階升環）
+# ---------------------------------------------------------------------------
+
+
+class TestUpcastAdvanced:
+    """進階升環機制。"""
+
+    def test_upcast_no_concentration(self, wizard, goblin, seeded_rng):
+        """達到指定環數後不觸發專注。"""
+        # 建立一個有 upcast_no_concentration_at 的測試法術
+        spell = Spell(
+            name="測試專注法術",
+            level=1,
+            school="Enchantment",
+            concentration=True,
+            effect_type="buff",
+            components=["V", "S"],
+            upcast_no_concentration_at=3,
+        )
+        wizard.spells_known.append("測試專注法術")
+        wizard.spell_slots.max_slots[3] = 2
+        wizard.spell_slots.current_slots[3] = 2
+
+        # 用 3 環施放 → 不需專注
+        result = cast_spell(wizard, spell, slot_level=3, rng=seeded_rng)
+        assert result.success
+        assert not result.concentration_started
+        assert wizard.concentration_spell is None
+
+    def test_upcast_below_threshold_still_concentrates(self, wizard, goblin, seeded_rng):
+        """低於閾值仍需專注。"""
+        spell = Spell(
+            name="測試專注法術2",
+            level=1,
+            school="Enchantment",
+            concentration=True,
+            effect_type="buff",
+            components=["V", "S"],
+            upcast_no_concentration_at=3,
+        )
+        wizard.spells_known.append("測試專注法術2")
+
+        # 用 1 環施放 → 仍需專注
+        result = cast_spell(wizard, spell, slot_level=1, rng=seeded_rng)
+        assert result.success
+        assert result.concentration_started
+        assert wizard.concentration_spell == "測試專注法術2"
+
+    def test_get_max_targets_base(self):
+        """無升環時回傳基本目標數。"""
+        spell = get_spell_by_name("祝福術")
+        assert get_max_targets(spell, 1) == 3
+
+    def test_get_max_targets_upcast(self):
+        """升環增加目標數。"""
+        spell = get_spell_by_name("祝福術")  # base 3, +1 per level
+        assert get_max_targets(spell, 2) == 4
+        assert get_max_targets(spell, 3) == 5
+
+    def test_get_max_targets_cantrip_no_upcast(self):
+        """戲法不會因升環增加目標。"""
+        spell = Spell(
+            name="測試戲法",
+            level=0,
+            school="Evocation",
+            max_targets=2,
+            upcast_additional_targets=1,
+        )
+        # 戲法 level=0，不適用升環目標增加
+        assert get_max_targets(spell, 0) == 2
+
+
+# ---------------------------------------------------------------------------
+# TestHighLevelSpells（高環法術）
+# ---------------------------------------------------------------------------
+
+
+class TestHighLevelSpells:
+    """2-3 環法術載入、施放與升環。"""
+
+    def test_new_spells_loaded(self):
+        """確認新增的高環法術都載入成功。"""
+        db = load_spell_db()
+        for name in ["定身術", "粉碎音波", "目盲/耳聾術", "迷蹤步", "反制法術", "火球術"]:
+            assert name in db, f"{name} 未載入"
+        assert len(db) >= 36  # 30 + 6
+
+    def test_fireball_base_damage(self, wizard, goblin, seeded_rng):
+        """火球術 3 環 8d6 傷害。"""
+        spell = get_spell_by_name("火球術")
+        assert spell.level == 3
+        assert spell.damage_dice == "8d6"
+        result = cast_spell(wizard, spell, goblin, slot_level=3, rng=seeded_rng)
+        assert result.success
+        assert result.slot_used == 3
+
+    def test_fireball_upcast_damage(self, wizard, seeded_rng):
+        """火球術升環：用 3 環 vs 用更高環的骰子數比較。"""
+        spell = get_spell_by_name("火球術")
+        # 建一個大 HP 目標，避免死亡影響結果
+        target_3 = Monster(name="T1", hp_max=200, hp_current=200, ac=1)
+        target_4 = Monster(name="T2", hp_max=200, hp_current=200, ac=1)
+
+        wizard.spell_slots.max_slots[4] = 1
+        wizard.spell_slots.current_slots[4] = 1
+
+        r3 = cast_spell(wizard, spell, target_3, slot_level=3, rng=random.Random(99))
+        r4 = cast_spell(wizard, spell, target_4, slot_level=4, rng=random.Random(99))
+        # 4 環應該傷害 >= 3 環（8d6 vs 9d6，同 seed）
+        assert r4.damage_dealt >= r3.damage_dealt
+
+    def test_hold_person_paralyzed(self, wizard, goblin):
+        """定身術豁免失敗時施加麻痺。"""
+        spell = get_spell_by_name("定身術")
+        for seed in range(100):
+            rng = random.Random(seed)
+            goblin.conditions = []
+            goblin.hp_current = goblin.hp_max
+            result = cast_spell(wizard, spell, goblin, slot_level=2, rng=rng)
+            if not result.save_passed:
+                assert goblin.has_condition(Condition.PARALYZED)
+                break
+
+    def test_hold_person_upcast_targets(self):
+        """定身術升環增加目標數：2環=1, 3環=2, 4環=3。"""
+        spell = get_spell_by_name("定身術")
+        assert get_max_targets(spell, 2) == 1
+        assert get_max_targets(spell, 3) == 2
+        assert get_max_targets(spell, 4) == 3
+
+    def test_shatter_save_half(self, wizard, seeded_rng):
+        """粉碎音波豁免成功時半傷。"""
+        spell = get_spell_by_name("粉碎音波")
+        # 用高 CON 目標確保有機會通過豁免
+        tough = Monster(
+            name="Iron Golem", hp_max=100, hp_current=100, ac=20,
+            ability_scores=AbilityScores(CON=20),
+        )
+        for seed in range(100):
+            rng = random.Random(seed)
+            tough.hp_current = tough.hp_max
+            result = cast_spell(wizard, spell, tough, slot_level=2, rng=rng)
+            if result.save_passed:
+                assert result.damage_dealt > 0  # 半傷仍造成傷害
+                assert "半傷" in result.message
+                break
+
+    def test_blindness_deafness_no_concentration(self, wizard, goblin):
+        """目盲/耳聾術不需專注。"""
+        spell = get_spell_by_name("目盲/耳聾術")
+        assert not spell.concentration
+        # 先維持一個專注法術
+        wizard.concentration_spell = "睡眠術"
+        for seed in range(100):
+            rng = random.Random(seed)
+            goblin.conditions = []
+            result = cast_spell(wizard, spell, goblin, slot_level=2, rng=rng)
+            if not result.save_passed:
+                # 專注法術應該沒有被中斷
+                assert wizard.concentration_spell == "睡眠術"
+                assert not result.concentration_started
+                break
+
+    def test_blindness_deafness_upcast_targets(self):
+        """目盲/耳聾術升環增加目標數。"""
+        spell = get_spell_by_name("目盲/耳聾術")
+        assert get_max_targets(spell, 2) == 1
+        assert get_max_targets(spell, 3) == 2
+
+    def test_misty_step_v_only(self, wizard, seeded_rng):
+        """迷蹤步只需 V，被沉默時不可用。"""
+        spell = get_spell_by_name("迷蹤步")
+        assert spell.components == ["V"]
+
+        # 正常施放 OK
+        result = cast_spell(wizard, spell, slot_level=2, rng=seeded_rng)
+        assert result.success
+
+        # 被沉默後不可用
+        from tot.gremlins.bone_engine.conditions import apply_condition
+        apply_condition(wizard, Condition.SILENCED, source="Silence")
+        error = can_cast(wizard, spell, slot_level=2)
+        assert isinstance(error, CastError)
+        assert "沉默" in error.reason
+
+    def test_counterspell_s_only_immune_to_silence(self, wizard, seeded_rng):
+        """反制法術只需 S，被沉默時仍可施放。"""
+        spell = get_spell_by_name("反制法術")
+        assert spell.components == ["S"]
+
+        from tot.gremlins.bone_engine.conditions import apply_condition
+        apply_condition(wizard, Condition.SILENCED, source="Silence")
+        # S-only 法術不受沉默影響
+        error = can_cast(wizard, spell, slot_level=3)
+        assert error is None
+
+    def test_counterspell_blocked_by_incapacitated(self, wizard):
+        """反制法術有 S，被無力化時不可施放。"""
+        spell = get_spell_by_name("反制法術")
+        from tot.gremlins.bone_engine.conditions import apply_condition
+        apply_condition(wizard, Condition.STUNNED, source="Stun")
+        error = can_cast(wizard, spell, slot_level=3)
+        assert isinstance(error, CastError)
+        assert "無力化" in error.reason
