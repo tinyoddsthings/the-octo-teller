@@ -96,6 +96,7 @@ class Condition(StrEnum):
     BLINDED = "Blinded"
     CHARMED = "Charmed"
     DEAFENED = "Deafened"
+    DODGING = "Dodging"  # 非官方狀態，追蹤閃避動作效果（1 輪）
     EXHAUSTION = "Exhaustion"
     FRIGHTENED = "Frightened"
     GRAPPLED = "Grappled"
@@ -108,6 +109,7 @@ class Condition(StrEnum):
     RESTRAINED = "Restrained"
     STUNNED = "Stunned"
     UNCONSCIOUS = "Unconscious"
+    WEAKENED = "Weakened"  # 2024 新增，傷害減半
 
 
 class Size(StrEnum):
@@ -145,6 +147,26 @@ class SpellSchool(StrEnum):
     ILLUSION = "Illusion"
     NECROMANCY = "Necromancy"
     TRANSMUTATION = "Transmutation"
+
+
+class CoverType(StrEnum):
+    """掩蔽類型。"""
+    NONE = "None"
+    HALF = "Half"                  # +2 AC 與 DEX 豁免
+    THREE_QUARTERS = "Three-Quarters"  # +5 AC 與 DEX 豁免
+    TOTAL = "Total"                # 無法被直接攻擊
+
+
+class WeaponMastery(StrEnum):
+    """2024 武器專精效果。"""
+    CLEAVE = "Cleave"    # 命中後對相鄰另一目標造成屬性修正傷害
+    GRAZE = "Graze"      # 未命中仍造成屬性修正傷害
+    NICK = "Nick"         # 額外附贈動作攻擊
+    PUSH = "Push"         # 命中後推開目標 3m
+    SAP = "Sap"           # 命中後目標下次攻擊劣勢
+    SLOW = "Slow"         # 命中後減速 3m
+    TOPPLE = "Topple"     # 命中後目標 CON 豁免，失敗倒地
+    VEX = "Vex"           # 命中後下次攻擊同目標優勢
 
 
 # ---------------------------------------------------------------------------
@@ -226,6 +248,7 @@ class Weapon(BaseModel):
     range_normal: int = 1  # 公尺；1 = 近戰
     range_long: int | None = None  # 遠程/投擲武器的長射程
     is_martial: bool = False
+    mastery: WeaponMastery | None = None  # 2024 武器專精
 
     @computed_field
     @property
@@ -300,6 +323,7 @@ class Character(BaseModel):
 
     ability_scores: AbilityScores = Field(default_factory=AbilityScores)
     proficiency_bonus: int = 2  # 由等級推導，但儲存方便使用
+    size: Size = Size.MEDIUM
 
     hp_max: int = 10
     hp_current: int = 10
@@ -324,9 +348,13 @@ class Character(BaseModel):
     weapons: list[Weapon] = Field(default_factory=list)
     inventory: list[Item] = Field(default_factory=list)
 
+    damage_resistances: list[DamageType] = Field(default_factory=list)
+    damage_immunities: list[DamageType] = Field(default_factory=list)
+
     conditions: list[ActiveCondition] = Field(default_factory=list)
     death_saves: DeathSaves = Field(default_factory=DeathSaves)
     exhaustion_level: int = Field(default=0, ge=0, le=6)
+    heroic_inspiration: bool = False
 
     xp: int = 0
 
@@ -450,11 +478,19 @@ class Monster(BaseModel):
 CombatantRef = tuple[Literal["character", "monster"], UUID]
 
 
+class TurnState(BaseModel):
+    """單一回合內的動作經濟追蹤。"""
+    action_used: bool = False
+    bonus_action_used: bool = False
+    mastery_used: bool = False  # 武器專精每回合一次
+
+
 class InitiativeEntry(BaseModel):
     combatant_type: Literal["character", "monster"]
     combatant_id: UUID
     initiative: int
     is_surprised: bool = False
+    reaction_used: bool = False  # 反應跨回合追蹤（每輪重置）
 
 
 class CombatState(BaseModel):
@@ -464,3 +500,4 @@ class CombatState(BaseModel):
     current_turn_index: int = 0
     initiative_order: list[InitiativeEntry] = Field(default_factory=list)
     is_active: bool = False
+    turn_state: TurnState = Field(default_factory=TurnState)
