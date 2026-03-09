@@ -8,11 +8,9 @@ from tot.gremlins.bone_engine.deployment import resolve_encounter
 from tot.gremlins.bone_engine.exploration import (
     MoveResult,
     force_open_edge,
-    move_to_node,
     unlock_edge,
 )
 from tot.models import (
-    Ability,
     AbilityScores,
     Character,
     EncounterType,
@@ -24,10 +22,10 @@ from tot.models import (
     Skill,
 )
 
-
 # ---------------------------------------------------------------------------
 # 共用 fixtures
 # ---------------------------------------------------------------------------
+
 
 def _make_map() -> ExplorationMap:
     """建立含鎖門 + 可破門的測試地圖。"""
@@ -108,6 +106,7 @@ def _make_monsters() -> list[Monster]:
 # 破門測試
 # ---------------------------------------------------------------------------
 
+
 class TestForceOpenEdge:
     """force_open_edge() 測試。"""
 
@@ -178,6 +177,7 @@ class TestForceOpenEdge:
 # MoveResult noise_generated 預設值測試
 # ---------------------------------------------------------------------------
 
+
 class TestMoveResultNoise:
     """MoveResult.noise_generated 預設值。"""
 
@@ -201,6 +201,7 @@ class TestMoveResultNoise:
 # 警戒 + 遭遇判定連動測試
 # ---------------------------------------------------------------------------
 
+
 class TestAlertedEncounter:
     """alerted=True 時 resolve_encounter 不給 surprise。"""
 
@@ -211,7 +212,8 @@ class TestAlertedEncounter:
         rng = random.Random(42)
 
         result = resolve_encounter(
-            characters, monsters,
+            characters,
+            monsters,
             stealth_intent=True,
             alerted=True,
             rng=rng,
@@ -233,7 +235,8 @@ class TestAlertedEncounter:
         for seed in range(100):
             rng = random.Random(seed)
             result = resolve_encounter(
-                characters, monsters,
+                characters,
+                monsters,
                 stealth_intent=True,
                 alerted=False,
                 rng=rng,
@@ -250,7 +253,8 @@ class TestAlertedEncounter:
         monsters = _make_monsters()
 
         result = resolve_encounter(
-            characters, monsters,
+            characters,
+            monsters,
             stealth_intent=True,
             alerted=True,
         )

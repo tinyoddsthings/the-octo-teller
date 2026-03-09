@@ -2,18 +2,19 @@
 """
 DnD Telegram Bot — 接 Claude Code CLI
 """
+
+import json
+import logging
 import os
 import re
-import json
 import subprocess
-import logging
 import threading
 import time
-import asyncio as aio
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
+
 from telegram import Update
-from telegram.ext import ApplicationBuilder, MessageHandler, CommandHandler, filters, ContextTypes
+from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes, MessageHandler, filters
 
 # ── 路徑設定 ──────────────────────────────────────────
 BASE = Path(__file__).parent
@@ -37,14 +38,12 @@ BOT_TOKEN = "8696466871:AAFvEvBsJmZkxDWOZ_bqbkZc7tyitaL6iz4"
 # ── 允許的 Telegram user ID（留空 = 不限制）──────────
 ALLOWED_USERS: set[int] = set()
 
-logging.basicConfig(
-    format="%(asctime)s [%(levelname)s] %(message)s",
-    level=logging.INFO
-)
+logging.basicConfig(format="%(asctime)s [%(levelname)s] %(message)s", level=logging.INFO)
 log = logging.getLogger(__name__)
 
 
 # ── 對話歷史管理 ──────────────────────────────────────
+
 
 def load_history():
     global chat_history
@@ -52,7 +51,7 @@ def load_history():
         try:
             chat_history = json.loads(HISTORY_FILE.read_text(encoding="utf-8"))
             log.info(f"載入對話歷史：{len(chat_history)} 個聊天室")
-        except (json.JSONDecodeError, IOError) as e:
+        except (OSError, json.JSONDecodeError) as e:
             log.warning(f"載入歷史失敗：{e}")
             chat_history = {}
 
@@ -60,19 +59,22 @@ def load_history():
 def save_history():
     try:
         HISTORY_FILE.parent.mkdir(parents=True, exist_ok=True)
-        HISTORY_FILE.write_text(json.dumps(chat_history, ensure_ascii=False, indent=2), encoding="utf-8")
-    except IOError as e:
+        data = json.dumps(chat_history, ensure_ascii=False, indent=2)
+        HISTORY_FILE.write_text(data, encoding="utf-8")
+    except OSError as e:
         log.warning(f"儲存歷史失敗：{e}")
 
 
 def add_history_turn(chat_id: str, user_msg: str, dm_reply: str):
     if chat_id not in chat_history:
         chat_history[chat_id] = []
-    chat_history[chat_id].append({
-        "user": user_msg[:500],
-        "dm": dm_reply[:MAX_DM_REPLY_CHARS],
-        "ts": datetime.now().strftime("%Y-%m-%d %H:%M")
-    })
+    chat_history[chat_id].append(
+        {
+            "user": user_msg[:500],
+            "dm": dm_reply[:MAX_DM_REPLY_CHARS],
+            "ts": datetime.now().strftime("%Y-%m-%d %H:%M"),
+        }
+    )
     # 只保留最近 N 輪
     chat_history[chat_id] = chat_history[chat_id][-MAX_HISTORY_TURNS:]
     save_history()
@@ -85,10 +87,7 @@ def clear_history(chat_id: str):
 
 def roll_dice(expr: str) -> str:
     """呼叫 dice.sh 擲骰"""
-    result = subprocess.run(
-        ["bash", str(DICE_SCRIPT), expr],
-        capture_output=True, text=True
-    )
+    result = subprocess.run(["bash", str(DICE_SCRIPT), expr], capture_output=True, text=True)
     return result.stdout.strip()
 
 
@@ -96,7 +95,9 @@ def query_monster(name: str) -> str:
     """查怪物資料"""
     result = subprocess.run(
         ["uv", "run", "python", str(DND_QUERY), "monster", name],
-        capture_output=True, text=True, cwd=str(DND_MCP_PATH)
+        capture_output=True,
+        text=True,
+        cwd=str(DND_MCP_PATH),
     )
     return result.stdout.strip()[:2000]  # 限制長度
 
@@ -134,7 +135,7 @@ def build_prompt(user_message: str, mcp_results: str = "", history: list[dict] =
         for i, turn in enumerate(history, 1):
             lines.append(f"**玩家（Turn {i}）：** {turn['user']}")
             lines.append(f"**DM：** {turn['dm']}")
-        history_section = f"\n---\n\n# 近期對話紀錄\n\n" + "\n\n".join(lines) + "\n"
+        history_section = "\n---\n\n# 近期對話紀錄\n\n" + "\n\n".join(lines) + "\n"
 
     # MCP 查詢結果段落
     if mcp_results:
@@ -174,12 +175,13 @@ def build_prompt(user_message: str, mcp_results: str = "", history: list[dict] =
 
 def parse_dice_commands(text: str) -> str:
     """把回覆中的 [DICE:...] 換成實際骰子結果"""
+
     def replace_dice(m):
         expr = m.group(1)
         result = roll_dice(expr)
         return result
 
-    return re.sub(r'\[DICE:([^\]]+)\]', replace_dice, text)
+    return re.sub(r"\[DICE:([^\]]+)\]", replace_dice, text)
 
 
 def parse_save_update(text: str) -> tuple[str, str | None]:
@@ -187,17 +189,18 @@ def parse_save_update(text: str) -> tuple[str, str | None]:
     從回覆中提取 [SAVE_UPDATE]...[/SAVE_UPDATE]
     回傳 (cleaned_text, save_update_content)
     """
-    pattern = r'\[SAVE_UPDATE\](.*?)\[/SAVE_UPDATE\]'
+    pattern = r"\[SAVE_UPDATE\](.*?)\[/SAVE_UPDATE\]"
     match = re.search(pattern, text, re.DOTALL)
     if match:
         update_content = match.group(1).strip()
-        cleaned = re.sub(pattern, '', text, flags=re.DOTALL).strip()
+        cleaned = re.sub(pattern, "", text, flags=re.DOTALL).strip()
         return cleaned, update_content
     return text, None
 
 
 def parse_query_commands(text: str) -> str:
     """把 [QUERY:type:args] 換成查詢結果"""
+
     def replace_query(m):
         parts = m.group(0)[1:-1].split(":")  # 去掉 [ ]
         qtype = parts[1]
@@ -205,7 +208,7 @@ def parse_query_commands(text: str) -> str:
         result = run_mcp_query(qtype, args)
         return f"\n📖 [{qtype}: {' '.join(args)}]\n{result}\n"
 
-    return re.sub(r'\[QUERY:[^\]]+\]', replace_query, text)
+    return re.sub(r"\[QUERY:[^\]]+\]", replace_query, text)
 
 
 def log_exchange(prompt: str, reply: str):
@@ -232,8 +235,10 @@ def call_claude(prompt: str) -> str:
     def run():
         r = subprocess.run(
             ["claude", "--print", "--dangerously-skip-permissions", "-p", prompt],
-            capture_output=True, text=True, timeout=None,
-            env={**os.environ, "CLAUDECODE": ""}
+            capture_output=True,
+            text=True,
+            timeout=None,
+            env={**os.environ, "CLAUDECODE": ""},
         )
         result_box["result"] = r
 
@@ -261,7 +266,10 @@ def call_claude(prompt: str) -> str:
 
     prompt_tokens = len(prompt) // 4
     reply_tokens = len(reply) // 4
-    log.info(f"✅ Claude 完成，耗時 {elapsed}s，prompt ~{prompt_tokens} tokens，reply ~{reply_tokens} tokens")
+    log.info(
+        f"✅ Claude 完成，耗時 {elapsed}s，"
+        f"prompt ~{prompt_tokens} tokens，reply ~{reply_tokens} tokens"
+    )
     log_exchange(prompt, reply)
     return reply
 
@@ -295,13 +303,15 @@ def update_save_from_diff(update_content: str):
 def extract_queries(text: str) -> list[dict]:
     """從 Claude 回覆中提取 [QUERY:...] 指令（不執行）"""
     queries = []
-    for m in re.finditer(r'\[QUERY:([^\]]+)\]', text):
+    for m in re.finditer(r"\[QUERY:([^\]]+)\]", text):
         parts = m.group(1).split(":")
-        queries.append({
-            "type": parts[0],
-            "args": parts[1:],
-            "raw": m.group(0),
-        })
+        queries.append(
+            {
+                "type": parts[0],
+                "args": parts[1:],
+                "raw": m.group(0),
+            }
+        )
     return queries
 
 
@@ -397,7 +407,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # 分段發送（Telegram 單則上限 4096 字，使用 Markdown）
     for i in range(0, len(reply), 4000):
-        chunk = reply[i:i+4000]
+        chunk = reply[i : i + 4000]
         try:
             await update.message.reply_text(chunk, parse_mode="Markdown")
         except Exception:

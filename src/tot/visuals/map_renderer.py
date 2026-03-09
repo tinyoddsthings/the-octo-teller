@@ -23,7 +23,6 @@ from uuid import UUID
 
 from tot.models import DeploymentState, MapState, Position
 
-
 # Z-index 常數
 Z_TERRAIN = 0
 Z_PROP = 10
@@ -105,7 +104,11 @@ class MapRenderer:
         # 戰爭迷霧
         if viewer_id is not None:
             viewport = self._apply_fog_of_war(
-                viewport, center, radius, x_min, y_min,
+                viewport,
+                center,
+                radius,
+                x_min,
+                y_min,
             )
 
         return self._format_grid(viewport, x_offset=x_min, y_offset=y_min)
@@ -168,26 +171,24 @@ class MapRenderer:
     def _is_blocking_cell(self, x: int, y: int) -> bool:
         """檢查格子本身是否為阻擋物（用於迷霧判定中保留可見的牆壁）。"""
         # 地形阻擋
-        if (self._ms.terrain
-                and 0 <= y < len(self._ms.terrain)
-                and 0 <= x < len(self._ms.terrain[y])
-                and self._ms.terrain[y][x].is_blocking):
+        if (
+            self._ms.terrain
+            and 0 <= y < len(self._ms.terrain)
+            and 0 <= x < len(self._ms.terrain[y])
+            and self._ms.terrain[y][x].is_blocking
+        ):
             return True
         # 靜態 Prop 阻擋
         for p in self._ms.manifest.props:
             if p.x == x and p.y == y and p.is_blocking:
                 return True
         # 動態 Prop 阻擋
-        for p in self._ms.props:
-            if p.x == x and p.y == y and p.is_blocking:
-                return True
-        return False
+        return any(p.x == x and p.y == y and p.is_blocking for p in self._ms.props)
 
     def _build_layer_grid(self) -> list[list[tuple[str, int]]]:
         """建構含 z-index 的二維字元陣列 [y][x] = (symbol, z_index)。"""
         grid: list[list[tuple[str, int]]] = [
-            [(".", Z_TERRAIN) for _ in range(self._w)]
-            for _ in range(self._h)
+            [(".", Z_TERRAIN) for _ in range(self._w)] for _ in range(self._h)
         ]
 
         # 圖層 0：地形
@@ -199,16 +200,14 @@ class MapRenderer:
 
         # 圖層 10：manifest 靜態 Prop
         for p in self._ms.manifest.props:
-            if 0 <= p.x < self._w and 0 <= p.y < self._h:
-                if not p.hidden:
-                    self._place(grid, p.x, p.y, p.symbol, Z_PROP)
+            if 0 <= p.x < self._w and 0 <= p.y < self._h and not p.hidden:
+                self._place(grid, p.x, p.y, p.symbol, Z_PROP)
 
         # 圖層 10/30：動態 Prop（item 類型用 Z_ITEM）
         for p in self._ms.props:
-            if 0 <= p.x < self._w and 0 <= p.y < self._h:
-                if not p.hidden:
-                    z = Z_ITEM if p.prop_type == "item" else Z_PROP
-                    self._place(grid, p.x, p.y, p.symbol, z)
+            if 0 <= p.x < self._w and 0 <= p.y < self._h and not p.hidden:
+                z = Z_ITEM if p.prop_type == "item" else Z_PROP
+                self._place(grid, p.x, p.y, p.symbol, z)
 
         # 圖層 20/40：Actor（死亡降級為屍體）
         for a in self._ms.actors:
@@ -223,8 +222,10 @@ class MapRenderer:
     @staticmethod
     def _place(
         grid: list[list[tuple[str, int]]],
-        x: int, y: int,
-        symbol: str, z: int,
+        x: int,
+        y: int,
+        symbol: str,
+        z: int,
     ) -> None:
         """只在 z-index 更高時覆蓋。"""
         if z >= grid[y][x][1]:

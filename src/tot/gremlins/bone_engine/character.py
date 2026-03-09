@@ -6,7 +6,6 @@
 
 from __future__ import annotations
 
-from tot.gremlins.bone_engine.dice import roll_ability_scores
 from tot.models import (
     Ability,
     AbilityScores,
@@ -15,10 +14,10 @@ from tot.models import (
     SpellSlots,
 )
 
-
 # ---------------------------------------------------------------------------
 # 熟練加值對照表（PHB p.15）
 # ---------------------------------------------------------------------------
+
 
 def proficiency_bonus_for_level(level: int) -> int:
     if level < 1:
@@ -37,6 +36,7 @@ def proficiency_bonus_for_level(level: int) -> int:
 # ---------------------------------------------------------------------------
 # 職業資料登錄
 # ---------------------------------------------------------------------------
+
 
 class ClassData:
     """職業的靜態資料。"""
@@ -67,8 +67,12 @@ CLASS_REGISTRY: dict[str, ClassData] = {
         primary_ability=Ability.STR,
         saving_throws=[Ability.STR, Ability.CON],
         skill_choices=[
-            Skill.ANIMAL_HANDLING, Skill.ATHLETICS, Skill.INTIMIDATION,
-            Skill.NATURE, Skill.PERCEPTION, Skill.SURVIVAL,
+            Skill.ANIMAL_HANDLING,
+            Skill.ATHLETICS,
+            Skill.INTIMIDATION,
+            Skill.NATURE,
+            Skill.PERCEPTION,
+            Skill.SURVIVAL,
         ],
         num_skills=2,
     ),
@@ -87,8 +91,11 @@ CLASS_REGISTRY: dict[str, ClassData] = {
         primary_ability=Ability.WIS,
         saving_throws=[Ability.WIS, Ability.CHA],
         skill_choices=[
-            Skill.HISTORY, Skill.INSIGHT, Skill.MEDICINE,
-            Skill.PERSUASION, Skill.RELIGION,
+            Skill.HISTORY,
+            Skill.INSIGHT,
+            Skill.MEDICINE,
+            Skill.PERSUASION,
+            Skill.RELIGION,
         ],
         num_skills=2,
         spellcasting_ability=Ability.WIS,
@@ -99,9 +106,14 @@ CLASS_REGISTRY: dict[str, ClassData] = {
         primary_ability=Ability.WIS,
         saving_throws=[Ability.INT, Ability.WIS],
         skill_choices=[
-            Skill.ARCANA, Skill.ANIMAL_HANDLING, Skill.INSIGHT,
-            Skill.MEDICINE, Skill.NATURE, Skill.PERCEPTION,
-            Skill.RELIGION, Skill.SURVIVAL,
+            Skill.ARCANA,
+            Skill.ANIMAL_HANDLING,
+            Skill.INSIGHT,
+            Skill.MEDICINE,
+            Skill.NATURE,
+            Skill.PERCEPTION,
+            Skill.RELIGION,
+            Skill.SURVIVAL,
         ],
         num_skills=2,
         spellcasting_ability=Ability.WIS,
@@ -112,9 +124,15 @@ CLASS_REGISTRY: dict[str, ClassData] = {
         primary_ability=Ability.STR,
         saving_throws=[Ability.STR, Ability.CON],
         skill_choices=[
-            Skill.ACROBATICS, Skill.ANIMAL_HANDLING, Skill.ATHLETICS,
-            Skill.HISTORY, Skill.INSIGHT, Skill.INTIMIDATION,
-            Skill.PERSUASION, Skill.PERCEPTION, Skill.SURVIVAL,
+            Skill.ACROBATICS,
+            Skill.ANIMAL_HANDLING,
+            Skill.ATHLETICS,
+            Skill.HISTORY,
+            Skill.INSIGHT,
+            Skill.INTIMIDATION,
+            Skill.PERSUASION,
+            Skill.PERCEPTION,
+            Skill.SURVIVAL,
         ],
         num_skills=2,
     ),
@@ -124,8 +142,12 @@ CLASS_REGISTRY: dict[str, ClassData] = {
         primary_ability=Ability.DEX,
         saving_throws=[Ability.STR, Ability.DEX],
         skill_choices=[
-            Skill.ACROBATICS, Skill.ATHLETICS, Skill.HISTORY,
-            Skill.INSIGHT, Skill.RELIGION, Skill.STEALTH,
+            Skill.ACROBATICS,
+            Skill.ATHLETICS,
+            Skill.HISTORY,
+            Skill.INSIGHT,
+            Skill.RELIGION,
+            Skill.STEALTH,
         ],
         num_skills=2,
     ),
@@ -135,8 +157,12 @@ CLASS_REGISTRY: dict[str, ClassData] = {
         primary_ability=Ability.STR,
         saving_throws=[Ability.WIS, Ability.CHA],
         skill_choices=[
-            Skill.ATHLETICS, Skill.INSIGHT, Skill.INTIMIDATION,
-            Skill.MEDICINE, Skill.PERSUASION, Skill.RELIGION,
+            Skill.ATHLETICS,
+            Skill.INSIGHT,
+            Skill.INTIMIDATION,
+            Skill.MEDICINE,
+            Skill.PERSUASION,
+            Skill.RELIGION,
         ],
         num_skills=2,
         spellcasting_ability=Ability.CHA,
@@ -147,9 +173,14 @@ CLASS_REGISTRY: dict[str, ClassData] = {
         primary_ability=Ability.DEX,
         saving_throws=[Ability.STR, Ability.DEX],
         skill_choices=[
-            Skill.ANIMAL_HANDLING, Skill.ATHLETICS, Skill.INSIGHT,
-            Skill.INVESTIGATION, Skill.NATURE, Skill.PERCEPTION,
-            Skill.STEALTH, Skill.SURVIVAL,
+            Skill.ANIMAL_HANDLING,
+            Skill.ATHLETICS,
+            Skill.INSIGHT,
+            Skill.INVESTIGATION,
+            Skill.NATURE,
+            Skill.PERCEPTION,
+            Skill.STEALTH,
+            Skill.SURVIVAL,
         ],
         num_skills=3,
         spellcasting_ability=Ability.WIS,
@@ -160,9 +191,15 @@ CLASS_REGISTRY: dict[str, ClassData] = {
         primary_ability=Ability.DEX,
         saving_throws=[Ability.DEX, Ability.INT],
         skill_choices=[
-            Skill.ACROBATICS, Skill.ATHLETICS, Skill.DECEPTION,
-            Skill.INSIGHT, Skill.INTIMIDATION, Skill.INVESTIGATION,
-            Skill.PERCEPTION, Skill.PERSUASION, Skill.SLEIGHT_OF_HAND,
+            Skill.ACROBATICS,
+            Skill.ATHLETICS,
+            Skill.DECEPTION,
+            Skill.INSIGHT,
+            Skill.INTIMIDATION,
+            Skill.INVESTIGATION,
+            Skill.PERCEPTION,
+            Skill.PERSUASION,
+            Skill.SLEIGHT_OF_HAND,
             Skill.STEALTH,
         ],
         num_skills=4,
@@ -173,8 +210,12 @@ CLASS_REGISTRY: dict[str, ClassData] = {
         primary_ability=Ability.CHA,
         saving_throws=[Ability.CON, Ability.CHA],
         skill_choices=[
-            Skill.ARCANA, Skill.DECEPTION, Skill.INSIGHT,
-            Skill.INTIMIDATION, Skill.PERSUASION, Skill.RELIGION,
+            Skill.ARCANA,
+            Skill.DECEPTION,
+            Skill.INSIGHT,
+            Skill.INTIMIDATION,
+            Skill.PERSUASION,
+            Skill.RELIGION,
         ],
         num_skills=2,
         spellcasting_ability=Ability.CHA,
@@ -185,8 +226,12 @@ CLASS_REGISTRY: dict[str, ClassData] = {
         primary_ability=Ability.CHA,
         saving_throws=[Ability.WIS, Ability.CHA],
         skill_choices=[
-            Skill.ARCANA, Skill.DECEPTION, Skill.HISTORY,
-            Skill.INTIMIDATION, Skill.INVESTIGATION, Skill.NATURE,
+            Skill.ARCANA,
+            Skill.DECEPTION,
+            Skill.HISTORY,
+            Skill.INTIMIDATION,
+            Skill.INVESTIGATION,
+            Skill.NATURE,
             Skill.RELIGION,
         ],
         num_skills=2,
@@ -198,8 +243,12 @@ CLASS_REGISTRY: dict[str, ClassData] = {
         primary_ability=Ability.INT,
         saving_throws=[Ability.INT, Ability.WIS],
         skill_choices=[
-            Skill.ARCANA, Skill.HISTORY, Skill.INSIGHT,
-            Skill.INVESTIGATION, Skill.MEDICINE, Skill.NATURE,
+            Skill.ARCANA,
+            Skill.HISTORY,
+            Skill.INSIGHT,
+            Skill.INVESTIGATION,
+            Skill.MEDICINE,
+            Skill.NATURE,
             Skill.RELIGION,
         ],
         num_skills=2,
@@ -215,7 +264,14 @@ CLASS_REGISTRY: dict[str, ClassData] = {
 STANDARD_ARRAY = [15, 14, 13, 12, 10, 8]
 
 POINT_BUY_COSTS: dict[int, int] = {
-    8: 0, 9: 1, 10: 2, 11: 3, 12: 4, 13: 5, 14: 7, 15: 9,
+    8: 0,
+    9: 1,
+    10: 2,
+    11: 3,
+    12: 4,
+    13: 5,
+    14: 7,
+    15: 9,
 }
 
 POINT_BUY_BUDGET = 27
@@ -269,9 +325,7 @@ def apply_background_bonus(
     for ability, bonus in bonuses.items():
         new_val = data[ability.value] + bonus
         if new_val > 20:
-            raise ValueError(
-                f"{ability} 會變成 {new_val}（上限 20）"
-            )
+            raise ValueError(f"{ability} 會變成 {new_val}（上限 20）")
         data[ability.value] = new_val
 
     return AbilityScores(**data)
@@ -280,6 +334,7 @@ def apply_background_bonus(
 # ---------------------------------------------------------------------------
 # 衍生數值計算
 # ---------------------------------------------------------------------------
+
 
 def compute_hp_at_level(hit_die: int, con_modifier: int, level: int) -> int:
     """計算最大 HP。1 級 = 生命骰最大值 + 體質修正；之後每級 = 平均值 + 體質修正。"""
@@ -345,15 +400,15 @@ def compute_spell_attack(proficiency_bonus: int, casting_mod: int) -> int:
 
 # 完整施法者：吟遊詩人、牧師、德魯伊、術師、法師
 FULL_CASTER_SLOTS: dict[int, dict[int, int]] = {
-    1:  {1: 2},
-    2:  {1: 3},
-    3:  {1: 4, 2: 2},
-    4:  {1: 4, 2: 3},
-    5:  {1: 4, 2: 3, 3: 2},
-    6:  {1: 4, 2: 3, 3: 3},
-    7:  {1: 4, 2: 3, 3: 3, 4: 1},
-    8:  {1: 4, 2: 3, 3: 3, 4: 2},
-    9:  {1: 4, 2: 3, 3: 3, 4: 3, 5: 1},
+    1: {1: 2},
+    2: {1: 3},
+    3: {1: 4, 2: 2},
+    4: {1: 4, 2: 3},
+    5: {1: 4, 2: 3, 3: 2},
+    6: {1: 4, 2: 3, 3: 3},
+    7: {1: 4, 2: 3, 3: 3, 4: 1},
+    8: {1: 4, 2: 3, 3: 3, 4: 2},
+    9: {1: 4, 2: 3, 3: 3, 4: 3, 5: 1},
     10: {1: 4, 2: 3, 3: 3, 4: 3, 5: 2},
     11: {1: 4, 2: 3, 3: 3, 4: 3, 5: 2, 6: 1},
     12: {1: 4, 2: 3, 3: 3, 4: 3, 5: 2, 6: 1},
@@ -394,10 +449,26 @@ HALF_CASTER_SLOTS: dict[int, dict[int, int]] = {
 # 術士契約魔法：欄位較少但全部在最高環級，短休恢復
 WARLOCK_SLOTS: dict[int, tuple[int, int]] = {
     # 等級: (欄位數, 欄位環級)
-    1: (1, 1), 2: (2, 1), 3: (2, 2), 4: (2, 2), 5: (2, 3),
-    6: (2, 3), 7: (2, 4), 8: (2, 4), 9: (2, 5), 10: (2, 5),
-    11: (3, 5), 12: (3, 5), 13: (3, 5), 14: (3, 5), 15: (3, 5),
-    16: (3, 5), 17: (4, 5), 18: (4, 5), 19: (4, 5), 20: (4, 5),
+    1: (1, 1),
+    2: (2, 1),
+    3: (2, 2),
+    4: (2, 2),
+    5: (2, 3),
+    6: (2, 3),
+    7: (2, 4),
+    8: (2, 4),
+    9: (2, 5),
+    10: (2, 5),
+    11: (3, 5),
+    12: (3, 5),
+    13: (3, 5),
+    14: (3, 5),
+    15: (3, 5),
+    16: (3, 5),
+    17: (4, 5),
+    18: (4, 5),
+    19: (4, 5),
+    20: (4, 5),
 }
 
 FULL_CASTERS = {"Bard", "Cleric", "Druid", "Sorcerer", "Wizard"}
@@ -429,10 +500,26 @@ def get_spell_slots(char_class: str, level: int) -> SpellSlots:
 # ---------------------------------------------------------------------------
 
 XP_THRESHOLDS: dict[int, int] = {
-    1: 0, 2: 300, 3: 900, 4: 2700, 5: 6500, 6: 14000,
-    7: 23000, 8: 34000, 9: 48000, 10: 64000, 11: 85000,
-    12: 100000, 13: 120000, 14: 140000, 15: 165000, 16: 195000,
-    17: 225000, 18: 265000, 19: 305000, 20: 355000,
+    1: 0,
+    2: 300,
+    3: 900,
+    4: 2700,
+    5: 6500,
+    6: 14000,
+    7: 23000,
+    8: 34000,
+    9: 48000,
+    10: 64000,
+    11: 85000,
+    12: 100000,
+    13: 120000,
+    14: 140000,
+    15: 165000,
+    16: 195000,
+    17: 225000,
+    18: 265000,
+    19: 305000,
+    20: 355000,
 }
 
 
@@ -448,6 +535,7 @@ def level_for_xp(xp: int) -> int:
 # ---------------------------------------------------------------------------
 # 角色建構器
 # ---------------------------------------------------------------------------
+
 
 def build_character(
     name: str,
@@ -642,9 +730,7 @@ class CharacterBuilder:
                 ok, msg = validate_standard_array(scores)
                 if not ok:
                     raise ValueError(msg)
-            self._ability_scores = AbilityScores(
-                **{a.value: v for a, v in scores.items()}
-            )
+            self._ability_scores = AbilityScores(**{a.value: v for a, v in scores.items()})
         else:
             self._ability_scores = scores
 
@@ -662,13 +748,9 @@ class CharacterBuilder:
         cls = CLASS_REGISTRY[self._char_class]
         for s in skills:
             if s not in cls.skill_choices:
-                raise ValueError(
-                    f"{self._char_class} 無法選擇技能 {s.value}"
-                )
+                raise ValueError(f"{self._char_class} 無法選擇技能 {s.value}")
         if len(skills) != cls.num_skills:
-            raise ValueError(
-                f"{self._char_class} 應選 {cls.num_skills} 項技能，收到 {len(skills)}"
-            )
+            raise ValueError(f"{self._char_class} 應選 {cls.num_skills} 項技能，收到 {len(skills)}")
 
         self._skill_proficiencies = skills
         self._step = 6
@@ -695,9 +777,7 @@ class CharacterBuilder:
     def build(self) -> Character:
         """呼叫 build_character() 產出完整角色。所有必要步驟必須完成。"""
         if self._step < len(_BUILD_STEPS):
-            raise ValueError(
-                f"建角尚未完成，目前在步驟: {self.current_step}"
-            )
+            raise ValueError(f"建角尚未完成，目前在步驟: {self.current_step}")
 
         return build_character(
             name=self._name,

@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from tot.data.loader import load_exploration_map, load_map_manifest
+from tot.data.loader import load_map_manifest
 from tot.models import (
     ExplorationEdge,
     ExplorationMap,
@@ -19,32 +19,35 @@ from tot.models import (
     MapState,
 )
 
-
 # ---------------------------------------------------------------------------
 # 結果型別
 # ---------------------------------------------------------------------------
 
+
 @dataclass(frozen=True)
 class MoveResult:
     """移動結果。"""
+
     success: bool
-    node: ExplorationNode | None = None     # 到達的節點
-    elapsed_minutes: int = 0                # 消耗時間（分鐘）
+    node: ExplorationNode | None = None  # 到達的節點
+    elapsed_minutes: int = 0  # 消耗時間（分鐘）
     message: str = ""
-    noise_generated: bool = False           # 此次行動是否產生噪音
+    noise_generated: bool = False  # 此次行動是否產生噪音
 
 
 @dataclass(frozen=True)
 class SearchResult:
     """搜索房間結果。"""
-    elapsed_minutes: int = 10               # 搜索消耗時間
-    discovered_edges: list[str] | None = None   # 發現的隱藏通道 id
+
+    elapsed_minutes: int = 10  # 搜索消耗時間
+    discovered_edges: list[str] | None = None  # 發現的隱藏通道 id
     message: str = ""
 
 
 @dataclass(frozen=True)
 class NodeDescription:
     """組裝給 Narrator 的節點描述素材。"""
+
     node: ExplorationNode
     available_exits: list[ExplorationEdge]
     is_first_visit: bool
@@ -53,6 +56,7 @@ class NodeDescription:
 # ---------------------------------------------------------------------------
 # 內部工具
 # ---------------------------------------------------------------------------
+
 
 def _get_node(exp_map: ExplorationMap, node_id: str) -> ExplorationNode | None:
     """依 id 查找節點。"""
@@ -96,6 +100,7 @@ def _scale_to_minutes(scale: MapScale, edge: ExplorationEdge) -> int:
 # 核心函式
 # ---------------------------------------------------------------------------
 
+
 def get_available_exits(
     state: ExplorationState,
     exp_map: ExplorationMap,
@@ -117,11 +122,8 @@ def get_available_exits(
         if not edge.is_discovered and edge.id not in state.discovered_edges:
             continue
 
-        # 從 from_node 可走（正向）
-        if edge.from_node_id == current:
-            exits.append(edge)
-        # 非單向時，從 to_node 也可走（反向）
-        elif not edge.is_one_way and edge.to_node_id == current:
+        # 從 from_node 可走（正向）；非單向時從 to_node 也可走（反向）
+        if edge.from_node_id == current or (not edge.is_one_way and edge.to_node_id == current):
             exits.append(edge)
 
     return exits
@@ -329,6 +331,7 @@ def get_node_description(
 # 子地圖進出
 # ---------------------------------------------------------------------------
 
+
 def enter_sub_map(
     state: ExplorationState,
     sub_map: ExplorationMap,
@@ -371,6 +374,7 @@ def exit_to_parent_map(state: ExplorationState) -> ExplorationState:
 # ---------------------------------------------------------------------------
 # 探索→戰鬥銜接
 # ---------------------------------------------------------------------------
+
 
 def prepare_combat_from_node(
     exp_map: ExplorationMap,

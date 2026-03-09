@@ -38,6 +38,7 @@ MarchingOrder = list[UUID]
 # 遭遇判定
 # ---------------------------------------------------------------------------
 
+
 def resolve_encounter(
     characters: list[Character],
     monsters: list[Monster],
@@ -66,10 +67,7 @@ def resolve_encounter(
         )
 
     # 敵方被動察覺 = 10 + WIS modifier
-    enemy_perception = max(
-        10 + mon.ability_scores.modifier(Ability.WIS)
-        for mon in monsters
-    )
+    enemy_perception = max(10 + mon.ability_scores.modifier(Ability.WIS) for mon in monsters)
 
     stealth_rolls: dict[str, int] = {}
     all_pass = True
@@ -100,6 +98,7 @@ def resolve_encounter(
 # ---------------------------------------------------------------------------
 # 佈陣區域
 # ---------------------------------------------------------------------------
+
 
 def get_spawn_zone(
     map_state: MapState,
@@ -133,6 +132,7 @@ def get_spawn_zone(
 # ---------------------------------------------------------------------------
 # 佈陣操作
 # ---------------------------------------------------------------------------
+
 
 def _place_monsters(
     monsters: list[Monster],
@@ -238,10 +238,12 @@ def manual_deploy(
 
     # 檢查阻擋地形
     ms = deployment.map_state
-    if (ms.terrain
-            and 0 <= position.y < len(ms.terrain)
-            and 0 <= position.x < len(ms.terrain[position.y])
-            and ms.terrain[position.y][position.x].is_blocking):
+    if (
+        ms.terrain
+        and 0 <= position.y < len(ms.terrain)
+        and 0 <= position.x < len(ms.terrain[position.y])
+        and ms.terrain[position.y][position.x].is_blocking
+    ):
         msg = f"位置 ({position.x}, {position.y}) 是阻擋地形"
         raise ValueError(msg)
 
@@ -321,6 +323,7 @@ def confirm_deployment(
 # 便捷入口
 # ---------------------------------------------------------------------------
 
+
 def start_deployment_from_node(
     exp_map: ExplorationMap,
     node_id: str,
@@ -341,7 +344,11 @@ def start_deployment_from_node(
         raise ValueError(msg)
 
     encounter = resolve_encounter(
-        characters, monsters, stealth_intent, alerted=alerted, rng=rng,
+        characters,
+        monsters,
+        stealth_intent,
+        alerted=alerted,
+        rng=rng,
     )
 
     if encounter.encounter_type == EncounterType.AMBUSH:

@@ -20,10 +20,10 @@ from tot.models import (
     ZoneConnection,
 )
 
-
 # ---------------------------------------------------------------------------
 # 距離計算
 # ---------------------------------------------------------------------------
+
 
 def grid_distance(a: Position, b: Position, grid_size: float = 1.5) -> float:
     """Chebyshev 距離 × 格子大小（公尺）。
@@ -57,8 +57,12 @@ def positions_in_radius(
 # Bresenham 視線
 # ---------------------------------------------------------------------------
 
+
 def bresenham_line(
-    x0: int, y0: int, x1: int, y1: int,
+    x0: int,
+    y0: int,
+    x1: int,
+    y1: int,
 ) -> list[tuple[int, int]]:
     """Bresenham 直線演算法，回傳路徑上的所有座標（含起終點）。"""
     points: list[tuple[int, int]] = []
@@ -101,10 +105,7 @@ def _is_blocking_at(x: int, y: int, map_state: MapState) -> bool:
         if p.x == x and p.y == y and p.is_blocking:
             return True
     # 活著的 Actor 視為阻擋（死亡降級後不阻擋）
-    for a in map_state.actors:
-        if a.x == x and a.y == y and a.is_alive and a.is_blocking:
-            return True
-    return False
+    return any(a.x == x and a.y == y and a.is_alive and a.is_blocking for a in map_state.actors)
 
 
 def has_line_of_sight(
@@ -115,15 +116,13 @@ def has_line_of_sight(
     """視線判定：Bresenham 路徑上（不含起終點）若有 is_blocking 則遮擋。"""
     path = bresenham_line(origin.x, origin.y, target.x, target.y)
     # 跳過起點和終點
-    for x, y in path[1:-1]:
-        if _is_blocking_at(x, y, map_state):
-            return False
-    return True
+    return all(not _is_blocking_at(x, y, map_state) for x, y in path[1:-1])
 
 
 # ---------------------------------------------------------------------------
 # 位置驗證
 # ---------------------------------------------------------------------------
+
 
 def is_valid_position(x: int, y: int, map_state: MapState) -> bool:
     """檢查座標是否在地圖內且非阻擋（可通行）。"""
@@ -151,6 +150,7 @@ def is_valid_position(x: int, y: int, map_state: MapState) -> bool:
 # ---------------------------------------------------------------------------
 # 實體查詢
 # ---------------------------------------------------------------------------
+
 
 def get_entities_at(x: int, y: int, map_state: MapState) -> list[Entity]:
     """取得指定格子上的所有實體（Actor + Prop，含 manifest 靜態與動態）。"""
@@ -202,6 +202,7 @@ def has_hostile_within_melee(
 # 移動
 # ---------------------------------------------------------------------------
 
+
 def move_entity(
     actor: Actor,
     dx: int,
@@ -230,10 +231,12 @@ def move_entity(
     # 移動消耗：Chebyshev 1 格（含對角線）
     cost = grid_size
     # 困難地形加倍
-    if (map_state.terrain
-            and 0 <= new_y < len(map_state.terrain)
-            and 0 <= new_x < len(map_state.terrain[new_y])
-            and map_state.terrain[new_y][new_x].is_difficult):
+    if (
+        map_state.terrain
+        and 0 <= new_y < len(map_state.terrain)
+        and 0 <= new_x < len(map_state.terrain[new_y])
+        and map_state.terrain[new_y][new_x].is_difficult
+    ):
         cost *= 2
 
     if speed_remaining < cost:
@@ -247,6 +250,7 @@ def move_entity(
 # ---------------------------------------------------------------------------
 # 掩蔽偵測
 # ---------------------------------------------------------------------------
+
 
 def determine_cover_from_grid(
     attacker: Position,
@@ -274,6 +278,7 @@ def determine_cover_from_grid(
 # 區域查詢
 # ---------------------------------------------------------------------------
 
+
 def zone_for_position(x: int, y: int, zones: list[Zone]) -> Zone | None:
     """座標 → 所屬區域。多區域重疊時回傳第一個符合的。"""
     for z in zones:
@@ -296,6 +301,7 @@ def build_zone_adjacency(
 # ---------------------------------------------------------------------------
 # 生成位置
 # ---------------------------------------------------------------------------
+
 
 def place_actors_at_spawn(
     characters: list[Character],

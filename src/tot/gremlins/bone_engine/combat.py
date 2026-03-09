@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import random
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from uuid import UUID
 
 from tot.gremlins.bone_engine.dice import DiceResult, RollType, roll, roll_d20
@@ -23,7 +23,6 @@ from tot.models import (
     DamageType,
     InitiativeEntry,
     Monster,
-    MonsterAction,
     Size,
     TurnState,
     Weapon,
@@ -31,19 +30,20 @@ from tot.models import (
     WeaponProperty,
 )
 
-
 # ---------------------------------------------------------------------------
 # 全域輔助函式
 # ---------------------------------------------------------------------------
 
 # 包含無力化效果的狀態集合（麻痺、震懾、昏迷、石化都隱含無力化）
-_INCAPACITATING_CONDITIONS = frozenset({
-    Condition.INCAPACITATED,
-    Condition.PARALYZED,
-    Condition.STUNNED,
-    Condition.UNCONSCIOUS,
-    Condition.PETRIFIED,
-})
+_INCAPACITATING_CONDITIONS = frozenset(
+    {
+        Condition.INCAPACITATED,
+        Condition.PARALYZED,
+        Condition.STUNNED,
+        Condition.UNCONSCIOUS,
+        Condition.PETRIFIED,
+    }
+)
 
 # 體型排序對照表，用於擒抱/推撞體型限制
 _SIZE_ORDER = {
@@ -128,6 +128,7 @@ def cover_save_bonus(cover: CoverType) -> int:
 # 先攻
 # ---------------------------------------------------------------------------
 
+
 def roll_initiative(
     dex_modifier: int,
     bonus: int = 0,
@@ -201,7 +202,10 @@ def start_combat(
 ) -> CombatState:
     """初始化戰鬥遭遇。"""
     order = build_initiative_order(
-        characters, monsters, surprised_ids=surprised_ids, rng=rng,
+        characters,
+        monsters,
+        surprised_ids=surprised_ids,
+        rng=rng,
     )
     return CombatState(
         round_number=1,
@@ -246,6 +250,7 @@ def advance_turn(state: CombatState) -> CombatState:
 # 動作經濟
 # ---------------------------------------------------------------------------
 
+
 def use_action(state: CombatState) -> bool:
     """嘗試消耗行動。回傳是否成功。"""
     if state.turn_state.action_used:
@@ -274,14 +279,18 @@ def use_reaction(entry: InitiativeEntry) -> bool:
 # 無力化連鎖效應
 # ---------------------------------------------------------------------------
 
+
 def check_incapacitated_effects(combatant: Character | Monster) -> str | None:
     """無力化時自動中斷專注。回傳失去的法術名稱。
 
     當生物進入無力化狀態（或包含無力化的狀態）時呼叫。
     """
-    if not can_take_action(combatant):
-        if isinstance(combatant, Character) and combatant.concentration_spell:
-            return break_concentration(combatant)
+    if (
+        not can_take_action(combatant)
+        and isinstance(combatant, Character)
+        and combatant.concentration_spell
+    ):
+        return break_concentration(combatant)
     return None
 
 
@@ -289,15 +298,17 @@ def check_incapacitated_effects(combatant: Character | Monster) -> str | None:
 # 攻擊判定
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class AttackResult:
     """攻擊骰結果。"""
+
     roll_result: DiceResult
     target_ac: int
     is_hit: bool
     is_critical: bool
     is_auto_crit: bool = False
-    grants_inspiration: bool = False    # 自然 20 → 給予英雄激勵
+    grants_inspiration: bool = False  # 自然 20 → 給予英雄激勵
     inspiration_overflow: bool = False  # 已有激勵時自然 20 → 溢出可轉贈
 
 
@@ -380,9 +391,11 @@ def resolve_attack(
 # 傷害
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class DamageResult:
     """傷害骰結果。"""
+
     roll_result: DiceResult
     damage_type: DamageType
     is_critical: bool = False
@@ -428,9 +441,11 @@ def roll_damage(
 # 對生物施加傷害
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class ApplyDamageResult:
     """施加傷害的完整結果。"""
+
     actual_damage: int
     target_dropped_to_zero: bool = False
     instant_death: bool = False
@@ -473,9 +488,7 @@ def apply_damage(
     result = ApplyDamageResult(actual_damage=actual)
 
     # 專注檢定 DC（目標維持專注時）
-    has_concentration = (
-        isinstance(target, Character) and target.concentration_spell is not None
-    )
+    has_concentration = isinstance(target, Character) and target.concentration_spell is not None
     if has_concentration and actual > 0:
         result.concentration_check_dc = max(10, actual // 2)
 
@@ -518,9 +531,11 @@ def apply_damage(
 # 治療
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class HealingResult:
     """治療結果。"""
+
     amount_healed: int
     was_at_zero: bool = False
     revived: bool = False
@@ -542,7 +557,8 @@ def apply_healing(target: Character, amount: int) -> HealingResult:
         revived = True
         target.death_saves.reset()
         target.conditions = [
-            c for c in target.conditions
+            c
+            for c in target.conditions
             if c.condition not in (Condition.UNCONSCIOUS, Condition.PRONE)
         ]
 
@@ -557,9 +573,11 @@ def apply_healing(target: Character, amount: int) -> HealingResult:
 # 豁免檢定
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class SaveResult:
     """豁免檢定結果。"""
+
     roll_result: DiceResult
     dc: int
     success: bool
@@ -589,13 +607,18 @@ def resolve_saving_throw(
 
     # 麻痺、震懾、昏迷、石化時，力量/敏捷豁免自動失敗
     auto_fail_conditions = {
-        Condition.PARALYZED, Condition.STUNNED,
-        Condition.UNCONSCIOUS, Condition.PETRIFIED,
+        Condition.PARALYZED,
+        Condition.STUNNED,
+        Condition.UNCONSCIOUS,
+        Condition.PETRIFIED,
     }
     if ability in (Ability.STR, Ability.DEX) and condition_set & auto_fail_conditions:
         dummy = DiceResult(expression="d20", rolls=[0], modifier=save_bonus)
         return SaveResult(
-            roll_result=dummy, dc=dc, success=False, auto_fail=True,
+            roll_result=dummy,
+            dc=dc,
+            success=False,
+            auto_fail=True,
         )
 
     # 計算有效加值
@@ -627,6 +650,7 @@ def resolve_saving_throw(
 # 專注檢定
 # ---------------------------------------------------------------------------
 
+
 def concentration_check(
     con_save_bonus: int,
     damage_taken: int,
@@ -650,9 +674,11 @@ def break_concentration(character: Character) -> str | None:
 # 死亡豁免
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class DeathSaveOutcome:
     """死亡豁免結果。"""
+
     roll_result: DiceResult
     stabilized: bool = False
     died: bool = False
@@ -679,11 +705,14 @@ def roll_death_save(
         character.death_saves.reset()
         character.hp_current = 1
         character.conditions = [
-            c for c in character.conditions
+            c
+            for c in character.conditions
             if c.condition not in (Condition.UNCONSCIOUS, Condition.PRONE)
         ]
         return DeathSaveOutcome(
-            roll_result=result, revived=True, grants_inspiration=True,
+            roll_result=result,
+            revived=True,
+            grants_inspiration=True,
         )
 
     if result.is_nat1:
@@ -700,13 +729,16 @@ def roll_death_save(
         character.death_saves.reset()
 
     return DeathSaveOutcome(
-        roll_result=result, stabilized=stabilized, died=died,
+        roll_result=result,
+        stabilized=stabilized,
+        died=died,
     )
 
 
 # ---------------------------------------------------------------------------
 # 閃避動作
 # ---------------------------------------------------------------------------
+
 
 def take_dodge_action(
     combatant: Character | Monster,
@@ -734,6 +766,7 @@ def take_dodge_action(
 # ---------------------------------------------------------------------------
 # 狀態對攻擊的影響
 # ---------------------------------------------------------------------------
+
 
 def get_attack_roll_type(
     attacker_conditions: list[ActiveCondition],
@@ -836,9 +869,11 @@ def is_auto_crit(
 # 擒抱（D&D 2024 豁免制）
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class GrappleResult:
     """擒抱嘗試結果。"""
+
     success: bool
     save_result: SaveResult | None = None
     reason: str = ""
@@ -891,7 +926,9 @@ def attempt_grapple(
         save_bonus = dex_bonus
 
     save = resolve_saving_throw(
-        save_bonus, dc, save_ability,
+        save_bonus,
+        dc,
+        save_ability,
         conditions=target.conditions,
         rng=rng,
     )
@@ -922,7 +959,9 @@ def attempt_escape_grapple(
         bonus += target.proficiency_bonus
 
     return resolve_saving_throw(
-        bonus, dc, ability,
+        bonus,
+        dc,
+        ability,
         conditions=target.conditions,
         rng=rng,
     )
@@ -932,12 +971,14 @@ def attempt_escape_grapple(
 # 推撞（D&D 2024 豁免制）
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class ShoveResult:
     """推撞嘗試結果。"""
+
     success: bool
     save_result: SaveResult | None = None
-    effect: str = ""   # "push" (推開 1.5m) 或 "prone" (擊倒)
+    effect: str = ""  # "push" (推開 1.5m) 或 "prone" (擊倒)
     reason: str = ""
 
 
@@ -990,14 +1031,19 @@ def attempt_shove(
         save_bonus = dex_bonus
 
     save = resolve_saving_throw(
-        save_bonus, dc, save_ability,
+        save_bonus,
+        dc,
+        save_ability,
         conditions=target.conditions,
         rng=rng,
     )
 
     if save.success:
         return ShoveResult(
-            success=False, save_result=save, effect=effect, reason="目標豁免成功",
+            success=False,
+            save_result=save,
+            effect=effect,
+            reason="目標豁免成功",
         )
 
     # 施加效果
@@ -1016,18 +1062,20 @@ def attempt_shove(
 # 武器專精 (Weapon Mastery)
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class MasteryEffect:
     """武器專精觸發結果。"""
+
     mastery: WeaponMastery
-    extra_damage: int = 0           # Graze / Cleave 的額外傷害
-    push_distance: float = 0.0      # Push 的推移距離
-    knockdown: bool = False         # Topple 的擊倒
+    extra_damage: int = 0  # Graze / Cleave 的額外傷害
+    push_distance: float = 0.0  # Push 的推移距離
+    knockdown: bool = False  # Topple 的擊倒
     next_attack_advantage: bool = False  # Vex 的下次攻擊優勢
     target_attack_disadvantage: bool = False  # Sap 的目標攻擊劣勢
-    speed_reduction: float = 0.0    # Slow 的減速
+    speed_reduction: float = 0.0  # Slow 的減速
     save_result: SaveResult | None = None  # Topple 的豁免結果
-    triggered: bool = True          # 是否實際觸發
+    triggered: bool = True  # 是否實際觸發
 
 
 def resolve_weapon_mastery(
@@ -1072,7 +1120,9 @@ def resolve_weapon_mastery(
         if isinstance(target, Character) and Ability.CON in target.saving_throw_proficiencies:
             con_bonus += target.proficiency_bonus
         save = resolve_saving_throw(
-            con_bonus, dc, Ability.CON,
+            con_bonus,
+            dc,
+            Ability.CON,
             conditions=target.conditions,
             rng=rng,
         )
@@ -1085,7 +1135,9 @@ def resolve_weapon_mastery(
                 )
             )
         return MasteryEffect(
-            mastery=mastery, knockdown=knockdown, save_result=save,
+            mastery=mastery,
+            knockdown=knockdown,
+            save_result=save,
         )
 
     if mastery == WeaponMastery.CLEAVE:
@@ -1113,9 +1165,11 @@ def resolve_weapon_mastery(
 # 借機攻擊
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class OpportunityAttackResult:
     """借機攻擊結果。"""
+
     triggered: bool
     attack_result: AttackResult | None = None
     damage_result: DamageResult | None = None
@@ -1147,17 +1201,20 @@ def check_opportunity_attack(
     """
     if entry.reaction_used:
         return OpportunityAttackResult(
-            triggered=False, reason="反應已使用",
+            triggered=False,
+            reason="反應已使用",
         )
 
     if entry.is_surprised:
         return OpportunityAttackResult(
-            triggered=False, reason="受突襲中，反應不可用",
+            triggered=False,
+            reason="受突襲中，反應不可用",
         )
 
     if not can_take_action(attacker):
         return OpportunityAttackResult(
-            triggered=False, reason="攻擊者無力化",
+            triggered=False,
+            reason="攻擊者無力化",
         )
 
     # 消耗反應
@@ -1196,9 +1253,11 @@ def check_opportunity_attack(
 # 雙持武器
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class TwoWeaponAttackResult:
     """雙持副手攻擊結果。"""
+
     attack_result: AttackResult
     damage_result: DamageResult | None = None
 
@@ -1260,6 +1319,7 @@ def offhand_attack(
 # 英雄激勵
 # ---------------------------------------------------------------------------
 
+
 def use_heroic_inspiration(
     character: Character,
     rng: random.Random | None = None,
@@ -1283,8 +1343,11 @@ def reroll_attack(
     """消耗英雄激勵重擲攻擊。"""
     character.heroic_inspiration = False
     return resolve_attack(
-        attack_bonus, target_ac,
-        roll_type=roll_type, cover=cover, rng=rng,
+        attack_bonus,
+        target_ac,
+        roll_type=roll_type,
+        cover=cover,
+        rng=rng,
     )
 
 
@@ -1299,7 +1362,9 @@ def reroll_save(
     """消耗英雄激勵重擲豁免。"""
     character.heroic_inspiration = False
     return resolve_saving_throw(
-        save_bonus, dc, ability,
+        save_bonus,
+        dc,
+        ability,
         conditions=character.conditions,
         cover=cover,
         rng=rng,

@@ -13,10 +13,10 @@ from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field, computed_field
 
-
 # ---------------------------------------------------------------------------
 # 列舉型別
 # ---------------------------------------------------------------------------
+
 
 class Ability(StrEnum):
     STR = "STR"
@@ -151,27 +151,30 @@ class SpellSchool(StrEnum):
 
 class CoverType(StrEnum):
     """掩蔽類型。"""
+
     NONE = "None"
-    HALF = "Half"                  # +2 AC 與 DEX 豁免
+    HALF = "Half"  # +2 AC 與 DEX 豁免
     THREE_QUARTERS = "Three-Quarters"  # +5 AC 與 DEX 豁免
-    TOTAL = "Total"                # 無法被直接攻擊
+    TOTAL = "Total"  # 無法被直接攻擊
 
 
 class WeaponMastery(StrEnum):
     """2024 武器專精效果。"""
-    CLEAVE = "Cleave"    # 命中後對相鄰另一目標造成屬性修正傷害
-    GRAZE = "Graze"      # 未命中仍造成屬性修正傷害
-    NICK = "Nick"         # 額外附贈動作攻擊
-    PUSH = "Push"         # 命中後推開目標 3m
-    SAP = "Sap"           # 命中後目標下次攻擊劣勢
-    SLOW = "Slow"         # 命中後減速 3m
-    TOPPLE = "Topple"     # 命中後目標 CON 豁免，失敗倒地
-    VEX = "Vex"           # 命中後下次攻擊同目標優勢
+
+    CLEAVE = "Cleave"  # 命中後對相鄰另一目標造成屬性修正傷害
+    GRAZE = "Graze"  # 未命中仍造成屬性修正傷害
+    NICK = "Nick"  # 額外附贈動作攻擊
+    PUSH = "Push"  # 命中後推開目標 3m
+    SAP = "Sap"  # 命中後目標下次攻擊劣勢
+    SLOW = "Slow"  # 命中後減速 3m
+    TOPPLE = "Topple"  # 命中後目標 CON 豁免，失敗倒地
+    VEX = "Vex"  # 命中後下次攻擊同目標優勢
 
 
 # ---------------------------------------------------------------------------
 # 屬性值
 # ---------------------------------------------------------------------------
+
 
 class AbilityScores(BaseModel):
     """六大屬性值，自動計算修正值。"""
@@ -195,6 +198,7 @@ class AbilityScores(BaseModel):
 # 生效中的狀態（執行時狀態）
 # ---------------------------------------------------------------------------
 
+
 class ActiveCondition(BaseModel):
     """目前影響生物的狀態效果。"""
 
@@ -207,6 +211,7 @@ class ActiveCondition(BaseModel):
 # ---------------------------------------------------------------------------
 # 法術
 # ---------------------------------------------------------------------------
+
 
 class Spell(BaseModel):
     name: str
@@ -227,6 +232,7 @@ class Spell(BaseModel):
 # ---------------------------------------------------------------------------
 # 物品與武器
 # ---------------------------------------------------------------------------
+
 
 class WeaponProperty(StrEnum):
     AMMUNITION = "Ammunition"
@@ -273,6 +279,7 @@ class Item(BaseModel):
 # ---------------------------------------------------------------------------
 # 角色
 # ---------------------------------------------------------------------------
+
 
 class SpellSlots(BaseModel):
     """追蹤每個環級的法術欄位（目前值 / 最大值）。"""
@@ -399,6 +406,7 @@ class Character(BaseModel):
 # 怪物
 # ---------------------------------------------------------------------------
 
+
 class MonsterAction(BaseModel):
     name: str
     attack_bonus: int | None = None  # None = 無攻擊骰（豁免制法術）
@@ -482,24 +490,28 @@ CombatantRef = tuple[Literal["character", "monster"], UUID]
 # 地圖座標系統
 # ---------------------------------------------------------------------------
 
+
 class Position(BaseModel):
     """格子座標（左下為原點，X 向右、Y 向上）。"""
+
     x: int = 0
     y: int = 0
 
 
 class Entity(BaseModel):
     """地圖上的實體基底。"""
+
     id: str
     x: int
     y: int
-    symbol: str = "?"       # ASCII 單字元
+    symbol: str = "?"  # ASCII 單字元
     is_blocking: bool = False
     name: str = ""
 
 
 class Actor(Entity):
     """地圖上的戰鬥者（參照 Character/Monster，不繼承）。"""
+
     combatant_id: UUID
     combatant_type: Literal["character", "monster"]
     is_blocking: bool = True  # 生物預設阻擋通行
@@ -522,25 +534,29 @@ class Prop(Entity):
     - 5：3/4 掩蔽（石柱、厚牆壁）
     - 99：全掩蔽（完整牆壁，完全阻擋攻擊）
     """
+
     prop_type: str = "decoration"  # wall / door / trap / item / decoration
-    hidden: bool = False           # 隱藏物件（未被發現的陷阱等）
-    cover_bonus: int = 0           # 作為掩體的 AC 加值
+    hidden: bool = False  # 隱藏物件（未被發現的陷阱等）
+    cover_bonus: int = 0  # 作為掩體的 AC 加值
 
 
 class TerrainTile(BaseModel):
     """地形格。"""
+
     symbol: str = " "
     is_blocking: bool = False
     name: str = "floor"
-    is_difficult: bool = False     # 困難地形（移動加倍消耗）
+    is_difficult: bool = False  # 困難地形（移動加倍消耗）
 
 
 # ---------------------------------------------------------------------------
 # 區域拓樸
 # ---------------------------------------------------------------------------
 
+
 class Zone(BaseModel):
     """命名區域，提供敘事語境給 Narrator。"""
+
     name: str
     x_min: int
     y_min: int
@@ -551,6 +567,7 @@ class Zone(BaseModel):
 
 class ZoneConnection(BaseModel):
     """區域間的連接。"""
+
     from_zone: str
     to_zone: str
     via: str = ""  # 對應 Prop.id（門、通道）
@@ -560,8 +577,10 @@ class ZoneConnection(BaseModel):
 # 地圖定義與即時狀態
 # ---------------------------------------------------------------------------
 
+
 class MapManifest(BaseModel):
     """地圖靜態定義，從 JSON 載入。"""
+
     name: str
     width: int
     height: int
@@ -574,6 +593,7 @@ class MapManifest(BaseModel):
 
 class MapState(BaseModel):
     """戰鬥中的即時地圖狀態。"""
+
     manifest: MapManifest
     terrain: list[list[TerrainTile]] = Field(default_factory=list)  # [y][x]，y=0 為最底列
     actors: list[Actor] = Field(default_factory=list)
@@ -582,6 +602,7 @@ class MapState(BaseModel):
 
 class TurnState(BaseModel):
     """單一回合內的動作經濟追蹤。"""
+
     action_used: bool = False
     bonus_action_used: bool = False
     mastery_used: bool = False  # 武器專精每回合一次
@@ -610,32 +631,37 @@ class CombatState(BaseModel):
 # Pointcrawl 探索系統
 # ---------------------------------------------------------------------------
 
+
 class NodeType(StrEnum):
     """探索節點類型。"""
-    ROOM = "room"           # 地城房間
-    CORRIDOR = "corridor"   # 走廊
-    POI = "poi"             # 城鎮興趣點
-    TOWN = "town"           # 城鎮（世界圖層）
-    DUNGEON = "dungeon"     # 地城入口（世界圖層）
-    LANDMARK = "landmark"   # 自然地標
+
+    ROOM = "room"  # 地城房間
+    CORRIDOR = "corridor"  # 走廊
+    POI = "poi"  # 城鎮興趣點
+    TOWN = "town"  # 城鎮（世界圖層）
+    DUNGEON = "dungeon"  # 地城入口（世界圖層）
+    LANDMARK = "landmark"  # 自然地標
 
 
 class MapScale(StrEnum):
     """探索地圖尺度，決定時間單位。"""
-    DUNGEON = "dungeon"     # 分鐘
-    TOWN = "town"           # 小時
-    WORLD = "world"         # 天
+
+    DUNGEON = "dungeon"  # 分鐘
+    TOWN = "town"  # 小時
+    WORLD = "world"  # 天
 
 
 class EncounterType(StrEnum):
     """遭遇類型。"""
-    SURPRISE = "surprise"     # 玩家偷襲成功 → 擴大佈陣區 + 敵人劣勢先攻
-    NORMAL = "normal"         # 正常遭遇 → 標準佈陣區
-    AMBUSH = "ambush"         # 敵人伏擊 → 跳過佈陣，玩家劣勢先攻
+
+    SURPRISE = "surprise"  # 玩家偷襲成功 → 擴大佈陣區 + 敵人劣勢先攻
+    NORMAL = "normal"  # 正常遭遇 → 標準佈陣區
+    AMBUSH = "ambush"  # 敵人伏擊 → 跳過佈陣，玩家劣勢先攻
 
 
 class EncounterResult(BaseModel):
     """潛行對抗察覺的判定結果。"""
+
     encounter_type: EncounterType
     stealth_rolls: dict[str, int] = Field(default_factory=dict)
     enemy_perception: int = 0
@@ -645,6 +671,7 @@ class EncounterResult(BaseModel):
 
 class DeploymentState(BaseModel):
     """佈陣階段狀態——戰鬥開始前的角色放置。"""
+
     map_state: MapState
     spawn_zone: list[Position] = Field(default_factory=list)
     placements: dict[str, Position] = Field(default_factory=dict)
@@ -654,55 +681,58 @@ class DeploymentState(BaseModel):
 
 class ExplorationNode(BaseModel):
     """Pointcrawl 節點——玩家可到達的地點。"""
+
     id: str
     name: str
     node_type: NodeType
-    description: str = ""           # 給 Narrator 的敘事素材
+    description: str = ""  # 給 Narrator 的敘事素材
 
     # 與戰鬥地圖的銜接
-    combat_map: str | None = None   # MapManifest JSON 檔名（遭遇戰鬥時載入）
+    combat_map: str | None = None  # MapManifest JSON 檔名（遭遇戰鬥時載入）
 
     # 狀態
-    is_discovered: bool = True      # 玩家是否已知此節點
-    is_visited: bool = False        # 玩家是否已到過
+    is_discovered: bool = True  # 玩家是否已知此節點
+    is_visited: bool = False  # 玩家是否已到過
 
     # 城鎮專用：內含 POI 子節點
     pois: list[ExplorationNode] = Field(default_factory=list)
 
     # 敘事用
-    ambient: str = ""               # 環境氛圍描述（聲音、氣味…）
+    ambient: str = ""  # 環境氛圍描述（聲音、氣味…）
     npcs: list[str] = Field(default_factory=list)  # 此處可遇到的 NPC id
 
 
 class ExplorationEdge(BaseModel):
     """Pointcrawl 路徑——連接兩個節點。"""
+
     id: str
     from_node_id: str
     to_node_id: str
-    name: str = ""                  # 例如：「鏽蝕鐵門」「泥濘商道」
+    name: str = ""  # 例如：「鏽蝕鐵門」「泥濘商道」
 
     # 通行條件
-    is_discovered: bool = True      # 是否對玩家可見
-    is_locked: bool = False         # 上鎖（需要盜賊檢定或鑰匙）
-    lock_dc: int = 0               # 開鎖 DC
-    key_item: str | None = None     # 可用鑰匙物品 id
-    hidden_dc: int = 0             # 隱藏通道的偵察 DC（0=不隱藏）
-    is_one_way: bool = False        # 單向通道
-    break_dc: int = 0              # STR DC 破門（0=不可破壞）
-    noise_on_force: bool = True     # 破門時是否產生噪音
+    is_discovered: bool = True  # 是否對玩家可見
+    is_locked: bool = False  # 上鎖（需要盜賊檢定或鑰匙）
+    lock_dc: int = 0  # 開鎖 DC
+    key_item: str | None = None  # 可用鑰匙物品 id
+    hidden_dc: int = 0  # 隱藏通道的偵察 DC（0=不隱藏）
+    is_one_way: bool = False  # 單向通道
+    break_dc: int = 0  # STR DC 破門（0=不可破壞）
+    noise_on_force: bool = True  # 破門時是否產生噪音
 
     # 世界圖層旅行參數
-    distance_days: float = 0        # 旅行天數（世界圖層）
-    distance_minutes: int = 0       # 移動分鐘數（地城圖層）
-    danger_level: int = 0           # 危險等級 1-10（影響隨機遭遇）
-    terrain_type: str = ""          # 地形（swamp/forest/mountain…）
+    distance_days: float = 0  # 旅行天數（世界圖層）
+    distance_minutes: int = 0  # 移動分鐘數（地城圖層）
+    danger_level: int = 0  # 危險等級 1-10（影響隨機遭遇）
+    terrain_type: str = ""  # 地形（swamp/forest/mountain…）
 
     # 狀態
-    is_blocked: bool = False        # 坍塌、封鎖等
+    is_blocked: bool = False  # 坍塌、封鎖等
 
 
 class ExplorationMap(BaseModel):
     """Pointcrawl 拓樸地圖（一張地城/一座城鎮/一個世界）。"""
+
     id: str
     name: str
     scale: MapScale
@@ -715,15 +745,17 @@ class ExplorationMap(BaseModel):
 
 class MapStackEntry(BaseModel):
     """子地圖堆疊中的一層（記住從哪裡進來）。"""
+
     map_id: str
-    node_id: str            # 進入子地圖前所在的節點
+    node_id: str  # 進入子地圖前所在的節點
 
 
 class ExplorationState(BaseModel):
     """玩家在 Pointcrawl 系統中的即時位置。"""
-    current_map_id: str             # 目前所在的 ExplorationMap
-    current_node_id: str            # 目前所在的節點
-    elapsed_minutes: int = 0        # 場景經過時間
+
+    current_map_id: str  # 目前所在的 ExplorationMap
+    current_node_id: str  # 目前所在的節點
+    elapsed_minutes: int = 0  # 場景經過時間
     discovered_nodes: set[str] = Field(default_factory=set)
     discovered_edges: set[str] = Field(default_factory=set)
 

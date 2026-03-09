@@ -9,8 +9,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from tot.models import ExplorationMap, MapManifest, MapState, Position, Prop, TerrainTile
-
+from tot.models import ExplorationMap, MapManifest, MapState, Position, TerrainTile
 
 # 預設地圖資料夾
 _MAPS_DIR = Path(__file__).parent / "maps"
@@ -71,9 +70,7 @@ def _build_terrain_grid(
 
     先處理有明確 positions 的定義，再用 fill=true 的定義填滿剩餘格子。
     """
-    grid: list[list[TerrainTile | None]] = [
-        [None for _ in range(width)] for _ in range(height)
-    ]
+    grid: list[list[TerrainTile | None]] = [[None for _ in range(width)] for _ in range(height)]
 
     fill_def: dict[str, Any] | None = None
 
@@ -119,6 +116,7 @@ def _build_terrain_grid(
 # ---------------------------------------------------------------------------
 # Pointcrawl 探索地圖載入
 # ---------------------------------------------------------------------------
+
 
 def load_exploration_map(
     path: str | Path | None = None,
