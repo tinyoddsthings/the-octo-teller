@@ -1,0 +1,42 @@
+{
+  "id": "starter_town",
+  "name": "河谷鎮",
+  "scale": "town",
+  "entry_node_id": "town_center",
+  "nodes": [
+    {
+      "id": "town_center",
+      "name": "河谷鎮",
+      "node_type": "town",
+      "description": "一座坐落於兩河交匯處的小鎮，石造建築沿著河岸排列。鎮中心的噴泉廣場是居民日常聚集之處。",
+      "ambient": "市集的喧鬧聲、河水的潺潺聲、鐵匠的叮叮噹噹",
+      "pois": [
+        {
+          "id": "tavern",
+          "name": "醉鯨酒館",
+          "node_type": "poi",
+          "description": "一間熱鬧的酒館，招牌上畫著一隻搖搖晃晃的鯨魚。木質地板被無數靴子磨得光滑發亮。",
+          "ambient": "吟遊詩人的琴聲、酒杯碰撞聲、豪爽的笑聲",
+          "npcs": ["bartender_grom", "bard_elara"]
+        },
+        {
+          "id": "blacksmith",
+          "name": "鑄魂鐵匠鋪",
+          "node_type": "poi",
+          "description": "一位矮人鐵匠經營的店鋪，爐火終日不滅。店內陳列著從實用農具到精緻武器的各種金屬製品。",
+          "ambient": "鍛鐵的叮噹聲、爐火的呼呼聲、炙熱的空氣",
+          "npcs": ["blacksmith_durgan"]
+        },
+        {
+          "id": "temple",
+          "name": "晨曦神殿",
+          "node_type": "poi",
+          "description": "供奉光明之神的小型神殿，白色石牆在陽光下閃耀。神殿內常年點著香燭，提供治療和祝福服務。",
+          "ambient": "低沉的祈禱聲、香燭的清香、彩色玻璃窗投下的光斑",
+          "npcs": ["priestess_aria"]
+        }
+      ]
+    }
+  ],
+  "edges": []
+}

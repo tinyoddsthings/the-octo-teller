@@ -1,8 +1,8 @@
-"""Core Pydantic data models for T.O.T. Bone Engine.
+"""T.O.T. Bone Engine 核心 Pydantic 資料模型。
 
-All cross-module data structures live here. The Bone Engine is purely
-deterministic — no LLM calls, no randomness beyond dice rolls.
-Based on D&D 2024 (5.5e) rules.
+所有跨模組的資料結構都定義在這裡。Bone Engine 是純確定性的
+——不呼叫 LLM、除了骰子以外沒有隨機性。
+基於 D&D 2024 (5.5e) 規則。
 """
 
 from __future__ import annotations
@@ -13,10 +13,10 @@ from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field, computed_field
 
+# ---------------------------------------------------------------------------
+# 列舉型別
+# ---------------------------------------------------------------------------
 
-# ---------------------------------------------------------------------------
-# Enums
-# ---------------------------------------------------------------------------
 
 class Ability(StrEnum):
     STR = "STR"
@@ -28,31 +28,32 @@ class Ability(StrEnum):
 
 
 class Skill(StrEnum):
-    # STR
+    # 力量系
     ATHLETICS = "Athletics"
-    # DEX
+    # 敏捷系
     ACROBATICS = "Acrobatics"
     SLEIGHT_OF_HAND = "Sleight of Hand"
     STEALTH = "Stealth"
-    # INT
+    # 智力系
     ARCANA = "Arcana"
     HISTORY = "History"
     INVESTIGATION = "Investigation"
     NATURE = "Nature"
     RELIGION = "Religion"
-    # WIS
+    # 感知系
     ANIMAL_HANDLING = "Animal Handling"
     INSIGHT = "Insight"
     MEDICINE = "Medicine"
     PERCEPTION = "Perception"
     SURVIVAL = "Survival"
-    # CHA
+    # 魅力系
     DECEPTION = "Deception"
     INTIMIDATION = "Intimidation"
     PERFORMANCE = "Performance"
     PERSUASION = "Persuasion"
 
 
+# 技能 → 對應屬性的對照表
 SKILL_ABILITY_MAP: dict[Skill, Ability] = {
     Skill.ATHLETICS: Ability.STR,
     Skill.ACROBATICS: Ability.DEX,
@@ -95,6 +96,7 @@ class Condition(StrEnum):
     BLINDED = "Blinded"
     CHARMED = "Charmed"
     DEAFENED = "Deafened"
+    DODGING = "Dodging"  # 非官方狀態，追蹤閃避動作效果（1 輪）
     EXHAUSTION = "Exhaustion"
     FRIGHTENED = "Frightened"
     GRAPPLED = "Grappled"
@@ -107,6 +109,7 @@ class Condition(StrEnum):
     RESTRAINED = "Restrained"
     STUNNED = "Stunned"
     UNCONSCIOUS = "Unconscious"
+    WEAKENED = "Weakened"  # 2024 新增，傷害減半
 
 
 class Size(StrEnum):
@@ -146,12 +149,35 @@ class SpellSchool(StrEnum):
     TRANSMUTATION = "Transmutation"
 
 
+class CoverType(StrEnum):
+    """掩蔽類型。"""
+
+    NONE = "None"
+    HALF = "Half"  # +2 AC 與 DEX 豁免
+    THREE_QUARTERS = "Three-Quarters"  # +5 AC 與 DEX 豁免
+    TOTAL = "Total"  # 無法被直接攻擊
+
+
+class WeaponMastery(StrEnum):
+    """2024 武器專精效果。"""
+
+    CLEAVE = "Cleave"  # 命中後對相鄰另一目標造成屬性修正傷害
+    GRAZE = "Graze"  # 未命中仍造成屬性修正傷害
+    NICK = "Nick"  # 額外附贈動作攻擊
+    PUSH = "Push"  # 命中後推開目標 3m
+    SAP = "Sap"  # 命中後目標下次攻擊劣勢
+    SLOW = "Slow"  # 命中後減速 3m
+    TOPPLE = "Topple"  # 命中後目標 CON 豁免，失敗倒地
+    VEX = "Vex"  # 命中後下次攻擊同目標優勢
+
+
 # ---------------------------------------------------------------------------
-# Ability Scores
+# 屬性值
 # ---------------------------------------------------------------------------
 
+
 class AbilityScores(BaseModel):
-    """Six ability scores with auto-computed modifiers."""
+    """六大屬性值，自動計算修正值。"""
 
     STR: int = 10
     DEX: int = 10
@@ -164,30 +190,32 @@ class AbilityScores(BaseModel):
         return getattr(self, ability.value)
 
     def modifier(self, ability: Ability) -> int:
-        """(score - 10) // 2, per PHB."""
+        """修正值公式：(屬性值 - 10) // 2，依據 PHB。"""
         return (self.score(ability) - 10) // 2
 
 
 # ---------------------------------------------------------------------------
-# Active Condition (runtime state)
+# 生效中的狀態（執行時狀態）
 # ---------------------------------------------------------------------------
 
+
 class ActiveCondition(BaseModel):
-    """A condition currently affecting a creature."""
+    """目前影響生物的狀態效果。"""
 
     condition: Condition
     source: str = ""
-    remaining_rounds: int | None = None  # None = indefinite / until removed
-    exhaustion_level: int = 0  # only for Exhaustion (1-6)
+    remaining_rounds: int | None = None  # None = 無限期 / 直到被移除
+    exhaustion_level: int = 0  # 僅用於力竭（1-6 級）
 
 
 # ---------------------------------------------------------------------------
-# Spell
+# 法術
 # ---------------------------------------------------------------------------
+
 
 class Spell(BaseModel):
     name: str
-    level: int = Field(ge=0, le=9)  # 0 = cantrip
+    level: int = Field(ge=0, le=9)  # 0 = 戲法
     school: SpellSchool
     casting_time: str = "1 action"
     range: str = "Self"
@@ -195,15 +223,16 @@ class Spell(BaseModel):
     concentration: bool = False
     ritual: bool = False
     description: str = ""
-    damage_dice: str = ""  # e.g. "1d10", "" if no damage
+    damage_dice: str = ""  # 例如 "1d10"，無傷害則為空字串
     damage_type: DamageType | None = None
-    save_ability: Ability | None = None  # for save-based spells
+    save_ability: Ability | None = None  # 需要豁免的法術
     classes: list[str] = Field(default_factory=list)
 
 
 # ---------------------------------------------------------------------------
-# Item & Weapon
+# 物品與武器
 # ---------------------------------------------------------------------------
+
 
 class WeaponProperty(StrEnum):
     AMMUNITION = "Ammunition"
@@ -219,12 +248,13 @@ class WeaponProperty(StrEnum):
 
 class Weapon(BaseModel):
     name: str
-    damage_dice: str  # e.g. "1d8"
+    damage_dice: str  # 例如 "1d8"
     damage_type: DamageType
     properties: list[WeaponProperty] = Field(default_factory=list)
-    range_normal: int = 1  # metres; 1 = melee
-    range_long: int | None = None  # for ranged/thrown
+    range_normal: int = 1  # 公尺；1 = 近戰
+    range_long: int | None = None  # 遠程/投擲武器的長射程
     is_martial: bool = False
+    mastery: WeaponMastery | None = None  # 2024 武器專精
 
     @computed_field
     @property
@@ -240,18 +270,19 @@ class Weapon(BaseModel):
 class Item(BaseModel):
     name: str
     description: str = ""
-    weight: float = 0.0  # kg
+    weight: float = 0.0  # 公斤
     quantity: int = 1
     is_magic: bool = False
     requires_attunement: bool = False
 
 
 # ---------------------------------------------------------------------------
-# Character
+# 角色
 # ---------------------------------------------------------------------------
 
+
 class SpellSlots(BaseModel):
-    """Tracks current / max spell slots per level."""
+    """追蹤每個環級的法術欄位（目前值 / 最大值）。"""
 
     max_slots: dict[int, int] = Field(default_factory=dict)  # {1: 4, 2: 3, ...}
     current_slots: dict[int, int] = Field(default_factory=dict)
@@ -287,18 +318,19 @@ class DeathSaves(BaseModel):
 
 
 class Character(BaseModel):
-    """A player character or NPC companion."""
+    """玩家角色或 NPC 隊友。"""
 
     id: UUID = Field(default_factory=uuid4)
     name: str
-    species: str = ""  # 2024 PHB uses "species" not "race"
+    species: str = ""  # 2024 PHB 用「species」而非「race」
     char_class: str = ""
     subclass: str = ""
     level: int = Field(default=1, ge=1, le=20)
     background: str = ""
 
     ability_scores: AbilityScores = Field(default_factory=AbilityScores)
-    proficiency_bonus: int = 2  # derived from level, but stored for convenience
+    proficiency_bonus: int = 2  # 由等級推導，但儲存方便使用
+    size: Size = Size.MEDIUM
 
     hp_max: int = 10
     hp_current: int = 10
@@ -308,7 +340,7 @@ class Character(BaseModel):
     hit_die_size: int = 8  # d6/d8/d10/d12
 
     ac: int = 10
-    speed: int = 9  # metres (30ft = ~9m)
+    speed: int = 9  # 公尺（30ft ≈ 9m）
     initiative_bonus: int = 0
 
     skill_proficiencies: list[Skill] = Field(default_factory=list)
@@ -323,9 +355,13 @@ class Character(BaseModel):
     weapons: list[Weapon] = Field(default_factory=list)
     inventory: list[Item] = Field(default_factory=list)
 
+    damage_resistances: list[DamageType] = Field(default_factory=list)
+    damage_immunities: list[DamageType] = Field(default_factory=list)
+
     conditions: list[ActiveCondition] = Field(default_factory=list)
     death_saves: DeathSaves = Field(default_factory=DeathSaves)
     exhaustion_level: int = Field(default=0, ge=0, le=6)
+    heroic_inspiration: bool = False
 
     xp: int = 0
 
@@ -367,22 +403,23 @@ class Character(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# Monster
+# 怪物
 # ---------------------------------------------------------------------------
+
 
 class MonsterAction(BaseModel):
     name: str
-    attack_bonus: int | None = None  # None = no attack roll (save-based)
+    attack_bonus: int | None = None  # None = 無攻擊骰（豁免制法術）
     damage_dice: str = ""
     damage_type: DamageType | None = None
-    reach: int = 1  # metres
+    reach: int = 1  # 公尺
     description: str = ""
     save_dc: int | None = None
     save_ability: Ability | None = None
 
 
 class Monster(BaseModel):
-    """A monster stat block."""
+    """怪物資料區塊。"""
 
     id: UUID = Field(default_factory=uuid4)
     name: str
@@ -407,8 +444,7 @@ class Monster(BaseModel):
     actions: list[MonsterAction] = Field(default_factory=list)
     conditions: list[ActiveCondition] = Field(default_factory=list)
 
-    # display label for combat (e.g. "Goblin A")
-    label: str = ""
+    label: str = ""  # 戰鬥中的顯示標籤（例如「哥布林 A」）
 
     def ability_modifier(self, ability: Ability) -> int:
         return self.ability_scores.modifier(ability)
@@ -421,21 +457,21 @@ class Monster(BaseModel):
     @computed_field
     @property
     def hp_description(self) -> str:
-        """HP description visible to players (not exact numbers)."""
+        """給玩家看的 HP 描述（不顯示精確數字）。"""
         if self.hp_max == 0:
             return "N/A"
         ratio = self.hp_current / self.hp_max
         if ratio >= 1.0:
-            return "Uninjured"
+            return "無傷"
         if ratio >= 0.75:
-            return "Lightly wounded"
+            return "輕微受傷"
         if ratio >= 0.50:
-            return "Visibly wounded"
+            return "明顯受傷"
         if ratio >= 0.25:
-            return "Badly wounded"
+            return "重傷"
         if ratio > 0:
-            return "Near death"
-        return "Down"
+            return "瀕死"
+        return "倒下"
 
     def has_condition(self, condition: Condition) -> bool:
         if condition in self.condition_immunities:
@@ -444,10 +480,132 @@ class Monster(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# Combat State
+# 戰鬥狀態
 # ---------------------------------------------------------------------------
 
 CombatantRef = tuple[Literal["character", "monster"], UUID]
+
+
+# ---------------------------------------------------------------------------
+# 地圖座標系統
+# ---------------------------------------------------------------------------
+
+
+class Position(BaseModel):
+    """格子座標（左下為原點，X 向右、Y 向上）。"""
+
+    x: int = 0
+    y: int = 0
+
+
+class Entity(BaseModel):
+    """地圖上的實體基底。"""
+
+    id: str
+    x: int
+    y: int
+    symbol: str = "?"  # ASCII 單字元
+    is_blocking: bool = False
+    name: str = ""
+
+
+class Actor(Entity):
+    """地圖上的戰鬥者（參照 Character/Monster，不繼承）。"""
+
+    combatant_id: UUID
+    combatant_type: Literal["character", "monster"]
+    is_blocking: bool = True  # 生物預設阻擋通行
+    is_alive: bool = True
+
+
+class Prop(Entity):
+    """地圖上的靜態物件。
+
+    is_blocking 決定是否阻擋移動與視線：
+    - wall (🧱)：is_blocking=True，擋移動、擋視線
+    - door (🚪)：關門 is_blocking=True，開門改為 False
+    - trap (⚠️)：is_blocking=False，不擋路，踩上去由上層觸發
+    - item (💎)：is_blocking=False，可撿取的掉落物
+    - decoration：is_blocking 視設計而定（桌椅可擋可不擋）
+
+    cover_bonus 決定作為掩體時提供的 AC 加值：
+    - 0：無掩蔽（陷阱、掉落物）
+    - 2：半掩蔽（木箱、矮牆、家具）
+    - 5：3/4 掩蔽（石柱、厚牆壁）
+    - 99：全掩蔽（完整牆壁，完全阻擋攻擊）
+    """
+
+    prop_type: str = "decoration"  # wall / door / trap / item / decoration
+    hidden: bool = False  # 隱藏物件（未被發現的陷阱等）
+    cover_bonus: int = 0  # 作為掩體的 AC 加值
+
+
+class TerrainTile(BaseModel):
+    """地形格。"""
+
+    symbol: str = " "
+    is_blocking: bool = False
+    name: str = "floor"
+    is_difficult: bool = False  # 困難地形（移動加倍消耗）
+
+
+# ---------------------------------------------------------------------------
+# 區域拓樸
+# ---------------------------------------------------------------------------
+
+
+class Zone(BaseModel):
+    """命名區域，提供敘事語境給 Narrator。"""
+
+    name: str
+    x_min: int
+    y_min: int
+    x_max: int
+    y_max: int
+    description: str = ""
+
+
+class ZoneConnection(BaseModel):
+    """區域間的連接。"""
+
+    from_zone: str
+    to_zone: str
+    via: str = ""  # 對應 Prop.id（門、通道）
+
+
+# ---------------------------------------------------------------------------
+# 地圖定義與即時狀態
+# ---------------------------------------------------------------------------
+
+
+class MapManifest(BaseModel):
+    """地圖靜態定義，從 JSON 載入。"""
+
+    name: str
+    width: int
+    height: int
+    grid_size_m: float = 1.5  # 每格公尺數（D&D 標準 5ft ≈ 1.5m）
+    props: list[Prop] = Field(default_factory=list)
+    zones: list[Zone] = Field(default_factory=list)
+    zone_connections: list[ZoneConnection] = Field(default_factory=list)
+    spawn_points: dict[str, list[Position]] = Field(default_factory=dict)
+
+
+class MapState(BaseModel):
+    """戰鬥中的即時地圖狀態。"""
+
+    manifest: MapManifest
+    terrain: list[list[TerrainTile]] = Field(default_factory=list)  # [y][x]，y=0 為最底列
+    actors: list[Actor] = Field(default_factory=list)
+    props: list[Prop] = Field(default_factory=list)  # 執行期動態追加的物件
+
+
+class TurnState(BaseModel):
+    """單一回合內的動作經濟追蹤。"""
+
+    action_used: bool = False
+    bonus_action_used: bool = False
+    mastery_used: bool = False  # 武器專精每回合一次
 
 
 class InitiativeEntry(BaseModel):
@@ -455,12 +613,151 @@ class InitiativeEntry(BaseModel):
     combatant_id: UUID
     initiative: int
     is_surprised: bool = False
+    reaction_used: bool = False  # 反應跨回合追蹤（每輪重置）
 
 
 class CombatState(BaseModel):
-    """Tracks the state of an ongoing combat encounter."""
+    """追蹤進行中的戰鬥遭遇狀態。"""
 
     round_number: int = 1
     current_turn_index: int = 0
     initiative_order: list[InitiativeEntry] = Field(default_factory=list)
     is_active: bool = False
+    turn_state: TurnState = Field(default_factory=TurnState)
+    map_state: MapState | None = None  # 有地圖時啟用空間系統
+
+
+# ---------------------------------------------------------------------------
+# Pointcrawl 探索系統
+# ---------------------------------------------------------------------------
+
+
+class NodeType(StrEnum):
+    """探索節點類型。"""
+
+    ROOM = "room"  # 地城房間
+    CORRIDOR = "corridor"  # 走廊
+    POI = "poi"  # 城鎮興趣點
+    TOWN = "town"  # 城鎮（世界圖層）
+    DUNGEON = "dungeon"  # 地城入口（世界圖層）
+    LANDMARK = "landmark"  # 自然地標
+
+
+class MapScale(StrEnum):
+    """探索地圖尺度，決定時間單位。"""
+
+    DUNGEON = "dungeon"  # 分鐘
+    TOWN = "town"  # 小時
+    WORLD = "world"  # 天
+
+
+class EncounterType(StrEnum):
+    """遭遇類型。"""
+
+    SURPRISE = "surprise"  # 玩家偷襲成功 → 擴大佈陣區 + 敵人劣勢先攻
+    NORMAL = "normal"  # 正常遭遇 → 標準佈陣區
+    AMBUSH = "ambush"  # 敵人伏擊 → 跳過佈陣，玩家劣勢先攻
+
+
+class EncounterResult(BaseModel):
+    """潛行對抗察覺的判定結果。"""
+
+    encounter_type: EncounterType
+    stealth_rolls: dict[str, int] = Field(default_factory=dict)
+    enemy_perception: int = 0
+    surprised_ids: set[UUID] = Field(default_factory=set)
+    message: str = ""
+
+
+class DeploymentState(BaseModel):
+    """佈陣階段狀態——戰鬥開始前的角色放置。"""
+
+    map_state: MapState
+    spawn_zone: list[Position] = Field(default_factory=list)
+    placements: dict[str, Position] = Field(default_factory=dict)
+    encounter: EncounterResult
+    is_confirmed: bool = False
+
+
+class ExplorationNode(BaseModel):
+    """Pointcrawl 節點——玩家可到達的地點。"""
+
+    id: str
+    name: str
+    node_type: NodeType
+    description: str = ""  # 給 Narrator 的敘事素材
+
+    # 與戰鬥地圖的銜接
+    combat_map: str | None = None  # MapManifest JSON 檔名（遭遇戰鬥時載入）
+
+    # 狀態
+    is_discovered: bool = True  # 玩家是否已知此節點
+    is_visited: bool = False  # 玩家是否已到過
+
+    # 城鎮專用：內含 POI 子節點
+    pois: list[ExplorationNode] = Field(default_factory=list)
+
+    # 敘事用
+    ambient: str = ""  # 環境氛圍描述（聲音、氣味…）
+    npcs: list[str] = Field(default_factory=list)  # 此處可遇到的 NPC id
+
+
+class ExplorationEdge(BaseModel):
+    """Pointcrawl 路徑——連接兩個節點。"""
+
+    id: str
+    from_node_id: str
+    to_node_id: str
+    name: str = ""  # 例如：「鏽蝕鐵門」「泥濘商道」
+
+    # 通行條件
+    is_discovered: bool = True  # 是否對玩家可見
+    is_locked: bool = False  # 上鎖（需要盜賊檢定或鑰匙）
+    lock_dc: int = 0  # 開鎖 DC
+    key_item: str | None = None  # 可用鑰匙物品 id
+    hidden_dc: int = 0  # 隱藏通道的偵察 DC（0=不隱藏）
+    is_one_way: bool = False  # 單向通道
+    break_dc: int = 0  # STR DC 破門（0=不可破壞）
+    noise_on_force: bool = True  # 破門時是否產生噪音
+
+    # 世界圖層旅行參數
+    distance_days: float = 0  # 旅行天數（世界圖層）
+    distance_minutes: int = 0  # 移動分鐘數（地城圖層）
+    danger_level: int = 0  # 危險等級 1-10（影響隨機遭遇）
+    terrain_type: str = ""  # 地形（swamp/forest/mountain…）
+
+    # 狀態
+    is_blocked: bool = False  # 坍塌、封鎖等
+
+
+class ExplorationMap(BaseModel):
+    """Pointcrawl 拓樸地圖（一張地城/一座城鎮/一個世界）。"""
+
+    id: str
+    name: str
+    scale: MapScale
+    nodes: list[ExplorationNode] = Field(default_factory=list)
+    edges: list[ExplorationEdge] = Field(default_factory=list)
+
+    # 入口：玩家進入此地圖時的起始節點
+    entry_node_id: str = ""
+
+
+class MapStackEntry(BaseModel):
+    """子地圖堆疊中的一層（記住從哪裡進來）。"""
+
+    map_id: str
+    node_id: str  # 進入子地圖前所在的節點
+
+
+class ExplorationState(BaseModel):
+    """玩家在 Pointcrawl 系統中的即時位置。"""
+
+    current_map_id: str  # 目前所在的 ExplorationMap
+    current_node_id: str  # 目前所在的節點
+    elapsed_minutes: int = 0  # 場景經過時間
+    discovered_nodes: set[str] = Field(default_factory=set)
+    discovered_edges: set[str] = Field(default_factory=set)
+
+    # 子地圖堆疊：從世界→地城→房間，像 call stack
+    map_stack: list[MapStackEntry] = Field(default_factory=list)

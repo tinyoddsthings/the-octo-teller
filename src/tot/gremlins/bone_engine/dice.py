@@ -1,7 +1,7 @@
-"""Dice rolling system for the Bone Engine.
+"""Bone Engine 骰子系統。
 
-Handles all D&D dice: d4, d6, d8, d10, d12, d20, d100.
-Supports advantage/disadvantage, modifiers, and multi-dice rolls.
+處理所有 D&D 骰子：d4、d6、d8、d10、d12、d20、d100。
+支援優勢/劣勢、修正值、多骰擲骰。
 """
 
 from __future__ import annotations
@@ -20,15 +20,14 @@ class RollType(StrEnum):
 
 @dataclass
 class DiceResult:
-    """Result of a dice roll, with full audit trail."""
+    """骰子結果，含完整的審計紀錄。"""
 
-    expression: str  # original expression, e.g. "2d6+3"
-    rolls: list[int] = field(default_factory=list)  # individual die results
+    expression: str  # 原始表達式，例如 "2d6+3"
+    rolls: list[int] = field(default_factory=list)  # 各顆骰子的結果
     modifier: int = 0
     roll_type: RollType = RollType.NORMAL
-    # for advantage/disadvantage on d20: both raw values
-    advantage_rolls: list[int] = field(default_factory=list)
-    dropped: list[int] = field(default_factory=list)  # dice not counted
+    advantage_rolls: list[int] = field(default_factory=list)  # 優勢/劣勢時兩顆 d20 的原始值
+    dropped: list[int] = field(default_factory=list)  # 被丟棄未計入的骰子
 
     @property
     def total(self) -> int:
@@ -36,7 +35,7 @@ class DiceResult:
 
     @property
     def natural(self) -> int | None:
-        """For single d20 rolls, the natural (unmodified) result."""
+        """單顆 d20 時的自然骰值（未加修正）。"""
         if len(self.rolls) == 1:
             return self.rolls[0]
         return None
@@ -50,20 +49,20 @@ class DiceResult:
         return self.natural == 1
 
 
-# Regex: "2d6+3", "d20", "1d8-1", "4d6kh3" (keep highest 3)
+# 正規表達式：解析 "2d6+3"、"d20"、"1d8-1"、"4d6kh3"（保留最高 3 顆）
 _DICE_PATTERN = re.compile(
-    r"^(\d*)d(\d+)"          # NdS
-    r"(?:kh(\d+))?"          # optional: keep highest N
-    r"(?:kl(\d+))?"          # optional: keep lowest N
-    r"([+-]\d+)?$",          # optional modifier
+    r"^(\d*)d(\d+)"  # NdS（骰子數量 d 面數）
+    r"(?:kh(\d+))?"  # 可選：保留最高 N 顆
+    r"(?:kl(\d+))?"  # 可選：保留最低 N 顆
+    r"([+-]\d+)?$",  # 可選：修正值
     re.IGNORECASE,
 )
 
 
 def parse_expression(expr: str) -> tuple[int, int, int | None, int | None, int]:
-    """Parse a dice expression into (count, sides, keep_high, keep_low, modifier).
+    """解析骰子表達式為 (數量, 面數, 保留最高, 保留最低, 修正值)。
 
-    Examples:
+    範例:
         "2d6+3" -> (2, 6, None, None, 3)
         "d20"   -> (1, 20, None, None, 0)
         "4d6kh3" -> (4, 6, 3, None, 0)
@@ -71,7 +70,7 @@ def parse_expression(expr: str) -> tuple[int, int, int | None, int | None, int]:
     expr = expr.strip().replace(" ", "")
     m = _DICE_PATTERN.match(expr)
     if not m:
-        raise ValueError(f"Invalid dice expression: {expr!r}")
+        raise ValueError(f"無效的骰子表達式: {expr!r}")
 
     count = int(m.group(1)) if m.group(1) else 1
     sides = int(m.group(2))
@@ -80,9 +79,9 @@ def parse_expression(expr: str) -> tuple[int, int, int | None, int | None, int]:
     modifier = int(m.group(5)) if m.group(5) else 0
 
     if sides < 1:
-        raise ValueError(f"Die must have at least 1 side, got {sides}")
+        raise ValueError(f"骰子至少要有 1 面，收到 {sides}")
     if count < 1:
-        raise ValueError(f"Must roll at least 1 die, got {count}")
+        raise ValueError(f"至少要擲 1 顆骰子，收到 {count}")
 
     return count, sides, keep_high, keep_low, modifier
 
@@ -92,42 +91,77 @@ def roll(
     roll_type: RollType = RollType.NORMAL,
     rng: random.Random | None = None,
 ) -> DiceResult:
-    """Roll dice from an expression like '2d6+3' or 'd20'.
+    """從表達式擲骰，例如 '2d6+3' 或 'd20'。
 
-    Args:
-        expression: Dice notation string (e.g. "d20", "2d6+3", "4d6kh3").
-        roll_type: NORMAL, ADVANTAGE, or DISADVANTAGE.
-            Advantage/disadvantage only applies to single d20 rolls.
-        rng: Optional Random instance for deterministic testing.
+    參數:
+        expression: 骰子表示法字串（例如 "d20"、"2d6+3"、"4d6kh3"）。
+        roll_type: NORMAL、ADVANTAGE 或 DISADVANTAGE。
+            優勢/劣勢僅在單顆 d20 時生效。
+        rng: 可選的 Random 實例，用於確定性測試。
 
-    Returns:
-        DiceResult with full roll details and audit trail.
+    回傳:
+        DiceResult，含完整的擲骰細節與審計紀錄。
     """
-    # TODO(human): implement the roll function
-    raise NotImplementedError
+    r = rng or random
+    count, sides, keep_high, keep_low, modifier = parse_expression(expression)
+
+    # 擲所有骰子
+    all_rolls = [r.randint(1, sides) for _ in range(count)]
+
+    # 優勢/劣勢：僅在單顆 d20 時適用
+    advantage_rolls: list[int] = []
+    if count == 1 and sides == 20 and roll_type != RollType.NORMAL:
+        second = r.randint(1, sides)
+        advantage_rolls = [all_rolls[0], second]
+        if roll_type == RollType.ADVANTAGE:
+            all_rolls = [max(advantage_rolls)]
+        else:
+            all_rolls = [min(advantage_rolls)]
+
+    # 保留最高/保留最低
+    dropped: list[int] = []
+    kept = list(all_rolls)
+    if keep_high is not None:
+        sorted_desc = sorted(kept, reverse=True)
+        kept = sorted_desc[:keep_high]
+        dropped = sorted_desc[keep_high:]
+    elif keep_low is not None:
+        sorted_asc = sorted(kept)
+        kept = sorted_asc[:keep_low]
+        dropped = sorted_asc[keep_low:]
+
+    return DiceResult(
+        expression=expression,
+        rolls=kept,
+        modifier=modifier,
+        roll_type=roll_type,
+        advantage_rolls=advantage_rolls,
+        dropped=dropped,
+    )
 
 
 # ---------------------------------------------------------------------------
-# Convenience helpers
+# 便利函式
 # ---------------------------------------------------------------------------
+
 
 def roll_d20(
     modifier: int = 0,
     roll_type: RollType = RollType.NORMAL,
     rng: random.Random | None = None,
 ) -> DiceResult:
-    """Shortcut for d20 rolls (attack, save, check)."""
+    """d20 擲骰的快捷方式（攻擊、豁免、檢定）。"""
     expr = f"d20+{modifier}" if modifier >= 0 else f"d20{modifier}"
     return roll(expr, roll_type=roll_type, rng=rng)
 
 
 def roll_damage(expression: str, rng: random.Random | None = None) -> DiceResult:
-    """Shortcut for damage rolls (always normal, no advantage)."""
+    """傷害骰的快捷方式（永遠是 normal，無優勢）。"""
     return roll(expression, roll_type=RollType.NORMAL, rng=rng)
 
 
 def roll_ability_scores(rng: random.Random | None = None) -> list[int]:
-    """Roll 4d6 drop lowest, six times. Returns 6 scores."""
+    """擲 4d6 棄最低，重複六次。回傳 6 個屬性值。"""
     scores = []
     for _ in range(6):
         result = roll("4d6kh3", rng=rng)
