@@ -516,15 +516,16 @@ def build_character(
 # 分步驟角色建造器（Builder Pattern）
 # ---------------------------------------------------------------------------
 
-# 5.5e 建角順序
-_BUILD_STEPS = ("background", "species", "class", "ability_scores", "skills")
+# 建角步驟順序：姓名 → 背景 → 種族 → 職業 → 屬性 → 技能
+_BUILD_STEPS = ("name", "background", "species", "class", "ability_scores", "skills")
 
 
 class CharacterBuilder:
     """分步驟角色建造器——包裝 build_character() 供 CLI 互動模式使用。
 
-    5.5e 建角順序：背景 → 種族 → 職業 → 屬性 → 技能。
+    建角順序：姓名 → 背景 → 種族 → 職業 → 屬性 → 技能。
     每一步都驗證前置條件，最後呼叫 build_character() 產出 Character。
+    護甲、等級、子職業為可選選項，可在任何步驟設定。
     """
 
     def __init__(self) -> None:
@@ -569,48 +570,53 @@ class CharacterBuilder:
             return 0
         return CLASS_REGISTRY[self._char_class].num_skills
 
-    # -- 設定名稱（任何時候都可以設定，不影響步驟）--
+    # -- Step 1: 姓名 --
 
     def set_name(self, name: str) -> None:
-        """設定角色名稱。可在任何步驟呼叫。"""
+        """Step 1: 設定角色名稱。"""
+        if self._step > 0:
+            raise ValueError("姓名必須在第一步設定")
         if not name.strip():
             raise ValueError("角色名稱不能為空")
         self._name = name.strip()
-
-    # -- Step 1: 背景 --
-
-    def set_background(self, background: str) -> None:
-        """Step 1: 選擇背景。"""
-        if self._step > 0:
-            raise ValueError("背景必須在第一步設定")
-        self._background = background
         self._step = 1
 
-    # -- Step 2: 種族 --
+    # -- Step 2: 背景 --
 
-    def set_species(self, species: str) -> None:
-        """Step 2: 選擇種族。"""
+    def set_background(self, background: str) -> None:
+        """Step 2: 選擇背景。"""
         if self._step < 1:
-            raise ValueError("請先選擇背景")
+            raise ValueError("請先設定角色名稱")
         if self._step > 1:
-            raise ValueError("種族必須在第二步設定")
-        self._species = species
+            raise ValueError("背景必須在第二步設定")
+        self._background = background
         self._step = 2
 
-    # -- Step 3: 職業 --
+    # -- Step 3: 種族 --
+
+    def set_species(self, species: str) -> None:
+        """Step 3: 選擇種族。"""
+        if self._step < 2:
+            raise ValueError("請先選擇背景")
+        if self._step > 2:
+            raise ValueError("種族必須在第三步設定")
+        self._species = species
+        self._step = 3
+
+    # -- Step 4: 職業 --
 
     def set_class(self, char_class: str) -> None:
-        """Step 3: 選擇職業。"""
-        if self._step < 2:
+        """Step 4: 選擇職業。"""
+        if self._step < 3:
             raise ValueError("請先選擇種族")
-        if self._step > 2:
-            raise ValueError("職業必須在第三步設定")
+        if self._step > 3:
+            raise ValueError("職業必須在第四步設定")
         if char_class not in CLASS_REGISTRY:
             raise ValueError(f"未知職業: {char_class!r}")
         self._char_class = char_class
-        self._step = 3
+        self._step = 4
 
-    # -- Step 4: 屬性值 --
+    # -- Step 5: 屬性值 --
 
     def set_ability_scores(
         self,
@@ -618,14 +624,14 @@ class CharacterBuilder:
         *,
         method: str = "manual",
     ) -> None:
-        """Step 4: 設定屬性值。
+        """Step 5: 設定屬性值。
 
         method: "manual" | "point_buy" | "standard_array"
         """
-        if self._step < 3:
+        if self._step < 4:
             raise ValueError("請先選擇職業")
-        if self._step > 3:
-            raise ValueError("屬性值必須在第四步設定")
+        if self._step > 4:
+            raise ValueError("屬性值必須在第五步設定")
 
         if isinstance(scores, dict):
             if method == "point_buy":
@@ -642,16 +648,16 @@ class CharacterBuilder:
         else:
             self._ability_scores = scores
 
-        self._step = 4
+        self._step = 5
 
-    # -- Step 5: 技能 --
+    # -- Step 6: 技能 --
 
     def set_skills(self, skills: list[Skill]) -> None:
-        """Step 5: 選擇技能熟練項。"""
-        if self._step < 4:
+        """Step 6: 選擇技能熟練項。"""
+        if self._step < 5:
             raise ValueError("請先設定屬性值")
-        if self._step > 4:
-            raise ValueError("技能必須在第五步設定")
+        if self._step > 5:
+            raise ValueError("技能必須在第六步設定")
 
         cls = CLASS_REGISTRY[self._char_class]
         for s in skills:
@@ -665,35 +671,33 @@ class CharacterBuilder:
             )
 
         self._skill_proficiencies = skills
-        self._step = 5
+        self._step = 6
 
-    # -- 額外選項（不影響步驟順序）--
+    # -- 可選選項（不影響步驟順序，任何時候都可設定）--
 
     def set_armor(self, armor_type: str, has_shield: bool = False) -> None:
-        """設定護甲。可在任何步驟呼叫。"""
+        """設定護甲（可選）。可在任何步驟呼叫。"""
         self._armor_type = armor_type
         self._has_shield = has_shield
 
     def set_level(self, level: int) -> None:
-        """設定等級。可在任何步驟呼叫。"""
+        """設定等級（可選，預設 1）。可在任何步驟呼叫。"""
         if level < 1 or level > 20:
             raise ValueError(f"等級必須在 1-20 之間，收到 {level}")
         self._level = level
 
     def set_subclass(self, subclass: str) -> None:
-        """設定子職業。可在任何步驟呼叫。"""
+        """設定子職業（可選）。可在任何步驟呼叫。"""
         self._subclass = subclass
 
     # -- 建構 --
 
     def build(self) -> Character:
-        """呼叫 build_character() 產出完整角色。所有步驟必須完成。"""
+        """呼叫 build_character() 產出完整角色。所有必要步驟必須完成。"""
         if self._step < len(_BUILD_STEPS):
             raise ValueError(
                 f"建角尚未完成，目前在步驟: {self.current_step}"
             )
-        if not self._name:
-            raise ValueError("請設定角色名稱（set_name）")
 
         return build_character(
             name=self._name,
