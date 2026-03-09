@@ -14,7 +14,16 @@
 - [x] Pydantic data models (Character, Monster, Spell, Item, Condition)
 - [x] 骰子系統 (dice.py) — d4~d100、advantage/disadvantage、modifier
 - [x] 角色建立流程 (character.py) — 種族/職業/屬性/技能
-- [ ] 戰鬥引擎 (combat.py) — 先攻、回合制、攻擊/傷害判定
+- [x] 戰鬥引擎 (combat.py) — 先攻、回合制、攻擊/傷害判定
+- [ ] 戰鬥地圖系統 — 格子座標、拓樸區域、ASCII 渲染、戰爭迷霧
+  - [x] Step 1: 座標系統模型 — Position, Entity, Actor, Prop, TerrainTile
+  - [ ] Step 2: 拓樸與地圖模型 — Zone, ZoneConnection, MapManifest, MapState
+  - [ ] Step 3: 空間邏輯核心 — grid_distance, bresenham_line, has_line_of_sight
+  - [ ] Step 4: 實體查詢與移動 — get_entities_at, move_entity, has_hostile_within_melee
+  - [ ] Step 5: 掩蔽與區域查詢 — determine_cover_from_grid, zone_for_position, place_actors_at_spawn
+  - [ ] Step 6: 地圖載入器 — load_map_manifest + tutorial_room.json
+  - [ ] Step 7: ASCII 渲染引擎 — MapRenderer (Z-index 圖層 + 座標軸)
+  - [ ] Step 8: 戰爭迷霧 — render_viewport + fog_of_war
 - [ ] 法術系統 (spells.py) — 施法、法術位、專注
 - [ ] 狀態系統 (conditions.py) — 12 種基礎狀態 + 堆疊規則
 - [ ] 休息機制 (rest.py) — 短休/長休、HP/法術位恢復

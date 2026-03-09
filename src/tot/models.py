@@ -478,6 +478,48 @@ class Monster(BaseModel):
 CombatantRef = tuple[Literal["character", "monster"], UUID]
 
 
+# ---------------------------------------------------------------------------
+# 地圖座標系統
+# ---------------------------------------------------------------------------
+
+class Position(BaseModel):
+    """格子座標（左下為原點，X 向右、Y 向上）。"""
+    x: int = 0
+    y: int = 0
+
+
+class Entity(BaseModel):
+    """地圖上的實體基底。"""
+    id: str
+    x: int
+    y: int
+    symbol: str = "?"       # ASCII 單字元
+    is_blocking: bool = False
+    name: str = ""
+
+
+class Actor(Entity):
+    """地圖上的戰鬥者（參照 Character/Monster，不繼承）。"""
+    combatant_id: UUID
+    combatant_type: Literal["character", "monster"]
+    is_blocking: bool = True  # 生物預設阻擋通行
+    is_alive: bool = True
+
+
+class Prop(Entity):
+    """靜態物件（牆壁、門、陷阱、掉落物）。"""
+    prop_type: str = "decoration"  # wall / door / trap / item / decoration
+    hidden: bool = False           # 隱藏物件（陷阱等）
+
+
+class TerrainTile(BaseModel):
+    """地形格。"""
+    symbol: str = "."
+    is_blocking: bool = False
+    name: str = "floor"
+    is_difficult: bool = False     # 困難地形（移動加倍消耗）
+
+
 class TurnState(BaseModel):
     """單一回合內的動作經濟追蹤。"""
     action_used: bool = False
