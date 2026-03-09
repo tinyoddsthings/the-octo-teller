@@ -10,9 +10,14 @@ from uuid import UUID
 
 from tot.models import (
     Actor,
+    Character,
+    CoverType,
     Entity,
     MapState,
+    Monster,
     Position,
+    Zone,
+    ZoneConnection,
 )
 
 
@@ -237,3 +242,107 @@ def move_entity(
     actor.x = new_x
     actor.y = new_y
     return True, speed_remaining - cost
+
+
+# ---------------------------------------------------------------------------
+# 掩蔽偵測
+# ---------------------------------------------------------------------------
+
+def determine_cover_from_grid(
+    attacker: Position,
+    target: Position,
+    map_state: MapState,
+) -> CoverType:
+    """根據 Bresenham 路徑上的阻擋物判定掩蔽。
+
+    不含起終點。1 個阻擋 = 半掩蔽(+2 AC)，2+ 個 = 3/4 掩蔽(+5 AC)。
+    完全掩蔽（Total）需由上層判定（如完全在牆後、無視線）。
+    """
+    path = bresenham_line(attacker.x, attacker.y, target.x, target.y)
+    blocking_count = 0
+    for x, y in path[1:-1]:
+        if _is_blocking_at(x, y, map_state):
+            blocking_count += 1
+    if blocking_count >= 2:
+        return CoverType.THREE_QUARTERS
+    if blocking_count == 1:
+        return CoverType.HALF
+    return CoverType.NONE
+
+
+# ---------------------------------------------------------------------------
+# 區域查詢
+# ---------------------------------------------------------------------------
+
+def zone_for_position(x: int, y: int, zones: list[Zone]) -> Zone | None:
+    """座標 → 所屬區域。多區域重疊時回傳第一個符合的。"""
+    for z in zones:
+        if z.x_min <= x <= z.x_max and z.y_min <= y <= z.y_max:
+            return z
+    return None
+
+
+def build_zone_adjacency(
+    connections: list[ZoneConnection],
+) -> dict[str, list[str]]:
+    """從 ZoneConnection 建立雙向鄰接圖。"""
+    adj: dict[str, list[str]] = {}
+    for conn in connections:
+        adj.setdefault(conn.from_zone, []).append(conn.to_zone)
+        adj.setdefault(conn.to_zone, []).append(conn.from_zone)
+    return adj
+
+
+# ---------------------------------------------------------------------------
+# 生成位置
+# ---------------------------------------------------------------------------
+
+def place_actors_at_spawn(
+    characters: list[Character],
+    monsters: list[Monster],
+    map_state: MapState,
+) -> None:
+    """依 spawn_points 將戰鬥者放上地圖，建立 Actor 加入 map_state.actors。
+
+    spawn_points 的 key 對應：'players' → characters、'enemies' → monsters。
+    若 spawn_points 不足，多出的戰鬥者不會被放置。
+    """
+    spawns = map_state.manifest.spawn_points
+
+    player_spawns = spawns.get("players", [])
+    for i, char in enumerate(characters):
+        if i >= len(player_spawns):
+            break
+        sp = player_spawns[i]
+        actor = Actor(
+            id=f"pc_{i}",
+            x=sp.x,
+            y=sp.y,
+            symbol="@",
+            combatant_id=char.id,
+            combatant_type="character",
+            name=char.name,
+            is_blocking=True,
+            is_alive=char.is_alive,
+        )
+        map_state.actors.append(actor)
+
+    enemy_spawns = spawns.get("enemies", [])
+    for i, mon in enumerate(monsters):
+        if i >= len(enemy_spawns):
+            break
+        sp = enemy_spawns[i]
+        # 用怪物的 label 或名稱首字母作為符號
+        symbol = mon.label[0].upper() if mon.label else mon.name[0].upper() if mon.name else "E"
+        actor = Actor(
+            id=f"mob_{i}",
+            x=sp.x,
+            y=sp.y,
+            symbol=symbol,
+            combatant_id=mon.id,
+            combatant_type="monster",
+            name=mon.label or mon.name,
+            is_blocking=True,
+            is_alive=mon.is_alive,
+        )
+        map_state.actors.append(actor)

@@ -20,7 +20,7 @@
   - [x] Step 2: 拓樸與地圖模型 — Zone, ZoneConnection, MapManifest, MapState
   - [x] Step 3: 空間邏輯核心 — grid_distance, bresenham_line, has_line_of_sight
   - [x] Step 4: 實體查詢與移動 — get_entities_at, move_entity, has_hostile_within_melee
-  - [ ] Step 5: 掩蔽與區域查詢 — determine_cover_from_grid, zone_for_position, place_actors_at_spawn
+  - [x] Step 5: 掩蔽與區域查詢 — determine_cover_from_grid, zone_for_position, place_actors_at_spawn
   - [ ] Step 6: 地圖載入器 — load_map_manifest + tutorial_room.json
   - [ ] Step 7: ASCII 渲染引擎 — MapRenderer (Z-index 圖層 + 座標軸)
   - [ ] Step 8: 戰爭迷霧 — render_viewport + fog_of_war
