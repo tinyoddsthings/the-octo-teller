@@ -24,6 +24,13 @@
   - [x] Step 6: 地圖載入器 — load_map_manifest + tutorial_room.json
   - [x] Step 7: ASCII 渲染引擎 — MapRenderer (Z-index 圖層 + 座標軸)
   - [x] Step 8: 戰爭迷霧 — render_viewport + fog_of_war
+- [x] Pointcrawl 探索系統 — 三層拓樸（地城/城鎮/世界）
+  - [x] Step 1: 資料模型 — NodeType, MapScale, ExplorationNode/Edge/Map/State
+  - [x] Step 2: 探索邏輯核心 — get_available_exits, move_to_node
+  - [x] Step 3: 隱藏通道與開鎖 — discover_hidden, unlock_edge, search_room
+  - [x] Step 4: 子地圖進出 — enter_sub_map, exit_to_parent_map (堆疊追蹤)
+  - [x] Step 5: 探索地圖載入器 — load_exploration_map + tutorial_dungeon.json + starter_town.json
+  - [x] Step 6: 探索→戰鬥銜接 — prepare_combat_from_node
 - [ ] 法術系統 (spells.py) — 施法、法術位、專注
 - [ ] 狀態系統 (conditions.py) — 12 種基礎狀態 + 堆疊規則
 - [ ] 休息機制 (rest.py) — 短休/長休、HP/法術位恢復

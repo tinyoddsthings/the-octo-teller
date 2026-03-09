@@ -9,7 +9,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from tot.models import MapManifest, MapState, Position, Prop, TerrainTile
+from tot.models import ExplorationMap, MapManifest, MapState, Position, Prop, TerrainTile
 
 
 # 預設地圖資料夾
@@ -114,3 +114,30 @@ def _build_terrain_grid(
                 grid[y][x] = TerrainTile()
 
     return grid  # type: ignore[return-value]
+
+
+# ---------------------------------------------------------------------------
+# Pointcrawl 探索地圖載入
+# ---------------------------------------------------------------------------
+
+def load_exploration_map(
+    path: str | Path | None = None,
+    *,
+    name: str | None = None,
+) -> ExplorationMap:
+    """從 JSON 載入 Pointcrawl 探索地圖。
+
+    參數:
+        path: JSON 檔案路徑。若未指定則從內建地圖資料夾以 name 查找。
+        name: 內建地圖名稱（不含 .json），例如 'tutorial_dungeon'。
+    """
+    if path is None:
+        if name is None:
+            msg = "必須指定 path 或 name 其中之一"
+            raise ValueError(msg)
+        path = _MAPS_DIR / f"{name}.json"
+
+    path = Path(path)
+    raw: dict[str, Any] = json.loads(path.read_text(encoding="utf-8"))
+
+    return ExplorationMap(**raw)
