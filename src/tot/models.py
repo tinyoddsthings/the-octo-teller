@@ -522,7 +522,7 @@ class Prop(Entity):
 
 class TerrainTile(BaseModel):
     """地形格。"""
-    symbol: str = "."
+    symbol: str = " "
     is_blocking: bool = False
     name: str = "floor"
     is_difficult: bool = False     # 困難地形（移動加倍消耗）
