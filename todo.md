@@ -11,9 +11,9 @@
 - [x] 遷移既有 bot.py 邏輯為參考文件 (docs/legacy/)
 
 ## Phase 1: Bone Engine 核心
-- [ ] Pydantic data models (Character, Monster, Spell, Item, Condition)
-- [ ] 骰子系統 (dice.py) — d4~d100、advantage/disadvantage、modifier
-- [ ] 角色建立流程 (character.py) — 種族/職業/屬性/技能
+- [x] Pydantic data models (Character, Monster, Spell, Item, Condition)
+- [x] 骰子系統 (dice.py) — d4~d100、advantage/disadvantage、modifier
+- [x] 角色建立流程 (character.py) — 種族/職業/屬性/技能
 - [ ] 戰鬥引擎 (combat.py) — 先攻、回合制、攻擊/傷害判定
 - [ ] 法術系統 (spells.py) — 施法、法術位、專注
 - [ ] 狀態系統 (conditions.py) — 12 種基礎狀態 + 堆疊規則
