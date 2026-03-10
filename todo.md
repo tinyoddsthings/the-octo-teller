@@ -34,15 +34,15 @@
 ### 2-B: 法術系統 (spells.py)
 > Spell model 已定義，character.py 已有法術欄位/DC/攻擊計算，
 > 缺少施法動作解析、效果執行、專注維持
-- [ ] Step 1: 法術資料庫 — JSON 格式定義檔（戲法 + 1~3 環，約 30 個常用法術）
-- [ ] Step 2: 法術載入器 — load_spell_db, get_spell_by_name
-- [ ] Step 3: 施法前置檢查 — can_cast（法術欄位/準備/射程/成分/動作經濟）
-- [ ] Step 4: 法術效果執行 — cast_spell 主函式（傷害/治療/狀態分支）
-- [ ] Step 5: 專注機制 — 開始/中斷專注 + 戰鬥中自動檢定
+- [x] Step 1: 法術資料庫 — JSON 格式定義檔（戲法 + 1~3 環，36 個法術）
+- [x] Step 2: 法術載入器 — load_spell_db, get_spell_by_name
+- [x] Step 3: 施法前置檢查 — can_cast（法術欄位/準備/成分）
+- [x] Step 4: 法術效果執行 — cast_spell 主函式（傷害/治療/狀態分支）
+- [x] Step 5: 專注機制 — 開始/中斷專注 + 戰鬥中自動檢定
 - [x] Step 5b: 法術成分系統 — V/S/M 欄位 + can_cast 檢查 + 材料消耗
 - [x] Step 5c: 升環擴充 — 目標數/專注解除/持續時間/範圍/召喚（model 欄位全開，引擎先做①③）
 - [ ] Step 6: 範圍法術 — AoE 判定（圓形/錐形/線形）+ 空間系統整合
-- [ ] Step 7: 單元測試 — test_spells.py
+- [x] Step 7: 單元測試 — test_spells.py（57 tests）
 
 ### 2-C: 休息機制 (rest.py)
 - [ ] Step 1: 短休 — Hit Dice 恢復 HP、職業短休資源回復
@@ -72,8 +72,8 @@
 - [x] Step 3: 單元測試 — test_character_builder.py
 
 ### 2-E: Phase 1 已完成模組的測試補齊
-- [ ] conftest.py — 共用 fixtures（標準角色、怪物、地圖）
-- [ ] test_dice.py — 骰子分布、advantage/disadvantage、modifier
+- [x] conftest.py — 共用 fixtures（std_fighter/wizard/cleric + goblin/skeleton/ogre + rng42）
+- [x] test_dice.py — 表達式解析/擲骰/優劣勢/kh/kl/便利函式（39 tests）
 - [ ] test_combat.py — 攻擊/傷害/死亡豁免/武器專精/借機攻擊
 - [ ] test_character.py — 12 職業建構、法術欄位、AC 計算
 - [ ] test_spatial.py — 距離/LOS/掩蔽/移動
