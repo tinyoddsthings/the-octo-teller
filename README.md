@@ -90,13 +90,15 @@ uv run ruff format --check src/ tests/
 
 | Phase | 內容 | 狀態 |
 |-------|------|------|
-| 0 | 專案骨架 + 知識庫遷移 | 完成 |
-| 1 | Bone Engine 核心（骰子/角色/戰鬥/法術/狀態） | 待開始 |
-| 2 | 三層記憶系統 | 待開始 |
-| 3 | Narrator + Mimic（LLM 敘事 + 意圖解析） | 待開始 |
-| 4 | Telegram Bot 介面 | 待開始 |
-| 5 | 視覺化 + Mini Apps | 待開始 |
-| 6 | 進階系統（怪物 AI、多團支援） | 待開始 |
-| 7 | 生產化（Docker、CI/CD、監控） | 待開始 |
+| 0 | 專案骨架 + 知識庫遷移 | ✅ 完成 |
+| 1 | Bone Engine 核心 — 戰鬥與空間（骰子/角色/戰鬥/地圖/探索/佈陣） | ✅ 完成 |
+| 2 | Bone Engine 補完 — 法術、狀態、休息、協調器 | 🔨 進行中 |
+| 3 | 怪物 AI + 升級系統 | 待開始 |
+| 4 | Mimic + Narrator（LLM 意圖解析 + 敘事） | 待開始 |
+| 5 | 三層記憶系統（Redis / PG+pgvector / Qdrant） | 待開始 |
+| 6 | 進階 Gremlin + 系統擴展（Companion / Prep / Extension） | 待開始 |
+| 7 | Telegram Bot 介面 | 待開始 |
+| 8 | 視覺化 + Mini Apps | 待開始 |
+| 9 | 生產化（Docker、CI/CD、監控） | 待開始 |
 
 詳見 [todo.md](todo.md) 了解各 Phase 細項。
