@@ -96,6 +96,7 @@ class Condition(StrEnum):
     BLINDED = "Blinded"
     CHARMED = "Charmed"
     DEAFENED = "Deafened"
+    DISENGAGING = "Disengaging"  # 追蹤撤離動作效果（1 輪）
     DODGING = "Dodging"  # 非官方狀態，追蹤閃避動作效果（1 輪）
     EXHAUSTION = "Exhaustion"
     FRIGHTENED = "Frightened"
@@ -406,6 +407,8 @@ class Character(BaseModel):
     exhaustion_level: int = Field(default=0, ge=0, le=6)
     heroic_inspiration: bool = False
 
+    is_ai_controlled: bool = False
+
     xp: int = 0
 
     def ability_modifier(self, ability: Ability) -> int:
@@ -649,6 +652,7 @@ class TurnState(BaseModel):
     action_used: bool = False
     bonus_action_used: bool = False
     mastery_used: bool = False  # 武器專精每回合一次
+    movement_remaining: float = 0.0  # 剩餘移動距離（公尺），回合開始時由 TUI 設為 speed
 
 
 class InitiativeEntry(BaseModel):

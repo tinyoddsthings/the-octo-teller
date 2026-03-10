@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 
+import re
 from uuid import UUID
 
 from tot.models import (
@@ -16,6 +17,7 @@ from tot.models import (
     MapState,
     Monster,
     Position,
+    Spell,
     Zone,
     ZoneConnection,
 )
@@ -301,6 +303,144 @@ def build_zone_adjacency(
 # ---------------------------------------------------------------------------
 # 生成位置
 # ---------------------------------------------------------------------------
+
+
+# ---------------------------------------------------------------------------
+# 法術射程驗證
+# ---------------------------------------------------------------------------
+
+
+def parse_spell_range_meters(range_str: str, grid_size: float = 1.5) -> float | None:
+    """解析法術射程字串 → 公尺。"Self"/"Touch" → None。"""
+    s = range_str.strip().lower()
+    if s in ("self", "touch") or s.startswith("self"):
+        return None
+    # "120ft" → 120 / 5 * 1.5 = 36.0m
+    m = re.match(r"(\d+)\s*ft", s)
+    if m:
+        return int(m.group(1)) / 5.0 * grid_size
+    return None
+
+
+def validate_spell_range(
+    spell: Spell, distance: float, grid_size: float = 1.5
+) -> str | None:
+    """驗證法術射程。回傳錯誤訊息或 None。"""
+    range_str = spell.range.strip().lower()
+    if range_str == "self" or range_str.startswith("self"):
+        return None
+    if range_str == "touch":
+        if distance / grid_size > 1:
+            return f"觸碰法術需要在鄰接格（當前 {distance:.1f}m）"
+        return None
+    range_m = parse_spell_range_meters(spell.range, grid_size)
+    if range_m is not None and distance > range_m:
+        return f"超出法術射程（{spell.range}≈{range_m:.0f}m，當前 {distance:.1f}m）"
+    return None
+
+
+# ---------------------------------------------------------------------------
+# 生成位置
+# ---------------------------------------------------------------------------
+
+
+# ---------------------------------------------------------------------------
+# BFS 尋路
+# ---------------------------------------------------------------------------
+
+
+def _is_passable_for_bfs(
+    x: int,
+    y: int,
+    map_state: MapState,
+    mover_id: UUID,
+    friendly_ids: set[UUID],
+) -> bool:
+    """BFS 用可通行判定。友方 actor 視為可穿越（D&D 5e 規則）。"""
+    m = map_state.manifest
+    if x < 0 or x >= m.width or y < 0 or y >= m.height:
+        return False
+    if map_state.terrain and map_state.terrain[y][x].is_blocking:
+        return False
+    for p in m.props:
+        if p.x == x and p.y == y and p.is_blocking:
+            return False
+    for p in map_state.props:
+        if p.x == x and p.y == y and p.is_blocking:
+            return False
+    for a in map_state.actors:
+        if a.x == x and a.y == y and a.is_alive and a.is_blocking:
+            # 自身不阻擋
+            if a.combatant_id == mover_id:
+                continue
+            # 友方可穿越
+            if a.combatant_id in friendly_ids:
+                continue
+            return False
+    return True
+
+
+def bfs_path_to_range(
+    start: Position,
+    target: Position,
+    reach_grids: int,
+    map_state: MapState,
+    max_steps: int,
+    mover_id: UUID,
+    friendly_ids: set[UUID],
+) -> list[Position] | None:
+    """BFS 尋路，找到 Chebyshev 距離 target ≤ reach_grids 的可通行格。
+
+    友方 actor 視為可穿越但不可停留（D&D 5e 規則）。
+    回傳路徑 list[Position]（不含起點），或 None。
+    """
+    from collections import deque
+
+    # 起點已在範圍內
+    if max(abs(start.x - target.x), abs(start.y - target.y)) <= reach_grids:
+        return []
+
+    # 不可停留的格子：友方佔據的格（穿越可以，停留不行）
+    friendly_occupied: set[tuple[int, int]] = set()
+    for a in map_state.actors:
+        if a.is_alive and a.is_blocking and a.combatant_id in friendly_ids and a.combatant_id != mover_id:
+            friendly_occupied.add((a.x, a.y))
+
+    queue: deque[tuple[int, int, int]] = deque()  # (x, y, depth)
+    visited: dict[tuple[int, int], tuple[int, int] | None] = {(start.x, start.y): None}
+    queue.append((start.x, start.y, 0))
+
+    dirs = [(-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)]
+
+    while queue:
+        cx, cy, depth = queue.popleft()
+        if depth >= max_steps:
+            continue
+
+        for dx, dy in dirs:
+            nx, ny = cx + dx, cy + dy
+            if (nx, ny) in visited:
+                continue
+            if not _is_passable_for_bfs(nx, ny, map_state, mover_id, friendly_ids):
+                continue
+
+            visited[(nx, ny)] = (cx, cy)
+
+            # 可以停留？（不能停在友方佔據格）
+            can_stop = (nx, ny) not in friendly_occupied
+            if can_stop and max(abs(nx - target.x), abs(ny - target.y)) <= reach_grids:
+                # 回溯路徑
+                path: list[Position] = []
+                cur: tuple[int, int] | None = (nx, ny)
+                while cur is not None and cur != (start.x, start.y):
+                    path.append(Position(x=cur[0], y=cur[1]))
+                    cur = visited.get(cur)
+                path.reverse()
+                return path
+
+            queue.append((nx, ny, depth + 1))
+
+    return None
 
 
 def place_actors_at_spawn(

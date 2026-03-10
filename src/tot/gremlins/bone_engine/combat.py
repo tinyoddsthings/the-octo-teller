@@ -295,20 +295,23 @@ def validate_attack_preconditions(
     weapon: Weapon,
     state: CombatState,
     distance: float = 1.5,
+    grid_size: float = 1.5,
 ) -> str | None:
     """驗證攻擊的前置條件，回傳錯誤訊息或 None 表示通過。"""
     if not can_take_action(attacker):
         return "攻擊者無力化，無法行動"
     if state.turn_state.action_used:
         return "行動已使用"
-    # 近戰武器射程檢查（含 Reach）
-    if not weapon.is_ranged and distance > weapon.range_normal:
-        return f"目標超出近戰武器射程（{weapon.range_normal}m）"
-    # 遠程武器長射程檢查
-    if weapon.is_ranged:
+    # 近戰：格數判定（range_normal=1 表示 1 格觸及範圍）
+    if not weapon.is_ranged:
+        grid_count = distance / grid_size
+        if grid_count > weapon.range_normal:
+            return f"目標超出近戰射程（{weapon.range_normal} 格，當前 {grid_count:.0f} 格）"
+    else:
+        # 遠程武器長射程檢查
         max_range = weapon.range_long or weapon.range_normal
         if distance > max_range:
-            return f"目標超出武器最大射程（{max_range}m）"
+            return f"目標超出武器最大射程（{max_range}m，當前 {distance:.1f}m）"
     return None
 
 
@@ -735,6 +738,29 @@ def take_dodge_action(
         ActiveCondition(
             condition=Condition.DODGING,
             source="Dodge action",
+            remaining_rounds=1,
+        )
+    )
+    return True
+
+
+def take_disengage_action(
+    combatant: Character | Monster,
+    state: CombatState,
+) -> bool:
+    """執行撤離動作。消耗行動，加上 DISENGAGING 狀態（1 輪）。
+
+    撤離後移動不會觸發藉機攻擊。回傳是否成功。
+    """
+    if not can_take_action(combatant):
+        return False
+    if not use_action(state):
+        return False
+
+    combatant.conditions.append(
+        ActiveCondition(
+            condition=Condition.DISENGAGING,
+            source="Disengage action",
             remaining_rounds=1,
         )
     )

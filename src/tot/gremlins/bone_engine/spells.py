@@ -687,8 +687,19 @@ def _target_name(target: Combatant) -> str:
     return target.name
 
 
+_DAMAGE_TYPE_ZH: dict[str, str] = {
+    "Acid": "強酸", "Bludgeoning": "鈍擊", "Cold": "寒冷",
+    "Fire": "火焰", "Force": "力場", "Lightning": "閃電",
+    "Necrotic": "黯蝕", "Piercing": "穿刺", "Poison": "毒素",
+    "Psychic": "心靈", "Radiant": "光輝", "Slashing": "揮砍",
+    "Thunder": "雷鳴",
+}
+
+
 def _damage_type_name(dt: DamageType | None) -> str:
-    return dt.value if dt else ""
+    if dt is None:
+        return ""
+    return _DAMAGE_TYPE_ZH.get(dt.value, dt.value)
 
 
 def _spell_attack_bonus(caster: Combatant) -> int:

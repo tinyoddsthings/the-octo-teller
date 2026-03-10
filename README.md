@@ -34,10 +34,10 @@
 src/tot/
 ├── bot/              # Telegram 介面 (aiogram 3)
 │   ├── handlers/     # 指令處理（遊戲/戰鬥/角色/設定/管理）
-│   ├── tma/          # Telegram Mini Apps (Phase 5+)
+│   ├── tma/          # Telegram Mini Apps (Phase 8+)
 │   └── ...
 ├── gremlins/         # 六隻 Gremlin 代理人
-│   ├── bone_engine/  # 骷髏引擎 — 骰子/戰鬥/法術/狀態/休息
+│   ├── bone_engine/  # 骷髏引擎 — 骰子/角色/戰鬥/地圖/探索/佈陣/法術/狀態
 │   ├── narrator/     # 章魚說書人 — LLM 敘事 + prompt 模板
 │   ├── mimic/        # 擬態解析器 — NL → 結構化動作
 │   ├── companion/    # AI 隊友 — 信任/個性/情境自主決策
@@ -45,7 +45,7 @@ src/tot/
 │   └── extension/    # 延伸精靈 — 脫稿即興
 ├── memory/           # 三層記憶系統
 ├── data/             # D&D 5e 靜態資料（SRD/職業/法術/怪物...）
-├── visuals/          # 視覺化 — 地圖/面板/AI 圖片 (Phase 5+)
+├── visuals/          # 視覺化 — 地圖/面板/AI 圖片 (Phase 8+)
 └── combat_ai/        # 怪物 AI — Behavior Tree + GOAP
 ```
 

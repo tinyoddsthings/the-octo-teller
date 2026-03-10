@@ -71,6 +71,16 @@
 - [x] Step 2: 5.5e 建角順序（背景→種族→職業→屬性→技能）
 - [x] Step 3: 單元測試 — test_character_builder.py
 
+### 2-H: TUI 戰鬥介面 (tui/)
+> 用 Textual 建構四面板 TUI，邊玩邊測 Bone Engine
+- [x] Step 1: pyproject.toml 新增 tui optional dependency (textual>=0.50)
+- [x] Step 2: demo.py — 3 PC vs 2 哥布林 demo 場景
+- [x] Step 3: app.py — 四面板佈局（地圖/狀態/紀錄/輸入）
+- [x] Step 4: 玩家攻擊指令 (attack <目標>)
+- [x] Step 5: 怪物自動行動修復 — set_timer 排程 + 攻擊後自動結束回合
+- [x] Step 6: 法術指令 (cast <法術> <目標>)
+- [x] Step 7: 移動指令 (move <方向/座標>)
+
 ### 2-E: Phase 1 已完成模組的測試補齊
 - [x] conftest.py — 共用 fixtures（std_fighter/wizard/cleric + goblin/skeleton/ogre + rng42）
 - [x] test_dice.py — 表達式解析/擲骰/優劣勢/kh/kl/便利函式（39 tests）
