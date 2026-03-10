@@ -12,6 +12,10 @@ import re
 from dataclasses import dataclass
 from uuid import UUID
 
+from tot.gremlins.bone_engine.conditions import (
+    can_take_action,
+    exhaustion_penalty,
+)
 from tot.gremlins.bone_engine.dice import DiceResult, RollType, roll, roll_d20
 from tot.models import (
     Ability,
@@ -34,17 +38,6 @@ from tot.models import (
 # 全域輔助函式
 # ---------------------------------------------------------------------------
 
-# 包含無力化效果的狀態集合（麻痺、震懾、昏迷、石化都隱含無力化）
-_INCAPACITATING_CONDITIONS = frozenset(
-    {
-        Condition.INCAPACITATED,
-        Condition.PARALYZED,
-        Condition.STUNNED,
-        Condition.UNCONSCIOUS,
-        Condition.PETRIFIED,
-    }
-)
-
 # 體型排序對照表，用於擒抱/推撞體型限制
 _SIZE_ORDER = {
     Size.TINY: 0,
@@ -54,21 +47,6 @@ _SIZE_ORDER = {
     Size.HUGE: 4,
     Size.GARGANTUAN: 5,
 }
-
-
-def exhaustion_penalty(exhaustion_level: int) -> int:
-    """2024 版力竭：每級 -2 所有 d20 檢定。"""
-    return -2 * exhaustion_level
-
-
-def can_take_action(combatant: Character | Monster) -> bool:
-    """檢查是否能採取行動（未處於無力化狀態）。
-
-    無力化 = 不能行動、附贈動作、反應。
-    麻痺、震懾、昏迷、石化都包含無力化。
-    """
-    condition_set = {c.condition for c in combatant.conditions}
-    return not bool(condition_set & _INCAPACITATING_CONDITIONS)
 
 
 def _size_index(size: Size) -> int:
