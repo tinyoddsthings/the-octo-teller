@@ -49,9 +49,17 @@ def wizard():
             current_slots={1: 4, 2: 3, 3: 2},
         ),
         spells_known=[
-            "火焰箭", "魔法飛彈", "燃燒之手", "護盾術", "睡眠術",
-            "定身術", "粉碎音波", "目盲/耳聾術", "迷蹤步",
-            "反制法術", "火球術",
+            "火焰箭",
+            "魔法飛彈",
+            "燃燒之手",
+            "護盾術",
+            "睡眠術",
+            "定身術",
+            "粉碎音波",
+            "目盲/耳聾術",
+            "迷蹤步",
+            "反制法術",
+            "火球術",
         ],
     )
 
@@ -645,7 +653,10 @@ class TestHighLevelSpells:
         spell = get_spell_by_name("粉碎音波")
         # 用高 CON 目標確保有機會通過豁免
         tough = Monster(
-            name="Iron Golem", hp_max=100, hp_current=100, ac=20,
+            name="Iron Golem",
+            hp_max=100,
+            hp_current=100,
+            ac=20,
             ability_scores=AbilityScores(CON=20),
         )
         for seed in range(100):
@@ -690,6 +701,7 @@ class TestHighLevelSpells:
 
         # 被沉默後不可用
         from tot.gremlins.bone_engine.conditions import apply_condition
+
         apply_condition(wizard, Condition.SILENCED, source="Silence")
         error = can_cast(wizard, spell, slot_level=2)
         assert isinstance(error, CastError)
@@ -701,6 +713,7 @@ class TestHighLevelSpells:
         assert spell.components == ["S"]
 
         from tot.gremlins.bone_engine.conditions import apply_condition
+
         apply_condition(wizard, Condition.SILENCED, source="Silence")
         # S-only 法術不受沉默影響
         error = can_cast(wizard, spell, slot_level=3)
@@ -710,6 +723,7 @@ class TestHighLevelSpells:
         """反制法術有 S，被無力化時不可施放。"""
         spell = get_spell_by_name("反制法術")
         from tot.gremlins.bone_engine.conditions import apply_condition
+
         apply_condition(wizard, Condition.STUNNED, source="Stun")
         error = can_cast(wizard, spell, slot_level=3)
         assert isinstance(error, CastError)
