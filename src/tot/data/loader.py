@@ -42,12 +42,19 @@ def load_map_manifest(
     # 取出 terrain 定義（載入器專用格式，不屬於 MapManifest）
     terrain_defs: list[dict[str, Any]] = raw.pop("terrain", [])
 
-    # 解析 spawn_points：JSON 中是 {key: [{x, y}, ...]}
+    # 解析 spawn_points：JSON 中是 {key: [{x, y}, ...]}，座標為 grid 座標
+    gs = raw.get("grid_size_m", 1.5)
     raw_spawns = raw.get("spawn_points", {})
     parsed_spawns: dict[str, list[Position]] = {}
     for key, points in raw_spawns.items():
-        parsed_spawns[key] = [Position(x=p["x"], y=p["y"]) for p in points]
+        parsed_spawns[key] = [Position.from_grid(p["x"], p["y"], gs) for p in points]
     raw["spawn_points"] = parsed_spawns
+
+    # Props 的 x/y 也是 grid 座標，轉為公尺（格子中心）
+    for prop in raw.get("props", []):
+        gx, gy = prop["x"], prop["y"]
+        prop["x"] = gx * gs + gs / 2
+        prop["y"] = gy * gs + gs / 2
 
     manifest = MapManifest(**raw)
 

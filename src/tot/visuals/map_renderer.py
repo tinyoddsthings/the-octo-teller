@@ -18,6 +18,7 @@ Z-index 圖層（低到高）：
 
 from __future__ import annotations
 
+import math
 import unicodedata
 from uuid import UUID
 
@@ -52,22 +53,30 @@ class MapRenderer:
         self._w = map_state.manifest.width
         self._h = map_state.manifest.height
 
-    def render_full(self) -> str:
-        """完整地圖（DM 視角），含座標軸標籤。"""
+    def render_full(self, *, rich_markup: bool = False) -> str:
+        """完整地圖（DM 視角），含座標軸標籤。
+
+        rich_markup=True 時，重疊格用 Rich 背景色標記。
+        """
         grid = self._build_layer_grid()
-        return self._format_grid(grid, x_offset=0, y_offset=0)
+        overlaps = self._build_overlap_map() if rich_markup else None
+        return self._format_grid(grid, x_offset=0, y_offset=0, overlaps=overlaps)
 
     def render_deployment(self, deployment: DeploymentState) -> str:
         """佈陣預覽地圖——用 ✦ 標示可佈陣區域。
 
         Z_ZONE=15 介於 Z_PROP(10) 和 Z_CORPSE(20) 之間，
         Actor 在 Z_LIVING=40 會自動覆蓋 ✦ 標記。
+        spawn_zone 的 Position 可能是網格或公尺座標，統一 snap 到網格。
         """
         grid = self._build_layer_grid()
+        gs = self._ms.manifest.grid_size_m
         for pos in deployment.spawn_zone:
-            if 0 <= pos.x < self._w and 0 <= pos.y < self._h:
-                self._place(grid, pos.x, pos.y, "✦", Z_ZONE)
-        return self._format_grid(grid, x_offset=0, y_offset=0)
+            gx, gy = self._snap_to_grid(pos.x, pos.y, gs)
+            if 0 <= gx < self._w and 0 <= gy < self._h:
+                self._place(grid, gx, gy, "✦", Z_ZONE)
+        overlaps = self._build_overlap_map()
+        return self._format_grid(grid, x_offset=0, y_offset=0, overlaps=overlaps)
 
     def render_viewport(
         self,
@@ -78,17 +87,20 @@ class MapRenderer:
         """局部視野渲染，可選戰爭迷霧。
 
         以 center 為中心、radius 為半徑裁切正方形視野。
+        center 為公尺座標，內部 snap 到網格座標。
         若提供 viewer_id，對視野內每格跑 LOS 判定，
         被遮擋的格子替換為 ❓（遮擋物本身仍可見）。
         超出地圖邊界的格子用空白填充。
         """
         full_grid = self._build_layer_grid()
+        gs = self._ms.manifest.grid_size_m
+        cgx, cgy = self._snap_to_grid(center.x, center.y, gs)
 
-        # 視野邊界（可能超出地圖）
-        x_min = center.x - radius
-        y_min = center.y - radius
-        x_max = center.x + radius
-        y_max = center.y + radius
+        # 視野邊界（可能超出地圖）——用網格座標
+        x_min = cgx - radius
+        y_min = cgy - radius
+        x_max = cgx + radius
+        y_max = cgy + radius
 
         # 裁切子格：超出邊界填空白
         viewport: list[list[tuple[str, int]]] = []
@@ -111,7 +123,8 @@ class MapRenderer:
                 y_min,
             )
 
-        return self._format_grid(viewport, x_offset=x_min, y_offset=y_min)
+        overlaps = self._build_overlap_map()
+        return self._format_grid(viewport, x_offset=x_min, y_offset=y_min, overlaps=overlaps)
 
     def _apply_fog_of_war(
         self,
@@ -148,7 +161,9 @@ class MapRenderer:
                     continue
 
                 # 觀察者自己的格子 → 永遠可見
-                if map_x == viewer.x and map_y == viewer.y:
+                gs = self._ms.manifest.grid_size_m
+                vgx, vgy = self._snap_to_grid(viewer.x, viewer.y, gs)
+                if map_x == vgx and map_y == vgy:
                     row.append(cell)
                     continue
 
@@ -169,7 +184,8 @@ class MapRenderer:
         return fog_grid
 
     def _is_blocking_cell(self, x: int, y: int) -> bool:
-        """檢查格子本身是否為阻擋物（用於迷霧判定中保留可見的牆壁）。"""
+        """檢查網格 cell 是否為阻擋物（用於迷霧判定中保留可見的牆壁）。"""
+        gs = self._ms.manifest.grid_size_m
         # 地形阻擋
         if (
             self._ms.terrain
@@ -180,16 +196,61 @@ class MapRenderer:
             return True
         # 靜態 Prop 阻擋
         for p in self._ms.manifest.props:
-            if p.x == x and p.y == y and p.is_blocking:
+            gx, gy = self._snap_to_grid(p.x, p.y, gs)
+            if gx == x and gy == y and p.is_blocking:
                 return True
         # 動態 Prop 阻擋
-        return any(p.x == x and p.y == y and p.is_blocking for p in self._ms.props)
+        for p in self._ms.props:
+            gx, gy = self._snap_to_grid(p.x, p.y, gs)
+            if gx == x and gy == y and p.is_blocking:
+                return True
+        return False
+
+    def describe_cell(self, gx: int, gy: int) -> list[str]:
+        """列出指定網格 cell 上的所有實體描述（方案 3：look 指令用）。
+
+        回傳可讀字串列表，例如 ['🧙 Hero (玩家)', '👹 Goblin (敵人)']。
+        """
+        gs = self._ms.manifest.grid_size_m
+        descriptions: list[str] = []
+
+        # 地形
+        if (
+            self._ms.terrain
+            and 0 <= gy < len(self._ms.terrain)
+            and 0 <= gx < len(self._ms.terrain[gy])
+        ):
+            tile = self._ms.terrain[gy][gx]
+            if tile.name != "floor":
+                descriptions.append(f"{tile.symbol} {tile.name}")
+
+        # Prop（manifest + 動態）
+        for p in [*self._ms.manifest.props, *self._ms.props]:
+            pgx, pgy = self._snap_to_grid(p.x, p.y, gs)
+            if pgx == gx and pgy == gy and not p.hidden:
+                descriptions.append(f"{p.symbol} {p.name or p.prop_type}")
+
+        # Actor
+        for a in self._ms.actors:
+            agx, agy = self._snap_to_grid(a.x, a.y, gs)
+            if agx == gx and agy == gy:
+                status = "💀" if not a.is_alive else ""
+                ctype = "玩家" if a.combatant_type == "character" else "敵人"
+                descriptions.append(f"{a.symbol} {a.name} ({ctype}){status}")
+
+        return descriptions
+
+    @staticmethod
+    def _snap_to_grid(x: float, y: float, grid_size: float) -> tuple[int, int]:
+        """公尺座標 → 網格 cell 座標。"""
+        return int(math.floor(x / grid_size)), int(math.floor(y / grid_size))
 
     def _build_layer_grid(self) -> list[list[tuple[str, int]]]:
         """建構含 z-index 的二維字元陣列 [y][x] = (symbol, z_index)。"""
         grid: list[list[tuple[str, int]]] = [
             [(".", Z_TERRAIN) for _ in range(self._w)] for _ in range(self._h)
         ]
+        gs = self._ms.manifest.grid_size_m
 
         # 圖層 0：地形
         if self._ms.terrain:
@@ -198,26 +259,48 @@ class MapRenderer:
                     tile = self._ms.terrain[y][x]
                     grid[y][x] = (tile.symbol, Z_TERRAIN)
 
-        # 圖層 10：manifest 靜態 Prop
+        # 圖層 10：manifest 靜態 Prop（snap float → grid）
         for p in self._ms.manifest.props:
-            if 0 <= p.x < self._w and 0 <= p.y < self._h and not p.hidden:
-                self._place(grid, p.x, p.y, p.symbol, Z_PROP)
+            gx, gy = self._snap_to_grid(p.x, p.y, gs)
+            if 0 <= gx < self._w and 0 <= gy < self._h and not p.hidden:
+                self._place(grid, gx, gy, p.symbol, Z_PROP)
 
-        # 圖層 10/30：動態 Prop（item 類型用 Z_ITEM）
+        # 圖層 10/30：動態 Prop
         for p in self._ms.props:
-            if 0 <= p.x < self._w and 0 <= p.y < self._h and not p.hidden:
+            gx, gy = self._snap_to_grid(p.x, p.y, gs)
+            if 0 <= gx < self._w and 0 <= gy < self._h and not p.hidden:
                 z = Z_ITEM if p.prop_type == "item" else Z_PROP
-                self._place(grid, p.x, p.y, p.symbol, z)
+                self._place(grid, gx, gy, p.symbol, z)
 
-        # 圖層 20/40：Actor（死亡降級為屍體）
+        # 圖層 20/40：Actor（snap float → grid）
         for a in self._ms.actors:
-            if 0 <= a.x < self._w and 0 <= a.y < self._h:
+            gx, gy = self._snap_to_grid(a.x, a.y, gs)
+            if 0 <= gx < self._w and 0 <= gy < self._h:
                 if a.is_alive:
-                    self._place(grid, a.x, a.y, a.symbol, Z_LIVING)
+                    self._place(grid, gx, gy, a.symbol, Z_LIVING)
                 else:
-                    self._place(grid, a.x, a.y, "💀", Z_CORPSE)
+                    self._place(grid, gx, gy, "💀", Z_CORPSE)
 
         return grid
+
+    def _build_overlap_map(self) -> set[tuple[int, int]]:
+        """找出有 2+ 個實體（Actor 或非地形 Prop）重疊的網格 cell。"""
+        gs = self._ms.manifest.grid_size_m
+        counts: dict[tuple[int, int], int] = {}
+
+        for p in [*self._ms.manifest.props, *self._ms.props]:
+            if p.hidden:
+                continue
+            key = self._snap_to_grid(p.x, p.y, gs)
+            if 0 <= key[0] < self._w and 0 <= key[1] < self._h:
+                counts[key] = counts.get(key, 0) + 1
+
+        for a in self._ms.actors:
+            key = self._snap_to_grid(a.x, a.y, gs)
+            if 0 <= key[0] < self._w and 0 <= key[1] < self._h:
+                counts[key] = counts.get(key, 0) + 1
+
+        return {k for k, v in counts.items() if v >= 2}
 
     @staticmethod
     def _place(
@@ -236,10 +319,13 @@ class MapRenderer:
         grid: list[list[tuple[str, int]]],
         x_offset: int,
         y_offset: int,
+        overlaps: set[tuple[int, int]] | None = None,
     ) -> str:
         """將 grid 格式化為帶座標軸的字串。
 
+        Y 軸標籤在左側，X 軸標籤在底部。
         從 y=最大值 往下印到 y=最小值（左下原點）。
+        overlaps 不為 None 時，重疊格用 Rich 背景色 [on dark_red] 標記。
         """
         actual_h = len(grid)
         actual_w = len(grid[0]) if grid else 0
@@ -250,16 +336,6 @@ class MapRenderer:
 
         lines: list[str] = []
 
-        # X 軸標籤（頂部）
-        x_header = " " * (y_label_width + 1)
-        x_labels: list[str] = []
-        for x in range(actual_w):
-            label = str(x + x_offset)
-            # 每格佔 2 字元寬（對齊全形字）
-            x_labels.append(label.rjust(2))
-        x_header += " ".join(x_labels)
-        lines.append(x_header)
-
         # 地圖本體（從上到下 = y 從大到小）
         for row_idx in range(actual_h - 1, -1, -1):
             y_label = str(row_idx + y_offset).rjust(y_label_width)
@@ -267,11 +343,23 @@ class MapRenderer:
             for x_idx in range(actual_w):
                 symbol = grid[row_idx][x_idx][0]
                 w = _char_width(symbol)
-                if w == 2:
-                    cells.append(symbol)
-                else:
-                    cells.append(f" {symbol}")
+                cell_str = symbol if w == 2 else f" {symbol}"
+
+                # 重疊標記（Rich markup）
+                if overlaps and (x_idx + x_offset, row_idx + y_offset) in overlaps:
+                    cell_str = f"[on dark_red]{cell_str}[/]"
+
+                cells.append(cell_str)
             line = f"{y_label} " + " ".join(cells)
             lines.append(line)
+
+        # X 軸標籤（底部）
+        x_header = " " * (y_label_width + 1)
+        x_labels: list[str] = []
+        for x in range(actual_w):
+            label = str(x + x_offset)
+            x_labels.append(label.rjust(2))
+        x_header += " ".join(x_labels)
+        lines.append(x_header)
 
         return "\n".join(lines)

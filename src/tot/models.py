@@ -7,11 +7,12 @@
 
 from __future__ import annotations
 
+import math
 from enum import StrEnum
 from typing import Literal
 from uuid import UUID, uuid4
 
-from pydantic import BaseModel, Field, computed_field
+from pydantic import BaseModel, Field, computed_field, field_validator
 
 # ---------------------------------------------------------------------------
 # 列舉型別
@@ -121,6 +122,27 @@ class Size(StrEnum):
     LARGE = "Large"
     HUGE = "Huge"
     GARGANTUAN = "Gargantuan"
+
+
+# 體型 → 碰撞半徑（公尺），D&D 5e 標準空間佔據的一半
+SIZE_RADIUS_M: dict[Size, float] = {
+    Size.TINY: 0.15,  # 0.3m 直徑
+    Size.SMALL: 0.375,  # 0.75m 直徑（半格）
+    Size.MEDIUM: 0.75,  # 1.5m 直徑（1 格）
+    Size.LARGE: 1.5,  # 3.0m 直徑（2 格）
+    Size.HUGE: 2.25,  # 4.5m 直徑（3 格）
+    Size.GARGANTUAN: 3.0,  # 6.0m 直徑（4 格）
+}
+
+# 體型序號，用於穿越規則比較（差 ≥ 2 級可穿越敵對）
+SIZE_ORDER: dict[Size, int] = {
+    Size.TINY: 0,
+    Size.SMALL: 1,
+    Size.MEDIUM: 2,
+    Size.LARGE: 3,
+    Size.HUGE: 4,
+    Size.GARGANTUAN: 5,
+}
 
 
 class CreatureType(StrEnum):
@@ -233,6 +255,15 @@ class SpellEffectType(StrEnum):
     UTILITY = "utility"  # 非戰鬥用途
 
 
+class AoeShape(StrEnum):
+    """AoE 形狀。"""
+
+    SPHERE = "sphere"  # 球形（2D 平面 = 圓形），如火球術
+    CONE = "cone"  # 錐形，如燃燒之手
+    LINE = "line"  # 線形，如閃電束
+    CUBE = "cube"  # 方形，如雷鳴波
+
+
 class Spell(BaseModel):
     name: str  # 中文名
     en_name: str = ""  # 英文名（可選，供查詢用）
@@ -265,6 +296,12 @@ class Spell(BaseModel):
     upcast_no_concentration_at: int | None = None  # 達到此環數時不需專注
     upcast_aoe_bonus: int = 0  # 每升一環增加的半徑（呎）
 
+    # AoE
+    aoe_shape: AoeShape | None = None  # None = 非 AoE 法術
+    aoe_radius_ft: int = 0  # 球形/圓形半徑（呎）
+    aoe_length_ft: int = 0  # 線形長度 / 錐形長度（呎）
+    aoe_width_ft: int = 0  # 線形寬度 / 立方邊長（呎）
+
     # 目標
     max_targets: int = 1
 
@@ -293,7 +330,7 @@ class Weapon(BaseModel):
     damage_dice: str  # 例如 "1d8"
     damage_type: DamageType
     properties: list[WeaponProperty] = Field(default_factory=list)
-    range_normal: int = 1  # 公尺；1 = 近戰
+    range_normal: int = 1  # 格數；1 = 近戰一格，2 = 長觸及兩格
     range_long: int | None = None  # 遠程/投擲武器的長射程
     is_martial: bool = False
     mastery: WeaponMastery | None = None  # 2024 武器專精
@@ -538,21 +575,56 @@ CombatantRef = tuple[Literal["character", "monster"], UUID]
 
 
 class Position(BaseModel):
-    """格子座標（左下為原點，X 向右、Y 向上）。"""
+    """公尺座標（左下為原點，X 向右、Y 向上）。
 
-    x: int = 0
-    y: int = 0
+    單位為公尺，精度到小數第二位（cm）。
+    整數輸入由 Pydantic 自動轉為 float，地圖 JSON 格式不用改。
+    """
+
+    x: float = 0.0
+    y: float = 0.0
+
+    @field_validator("x", "y", mode="before")
+    @classmethod
+    def _round_to_cm(cls, v: float | int) -> float:
+        """四捨五入到小數第二位（cm 精度）。"""
+        return round(float(v), 2)
+
+    def to_grid(self, grid_size: float = 1.5) -> tuple[int, int]:
+        """轉換到最近的網格 cell 座標。"""
+        return (int(math.floor(self.x / grid_size)), int(math.floor(self.y / grid_size)))
+
+    @classmethod
+    def from_grid(cls, gx: int, gy: int, grid_size: float = 1.5) -> Position:
+        """從網格座標轉為公尺座標（格子中心）。"""
+        return cls(x=gx * grid_size + grid_size / 2, y=gy * grid_size + grid_size / 2)
+
+    def distance_to(self, other: Position) -> float:
+        """Euclidean 距離（公尺）。"""
+        return math.sqrt((self.x - other.x) ** 2 + (self.y - other.y) ** 2)
 
 
 class Entity(BaseModel):
-    """地圖上的實體基底。"""
+    """地圖上的實體基底。
+
+    座標單位為公尺（float），整數輸入自動轉 float。
+    """
 
     id: str
-    x: int
-    y: int
+    x: float
+    y: float
     symbol: str = "?"  # ASCII 單字元
     is_blocking: bool = False
     name: str = ""
+
+    @field_validator("x", "y", mode="before")
+    @classmethod
+    def _round_to_cm(cls, v: float | int) -> float:
+        return round(float(v), 2)
+
+    def grid_pos(self, grid_size: float = 1.5) -> tuple[int, int]:
+        """取得所在網格座標。"""
+        return (int(math.floor(self.x / grid_size)), int(math.floor(self.y / grid_size)))
 
 
 class Actor(Entity):
@@ -644,6 +716,32 @@ class MapState(BaseModel):
     terrain: list[list[TerrainTile]] = Field(default_factory=list)  # [y][x]，y=0 為最底列
     actors: list[Actor] = Field(default_factory=list)
     props: list[Prop] = Field(default_factory=list)  # 執行期動態追加的物件
+
+
+class MoveEvent(BaseModel):
+    """移動產生的事件（供上層處理）。"""
+
+    event_type: str  # "opportunity_attack" | "difficult_terrain"
+    trigger_actor_id: str = ""  # 觸發 OA 的敵方 Actor id
+    message: str = ""
+
+
+class MoveResult(BaseModel):
+    """move_entity 的回傳結果。"""
+
+    success: bool
+    speed_remaining: float
+    events: list[MoveEvent] = Field(default_factory=list)
+
+
+class AoePreview(BaseModel):
+    """AoE 瞄準預覽結果。"""
+
+    center: Position
+    hit_enemies: list[str] = Field(default_factory=list)  # Actor.id 列表
+    hit_allies: list[str] = Field(default_factory=list)  # 友軍誤傷 Actor.id
+    all_hit_names: list[str] = Field(default_factory=list)  # 可讀名稱列表
+    message: str = ""  # 預覽摘要
 
 
 class TurnState(BaseModel):

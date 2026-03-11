@@ -29,6 +29,7 @@ from tot.gremlins.bone_engine.combat import (
 from tot.gremlins.bone_engine.conditions import can_take_action, tick_conditions_end_of_turn
 from tot.gremlins.bone_engine.spatial import (
     bfs_path_to_range,
+    distance,
     get_actor_position,
     grid_distance,
     is_valid_position,
@@ -44,7 +45,6 @@ from tot.models import (
     CombatState,
     Condition,
     DamageType,
-    InitiativeEntry,
     MapState,
     Monster,
     MonsterAction,
@@ -60,10 +60,18 @@ from tot.visuals.map_renderer import MapRenderer
 # ---------------------------------------------------------------------------
 
 DAMAGE_TYPE_ZH: dict[str, str] = {
-    "Acid": "強酸", "Bludgeoning": "鈍擊", "Cold": "寒冷",
-    "Fire": "火焰", "Force": "力場", "Lightning": "閃電",
-    "Necrotic": "黯蝕", "Piercing": "穿刺", "Poison": "毒素",
-    "Psychic": "心靈", "Radiant": "光輝", "Slashing": "揮砍",
+    "Acid": "強酸",
+    "Bludgeoning": "鈍擊",
+    "Cold": "寒冷",
+    "Fire": "火焰",
+    "Force": "力場",
+    "Lightning": "閃電",
+    "Necrotic": "黯蝕",
+    "Piercing": "穿刺",
+    "Poison": "毒素",
+    "Psychic": "心靈",
+    "Radiant": "光輝",
+    "Slashing": "揮砍",
     "Thunder": "雷鳴",
 }
 
@@ -163,6 +171,8 @@ class CombatTUI(App):
         self._pending_auto_type: str = ""  # "weapon" | "spell"
         # 戰鬥 log 檔案
         self._log_file = self._init_log_file()
+        # 快照追蹤：避免同一輪重複記錄
+        self._last_snapshot_round: int = 0
 
     @staticmethod
     def _init_log_file() -> Path:
@@ -306,6 +316,61 @@ class CombatTUI(App):
             if combatant:
                 self._log(f"  {self._display_name(combatant)}: {entry.initiative}")
 
+    # ----- 每輪快照 -----
+
+    def _log_round_snapshot(self) -> None:
+        """每輪開始時記錄地圖快照 + 狀態面板到 log 檔案。
+
+        同一輪只記錄一次（靠 _last_snapshot_round 追蹤）。
+        """
+        if not self.combat_state or not self.map_state:
+            return
+        rnd = self.combat_state.round_number
+        if rnd <= self._last_snapshot_round:
+            return
+        self._last_snapshot_round = rnd
+
+        self._log_map_snapshot()
+        self._log_status_snapshot()
+
+    def _log_map_snapshot(self) -> None:
+        """用 MapRenderer 產生 ASCII 地圖，strip markup 後寫入 log 檔。"""
+        if not self.map_state:
+            return
+        rendered = MapRenderer(self.map_state).render_full()
+        with self._log_file.open("a", encoding="utf-8") as f:
+            f.write("\n【地圖快照】\n")
+            f.write(rendered + "\n")
+
+    def _log_status_snapshot(self) -> None:
+        """記錄所有角色的 HP、AC、位置、狀態效果到 log 檔。"""
+        if not self.map_state or not self.combat_state:
+            return
+        gs = self.map_state.manifest.grid_size_m
+        lines = ["\n【狀態面板】"]
+        all_combatants: list[Character | Monster] = [*self.characters, *self.monsters]
+        for combatant in all_combatants:
+            name = self._display_name(combatant)
+            hp = f"HP: {combatant.hp_current}/{combatant.hp_max}"
+            ac = f"AC: {combatant.ac}"
+            # 位置
+            actor = self._get_actor(combatant.id)
+            pos_str = ""
+            if actor:
+                import math
+
+                gx = int(math.floor(actor.x / gs))
+                gy = int(math.floor(actor.y / gs))
+                pos_str = f"  位置: ({gx},{gy})"
+            # 狀態
+            conds = [c.condition.value for c in combatant.conditions]
+            cond_str = f"  [{', '.join(conds)}]" if conds else ""
+            # 存活
+            alive_str = "  [倒下]" if not combatant.is_alive else ""
+            lines.append(f"  {name:<10s} {hp}  {ac}{pos_str}{cond_str}{alive_str}")
+        with self._log_file.open("a", encoding="utf-8") as f:
+            f.write("\n".join(lines) + "\n")
+
     # ----- 選單顯示方法 -----
 
     def _show_action_choices(self) -> None:
@@ -363,8 +428,7 @@ class CombatTUI(App):
                     if attacker_pos:
                         tgt_pos = get_actor_position(m[0].id, self.map_state)
                         if tgt_pos:
-                            gs = self.map_state.manifest.grid_size_m
-                            dist = grid_distance(attacker_pos, tgt_pos, gs)
+                            dist = distance(attacker_pos, tgt_pos)
                             dist_str = f" ({dist:.1f}m)"
             self._log(f"  [cyan]{i}.[/] {emoji}{name}{dist_str}")
         self._log("  [dim]0. ← 返回[/]")
@@ -430,7 +494,7 @@ class CombatTUI(App):
             if attacker_pos and self.map_state:
                 tgt_pos = get_actor_position(tgt.id, self.map_state)
                 if tgt_pos:
-                    dist = grid_distance(attacker_pos, tgt_pos, self.map_state.manifest.grid_size_m)
+                    dist = distance(attacker_pos, tgt_pos)
                     dist_str = f" ({dist:.1f}m)"
             self._log(f"  [cyan]{i}.[/] {emoji}{name}{dist_str}")
         self._log("  [dim]0. ← 返回[/]")
@@ -482,19 +546,23 @@ class CombatTUI(App):
             await self._handle_confirm_move_attack(cmd_lower, current)
             return
 
-        # 3. move_input phase：解析座標 x y 或方向
+        # 3. move_input phase：解析格子座標 x y 或方向
         if self._menu_phase == "move_input":
+            gs = self.map_state.manifest.grid_size_m if self.map_state else 1.5
             if cmd_lower in self._DIRECTION_MAP:
-                dx, dy = self._DIRECTION_MAP[cmd_lower]
+                dgx, dgy = self._DIRECTION_MAP[cmd_lower]
                 actor = self._get_actor(current.id)
                 if actor:
-                    await self._player_move(current, actor.x + dx, actor.y + dy)
+                    cur_gx, cur_gy = self._pos_to_grid(actor.x, actor.y)
+                    tgt = Position.from_grid(cur_gx + dgx, cur_gy + dgy, gs)
+                    await self._player_move(current, tgt.x, tgt.y)
                 return
             parts = cmd.split()
             if len(parts) == 2:
                 try:
-                    x, y = int(parts[0]), int(parts[1])
-                    await self._player_move(current, x, y)
+                    gx, gy = int(parts[0]), int(parts[1])
+                    tgt = Position.from_grid(gx, gy, gs)
+                    await self._player_move(current, tgt.x, tgt.y)
                     return
                 except ValueError:
                     pass
@@ -547,17 +615,38 @@ class CombatTUI(App):
             return True
         return False
 
-    # 方向 → (dx, dy) 對照表
+    # 方向 → (dgx, dgy) 對照表（grid 方向偏移）
     _DIRECTION_MAP: dict[str, tuple[int, int]] = {
-        "n": (0, 1), "north": (0, 1), "上": (0, 1),
-        "s": (0, -1), "south": (0, -1), "下": (0, -1),
-        "e": (1, 0), "east": (1, 0), "右": (1, 0),
-        "w": (-1, 0), "west": (-1, 0), "左": (-1, 0),
-        "ne": (1, 1), "northeast": (1, 1), "右上": (1, 1),
-        "nw": (-1, 1), "northwest": (-1, 1), "左上": (-1, 1),
-        "se": (1, -1), "southeast": (1, -1), "右下": (1, -1),
-        "sw": (-1, -1), "southwest": (-1, -1), "左下": (-1, -1),
+        "n": (0, 1),
+        "north": (0, 1),
+        "上": (0, 1),
+        "s": (0, -1),
+        "south": (0, -1),
+        "下": (0, -1),
+        "e": (1, 0),
+        "east": (1, 0),
+        "右": (1, 0),
+        "w": (-1, 0),
+        "west": (-1, 0),
+        "左": (-1, 0),
+        "ne": (1, 1),
+        "northeast": (1, 1),
+        "右上": (1, 1),
+        "nw": (-1, 1),
+        "northwest": (-1, 1),
+        "左上": (-1, 1),
+        "se": (1, -1),
+        "southeast": (1, -1),
+        "右下": (1, -1),
+        "sw": (-1, -1),
+        "southwest": (-1, -1),
+        "左下": (-1, -1),
     }
+
+    def _pos_to_grid(self, x: float, y: float) -> tuple[int, int]:
+        """公尺座標轉 grid 座標（顯示用）。"""
+        gs = self.map_state.manifest.grid_size_m if self.map_state else 1.5
+        return Position(x=x, y=y).to_grid(gs)
 
     async def _handle_action_command(self, cmd: str, current: Character) -> bool:
         """處理快捷動作指令。回傳 True 表示已處理。"""
@@ -571,17 +660,21 @@ class CombatTUI(App):
             return True
         if cmd.startswith("move "):
             arg = cmd[5:].strip()
-            # 方向移動：move n / move 上
+            gs = self.map_state.manifest.grid_size_m if self.map_state else 1.5
+            # 方向移動：move n / move 上（移動一格）
             if arg.lower() in self._DIRECTION_MAP:
-                dx, dy = self._DIRECTION_MAP[arg.lower()]
+                dgx, dgy = self._DIRECTION_MAP[arg.lower()]
                 actor = self._get_actor(current.id)
                 if actor:
-                    await self._player_move(current, actor.x + dx, actor.y + dy)
+                    cur_gx, cur_gy = self._pos_to_grid(actor.x, actor.y)
+                    tgt = Position.from_grid(cur_gx + dgx, cur_gy + dgy, gs)
+                    await self._player_move(current, tgt.x, tgt.y)
                 return True
-            # 座標移動：move x y
+            # 座標移動：move x y（grid 座標）
             parts = arg.split()
             if len(parts) == 2 and parts[0].isdigit() and parts[1].isdigit():
-                await self._player_move(current, int(parts[0]), int(parts[1]))
+                tgt = Position.from_grid(int(parts[0]), int(parts[1]), gs)
+                await self._player_move(current, tgt.x, tgt.y)
             else:
                 self._log("[red]格式錯誤，請用：move x y 或 move 方向（n/s/e/w/ne/nw/se/sw）[/]")
             return True
@@ -624,10 +717,12 @@ class CombatTUI(App):
             remaining = self.combat_state.turn_state.movement_remaining if self.combat_state else 0
             self._log(f"\n[bold white]移動（剩餘 {remaining:.1f}m）[/]")
             # OA 警告：在敵方觸及範圍內且未撤離
-            if not current.has_condition(Condition.DISENGAGING) and self._is_in_enemy_reach(current):
+            if not current.has_condition(Condition.DISENGAGING) and self._is_in_enemy_reach(
+                current
+            ):
                 self._log("  [bold yellow]⚠️  你在敵方觸及範圍內！離開將觸發藉機攻擊。[/]")
                 self._log("  [yellow]提示：使用「撤離」動作可安全移動。[/]")
-            self._log("  輸入目標座標 x y（例如 5 3）或方向（n/s/e/w/ne/nw/se/sw）")
+            self._log("  輸入目標格子座標 x y（例如 5 3）或方向（n/s/e/w/ne/nw/se/sw）")
             self._log("  [dim]0 — 返回[/]")
             self._menu_phase = "move_input"
         elif key == "attack":
@@ -708,39 +803,53 @@ class CombatTUI(App):
     # ----- 玩家動作 -----
 
     def _step_move_to(
-        self, mover: Character | Monster, actor: Actor, tx: int, ty: int,
+        self,
+        mover: Character | Monster,
+        actor: Actor,
+        tx: float,
+        ty: float,
     ) -> bool:
-        """逐步移動角色到目標位置，每步檢查藉機攻擊。回傳 True 表示角色倒下。"""
+        """逐步移動角色到目標位置（公尺座標），每步用 move_entity。回傳 True 表示角色倒下。"""
         if not self.combat_state or not self.map_state:
             return False
         gs = self.map_state.manifest.grid_size_m
         start_x, start_y = actor.x, actor.y
-        while actor.x != tx or actor.y != ty:
+        tgt_gx, tgt_gy = Position(x=tx, y=ty).to_grid(gs)
+
+        while True:
+            cur_gx, cur_gy = Position(x=actor.x, y=actor.y).to_grid(gs)
+            if cur_gx == tgt_gx and cur_gy == tgt_gy:
+                break
+            speed_left = self.combat_state.turn_state.movement_remaining
+            if speed_left < gs:
+                break
+            dgx = 0 if tgt_gx == cur_gx else (1 if tgt_gx > cur_gx else -1)
+            dgy = 0 if tgt_gy == cur_gy else (1 if tgt_gy > cur_gy else -1)
             old_x, old_y = actor.x, actor.y
-            dx = 0 if tx == actor.x else (1 if tx > actor.x else -1)
-            dy = 0 if ty == actor.y else (1 if ty > actor.y else -1)
-            actor.x += dx
-            actor.y += dy
-            self.combat_state.turn_state.movement_remaining -= gs
+            res = move_entity(actor, dgx, dgy, self.map_state, speed_left)
+            if not res.success:
+                break
+            self.combat_state.turn_state.movement_remaining = res.speed_remaining
             if self._check_oa_for_step(mover, old_x, old_y, actor.x, actor.y):
-                total = max(abs(actor.x - start_x), abs(actor.y - start_y)) * gs
+                gx, gy = self._pos_to_grid(actor.x, actor.y)
                 self._log(
-                    f"[cyan]🚶 {self._display_name(mover)} 移動到 ({actor.x}, {actor.y})"
-                    f"（消耗 {total:.1f}m，剩餘 "
+                    f"[cyan]🚶 {self._display_name(mover)} 移動到 ({gx}, {gy})"
+                    f"（剩餘 "
                     f"{self.combat_state.turn_state.movement_remaining:.1f}m）[/]"
                 )
                 return True
-        total = max(abs(actor.x - start_x), abs(actor.y - start_y)) * gs
-        if total > 0:
+
+        gx, gy = self._pos_to_grid(actor.x, actor.y)
+        if actor.x != start_x or actor.y != start_y:
             self._log(
-                f"[cyan]🚶 {self._display_name(mover)} 移動到 ({actor.x}, {actor.y})"
-                f"（消耗 {total:.1f}m，剩餘 "
+                f"[cyan]🚶 {self._display_name(mover)} 移動到 ({gx}, {gy})"
+                f"（剩餘 "
                 f"{self.combat_state.turn_state.movement_remaining:.1f}m）[/]"
             )
         return False
 
-    async def _player_move(self, character: Character, x: int, y: int) -> None:
-        """玩家移動到目標座標。"""
+    async def _player_move(self, character: Character, x: float, y: float) -> None:
+        """玩家移動到目標座標（公尺）。"""
         if not self.combat_state or not self.map_state:
             self._log("[yellow]無法移動。[/]")
             return
@@ -750,14 +859,16 @@ class CombatTUI(App):
             self._log("[red]找不到角色位置。[/]")
             return
 
-        grid_size = self.map_state.manifest.grid_size_m
+        gs = self.map_state.manifest.grid_size_m
         remaining = self.combat_state.turn_state.movement_remaining
 
-        # 計算 Chebyshev 距離
-        dx = abs(x - actor.x)
-        dy = abs(y - actor.y)
-        grids = max(dx, dy)
-        cost = grids * grid_size
+        # 計算 Chebyshev 距離（以 grid 為單位）
+        tgt_gx, tgt_gy = Position(x=x, y=y).to_grid(gs)
+        cur_gx, cur_gy = self._pos_to_grid(actor.x, actor.y)
+        dgx = abs(tgt_gx - cur_gx)
+        dgy = abs(tgt_gy - cur_gy)
+        grids = max(dgx, dgy)
+        cost = grids * gs
 
         if cost == 0:
             self._log("[yellow]你已經在這個位置了。[/]")
@@ -765,20 +876,18 @@ class CombatTUI(App):
             return
 
         if cost > remaining:
-            self._log(
-                f"[red]移動距離不足！需要 {cost:.1f}m，剩餘 {remaining:.1f}m[/]"
-            )
+            self._log(f"[red]移動距離不足！需要 {cost:.1f}m，剩餘 {remaining:.1f}m[/]")
             self._show_action_choices()
             return
 
         # 檢查目標可通行（暫時解除自身阻擋）
         old_blocking = actor.is_blocking
         actor.is_blocking = False
-        valid = is_valid_position(x, y, self.map_state)
+        valid = is_valid_position(tgt_gx, tgt_gy, self.map_state)
         actor.is_blocking = old_blocking
 
         if not valid:
-            self._log(f"[red]目標位置 ({x}, {y}) 不可通行！[/]")
+            self._log(f"[red]目標位置 ({tgt_gx}, {tgt_gy}) 不可通行！[/]")
             self._show_action_choices()
             return
 
@@ -806,23 +915,32 @@ class CombatTUI(App):
             tgt_pos = get_actor_position(target.id, self.map_state)
             if atk_pos and tgt_pos:
                 gs = self.map_state.manifest.grid_size_m
-                dist = grid_distance(atk_pos, tgt_pos, gs)
+                # 近戰用 Chebyshev，遠程用 Euclidean
+                dist_euclidean = distance(atk_pos, tgt_pos)
+                dist_chebyshev = grid_distance(atk_pos, tgt_pos, gs)
                 if attacker.weapons:
                     weapon = attacker.weapons[0]
+                    check_dist = dist_euclidean if weapon.is_ranged else dist_chebyshev
                     err = validate_attack_preconditions(
-                        attacker, weapon, self.combat_state,
-                        distance=dist, grid_size=gs,
+                        attacker,
+                        weapon,
+                        self.combat_state,
+                        distance=check_dist,
+                        grid_size=gs,
                     )
                     if err and err != "行動已使用":
                         # 嘗試自動移動建議
                         reach = weapon.range_normal
                         sim = self._simulate_move_to_range(
-                            attacker.id, target.id, reach,
+                            attacker.id,
+                            target.id,
+                            reach,
                         )
                         if sim:
                             mx, my, mcost = sim
+                            mgx, mgy = self._pos_to_grid(mx, my)
                             self._log(
-                                f"[yellow]距離不足！移動到 ({mx}, {my}) "
+                                f"[yellow]距離不足！移動到 ({mgx}, {mgy}) "
                                 f"後攻擊？消耗 {mcost:.1f}m 移動（y/n）[/]"
                             )
                             self._pending_move_pos = Position(x=mx, y=my)
@@ -830,7 +948,7 @@ class CombatTUI(App):
                             self._pending_auto_type = "weapon"
                             self._menu_phase = "confirm_move_attack"
                             return
-                        self._log(f"[red]{err}（距離 {dist:.1f}m，移動距離不足以接近）[/]")
+                        self._log(f"[red]{err}（距離 {check_dist:.1f}m，移動距離不足以接近）[/]")
                         self._show_action_choices()
                         return
 
@@ -865,6 +983,7 @@ class CombatTUI(App):
         actor = self._get_actor(combatant.id)
         if not actor:
             return False
+        gs = self.map_state.manifest.grid_size_m
         for other in self.map_state.actors:
             if other.combatant_id == combatant.id or not other.is_alive:
                 continue
@@ -876,14 +995,15 @@ class CombatTUI(App):
                 continue
             if isinstance(combatant, Monster) and isinstance(enemy, Monster):
                 continue
-            # 取得觸及範圍
+            # 取得觸及範圍（格數 → 公尺）
             reach = 1
             if isinstance(enemy, Character) and enemy.weapons:
                 reach = enemy.weapons[0].range_normal
             elif isinstance(enemy, Monster) and enemy.actions:
                 reach = enemy.actions[0].reach
-            dist = max(abs(other.x - actor.x), abs(other.y - actor.y))
-            if dist <= reach:
+            reach_m = reach * gs
+            dist = grid_distance(Position(x=other.x, y=other.y), Position(x=actor.x, y=actor.y), gs)
+            if dist <= reach_m:
                 return True
         return False
 
@@ -917,19 +1037,22 @@ class CombatTUI(App):
             tgt_pos = get_actor_position(target.id, self.map_state)
             if caster_pos and tgt_pos:
                 gs = self.map_state.manifest.grid_size_m
-                dist = grid_distance(caster_pos, tgt_pos, gs)
+                dist = distance(caster_pos, tgt_pos)
                 range_err = validate_spell_range(spell, dist, gs)
                 if range_err:
                     # 嘗試自動移動建議
                     range_m = parse_spell_range_meters(spell.range, gs)
                     range_grids = max(1, int(range_m / gs)) if range_m else 1
                     sim = self._simulate_move_to_range(
-                        caster.id, target.id, range_grids,
+                        caster.id,
+                        target.id,
+                        range_grids,
                     )
                     if sim:
                         mx, my, mcost = sim
+                        mgx, mgy = self._pos_to_grid(mx, my)
                         self._log(
-                            f"[yellow]法術射程不足！移動到 ({mx}, {my}) "
+                            f"[yellow]法術射程不足！移動到 ({mgx}, {mgy}) "
                             f"後施放？消耗 {mcost:.1f}m 移動（y/n）[/]"
                         )
                         self._pending_move_pos = Position(x=mx, y=my)
@@ -1050,10 +1173,10 @@ class CombatTUI(App):
     def _check_oa_for_step(
         self,
         mover: Character | Monster,
-        old_x: int,
-        old_y: int,
-        new_x: int,
-        new_y: int,
+        old_x: float,
+        old_y: float,
+        new_x: float,
+        new_y: float,
     ) -> bool:
         """檢查移動一步時是否觸發藉機攻擊。回傳 True 表示 mover 倒下。"""
         if not self.combat_state or not self.map_state:
@@ -1062,6 +1185,8 @@ class CombatTUI(App):
         # 撤離動作：不觸發藉機攻擊
         if mover.has_condition(Condition.DISENGAGING):
             return False
+
+        gs = self.map_state.manifest.grid_size_m
 
         for entry in self.combat_state.initiative_order:
             enemy = self._combatant_map.get(entry.combatant_id)
@@ -1083,14 +1208,15 @@ class CombatTUI(App):
                 reach = enemy.weapons[0].range_normal
             elif isinstance(enemy, Monster) and enemy.actions:
                 reach = enemy.actions[0].reach
+            reach_m = reach * gs
+            enemy_pos = Position(x=enemy_actor.x, y=enemy_actor.y)
 
-            # 移動前在觸及範圍內？
-            old_dist = max(abs(enemy_actor.x - old_x), abs(enemy_actor.y - old_y))
-            if old_dist > reach:
+            # 近戰觸及用 Chebyshev 距離（D&D 5e 格子規則：對角線 = 1 格）
+            old_dist = grid_distance(Position(x=old_x, y=old_y), enemy_pos, gs)
+            if old_dist > reach_m:
                 continue
-            # 移動後仍在觸及範圍？→ 不觸發
-            new_dist = max(abs(enemy_actor.x - new_x), abs(enemy_actor.y - new_y))
-            if new_dist <= reach:
+            new_dist = grid_distance(Position(x=new_x, y=new_y), enemy_pos, gs)
+            if new_dist <= reach_m:
                 continue
 
             # 建立武器
@@ -1137,15 +1263,10 @@ class CombatTUI(App):
                     f"（HP: {mover.hp_current}/{mover.hp_max}）[/]"
                 )
                 if not mover.is_alive:
-                    self._log(
-                        f"  [bold red]☠️  {mover_name} 被藉機攻擊擊倒！[/]"
-                    )
+                    self._log(f"  [bold red]☠️  {mover_name} 被藉機攻擊擊倒！[/]")
                     return True
             else:
-                self._log(
-                    f"[dim]⚡ 藉機攻擊！{enemy_name} 攻擊離開的 "
-                    f"{mover_name} — 未中[/]"
-                )
+                self._log(f"[dim]⚡ 藉機攻擊！{enemy_name} 攻擊離開的 {mover_name} — 未中[/]")
 
         return False
 
@@ -1156,8 +1277,8 @@ class CombatTUI(App):
         attacker_id: UUID,
         target_id: UUID,
         range_grids: int,
-    ) -> tuple[int, int, float] | None:
-        """模擬 BFS 移動到攻擊/法術範圍。回傳 (x, y, 移動消耗) 或 None。"""
+    ) -> tuple[float, float, float] | None:
+        """模擬 BFS 移動到攻擊/法術範圍。回傳 (x_m, y_m, 移動消耗) 或 None。"""
         if not self.map_state or not self.combat_state:
             return None
 
@@ -1203,7 +1324,9 @@ class CombatTUI(App):
         self._pending_auto_type = ""
 
     async def _handle_confirm_move_attack(
-        self, cmd: str, current: Character,
+        self,
+        cmd: str,
+        current: Character,
     ) -> None:
         """處理自動移動確認。"""
         if cmd in ("y", "yes", "是"):
@@ -1246,9 +1369,7 @@ class CombatTUI(App):
         """判斷是否為 NPC（怪物或 AI 角色）回合。"""
         if isinstance(combatant, Monster):
             return True
-        if isinstance(combatant, Character) and combatant.is_ai_controlled:
-            return True
-        return False
+        return isinstance(combatant, Character) and combatant.is_ai_controlled
 
     async def _start_next_turn(self) -> None:
         """統一入口：判斷當前回合是 PC、AI 隊友還是怪物。"""
@@ -1344,7 +1465,7 @@ class CombatTUI(App):
         if not tgt_pos:
             return float("inf")
 
-        # 已在攻擊範圍內
+        # 已在攻擊範圍內（近戰用 Chebyshev）
         cur_pos = Position(x=actor.x, y=actor.y)
         if grid_distance(cur_pos, tgt_pos, gs) <= reach * gs:
             return grid_distance(cur_pos, tgt_pos, gs)
@@ -1387,12 +1508,15 @@ class CombatTUI(App):
                 dx = 0 if tgt_pos.x == actor.x else (1 if tgt_pos.x > actor.x else -1)
                 dy = 0 if tgt_pos.y == actor.y else (1 if tgt_pos.y > actor.y else -1)
                 old_x, old_y = actor.x, actor.y
-                ok, speed_left = move_entity(actor, dx, dy, self.map_state, speed_left)
+                res = move_entity(actor, dx, dy, self.map_state, speed_left)
+                ok, speed_left = res.success, res.speed_remaining
                 if not ok:
                     if dx != 0:
-                        ok, speed_left = move_entity(actor, dx, 0, self.map_state, speed_left)
+                        res = move_entity(actor, dx, 0, self.map_state, speed_left)
+                        ok, speed_left = res.success, res.speed_remaining
                     if not ok and dy != 0:
-                        ok, speed_left = move_entity(actor, 0, dy, self.map_state, speed_left)
+                        res = move_entity(actor, 0, dy, self.map_state, speed_left)
+                        ok, speed_left = res.success, res.speed_remaining
                     if not ok:
                         break
                 if mover and self._check_oa_for_step(mover, old_x, old_y, actor.x, actor.y):
@@ -1417,6 +1541,7 @@ class CombatTUI(App):
             return
 
         self._log(f"\n[bold magenta]🗡️  {self._display_name(monster)} 的回合[/]")
+        self._log_round_snapshot()
 
         # 設定怪物移動距離
         if self.combat_state:
@@ -1436,7 +1561,7 @@ class CombatTUI(App):
             for pc in alive_pcs:
                 pc_pos = get_actor_position(pc.id, self.map_state)
                 if pc_pos:
-                    d = grid_distance(mon_pos, pc_pos, self.map_state.manifest.grid_size_m)
+                    d = distance(mon_pos, pc_pos)
                     if d < best_dist:
                         best_dist = d
                         target = pc
@@ -1450,15 +1575,19 @@ class CombatTUI(App):
         if mon_actor and self.map_state and self.combat_state:
             old_x, old_y = mon_actor.x, mon_actor.y
             best_dist = self._greedy_move_toward(
-                mon_actor, target.id, reach_grids, mover=monster,
+                mon_actor,
+                target.id,
+                reach_grids,
+                mover=monster,
             )
             if not monster.is_alive:
                 self._refresh_all()
                 return
             if mon_actor.x != old_x or mon_actor.y != old_y:
+                mgx, mgy = self._pos_to_grid(mon_actor.x, mon_actor.y)
                 self._log(
                     f"  [dim]{self._display_name(monster)} 移動到 "
-                    f"({mon_actor.x}, {mon_actor.y})（距離 {target.name}: {best_dist:.1f}m）[/]"
+                    f"({mgx}, {mgy})（距離 {target.name}: {best_dist:.1f}m）[/]"
                 )
 
         # 距離檢查
@@ -1468,10 +1597,7 @@ class CombatTUI(App):
             if best_dist > reach_grids * gs:
                 in_range = False
                 name = self._display_name(monster)
-                self._log(
-                    f"  [dim]{name} 無法接近 {target.name}"
-                    f"（距離 {best_dist:.1f}m）[/]"
-                )
+                self._log(f"  [dim]{name} 無法接近 {target.name}（距離 {best_dist:.1f}m）[/]")
 
         if in_range:
             self._execute_attack(monster, target)
@@ -1490,6 +1616,7 @@ class CombatTUI(App):
             return
 
         self._log(f"\n[bold blue]🤖 {char.name}（AI）的回合[/]")
+        self._log_round_snapshot()
 
         if self.combat_state:
             self.combat_state.turn_state.movement_remaining = float(char.speed)
@@ -1517,7 +1644,7 @@ class CombatTUI(App):
         for enemy in alive_enemies:
             enemy_pos = get_actor_position(enemy.id, self.map_state)
             if enemy_pos:
-                d = grid_distance(char_pos, enemy_pos, self.map_state.manifest.grid_size_m)
+                d = distance(char_pos, enemy_pos)
                 if d < best_dist:
                     best_dist = d
                     target = enemy
@@ -1531,14 +1658,18 @@ class CombatTUI(App):
         if self.combat_state:
             old_x, old_y = char_actor.x, char_actor.y
             best_dist = self._greedy_move_toward(
-                char_actor, target.id, reach, mover=char,
+                char_actor,
+                target.id,
+                reach,
+                mover=char,
             )
             if not char.is_alive:
                 self._refresh_all()
                 return
             if char_actor.x != old_x or char_actor.y != old_y:
+                cgx, cgy = self._pos_to_grid(char_actor.x, char_actor.y)
                 self._log(
-                    f"  [dim]{char.name} 移動到 ({char_actor.x}, {char_actor.y})"
+                    f"  [dim]{char.name} 移動到 ({cgx}, {cgy})"
                     f"（距離 {self._display_name(target)}: {best_dist:.1f}m）[/]"
                 )
 
@@ -1578,9 +1709,9 @@ class CombatTUI(App):
 
         # 找受傷隊友
         wounded = [
-            c for c in self.characters
-            if c.is_alive and c.hp_current > 0
-            and c.hp_current < c.hp_max * 0.5
+            c
+            for c in self.characters
+            if c.is_alive and c.hp_current > 0 and c.hp_current < c.hp_max * 0.5
         ]
         if not wounded:
             return False
@@ -1611,7 +1742,7 @@ class CombatTUI(App):
                 tgt_pos = get_actor_position(target.id, self.map_state)
                 if caster_pos and tgt_pos:
                     gs = self.map_state.manifest.grid_size_m
-                    dist = grid_distance(caster_pos, tgt_pos, gs)
+                    dist = distance(caster_pos, tgt_pos)
                     range_err = validate_spell_range(spell, dist, gs)
                     if range_err:
                         continue
@@ -1709,7 +1840,7 @@ class CombatTUI(App):
             tgt_pos = get_actor_position(enemy.id, self.map_state)
             if not tgt_pos:
                 continue
-            dist = grid_distance(caster_pos, tgt_pos, gs)
+            dist = distance(caster_pos, tgt_pos)
             range_err = validate_spell_range(spell, dist, gs)
             if not range_err:
                 return enemy
@@ -1727,12 +1858,19 @@ class CombatTUI(App):
         if not self.combat_state:
             return
 
+        # 0 HP 或無力化 → 自動跳過回合
+        if not current.is_alive or not can_take_action(current):
+            self._log(f"\n[dim]{current.name} 倒下了，無法行動。[/]")
+            await self._end_current_turn()
+            return
+
         # 回合開始設定移動距離
         self.combat_state.turn_state.movement_remaining = float(current.speed)
 
         self._log(
             f"\n[bold white]⚔️  第 {self.combat_state.round_number} 輪 — {current.name} 的回合[/]"
         )
+        self._log_round_snapshot()
 
         input_widget = self.query_one("#cmd-input", Input)
         actor = self._get_actor(current.id)

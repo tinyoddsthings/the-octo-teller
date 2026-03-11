@@ -44,6 +44,17 @@
 - [ ] Step 6: 範圍法術 — AoE 判定（圓形/錐形/線形）+ 空間系統整合
 - [x] Step 7: 單元測試 — test_spells.py（57 tests）
 
+### 2-S: 空間系統重構（Smart Targeting + 浮點座標 + 碰撞）
+> 目標：解決 AoE 法術不直覺、碰撞不自然、友軍誤傷無警告的三大問題
+- [ ] Phase S-1: 浮點座標模型 — Position/Entity float 化 + 轉換 helper
+- [ ] Phase S-2: 距離與空間查詢 — Euclidean 距離 + actors_in_radius
+- [ ] Phase S-3: 碰撞系統 — 體型碰撞半徑 + 穿越規則 + can_end_move_at
+- [ ] Phase S-4: LOS、掩體、移動 — DDA 視線 + float 移動 + OA 事件
+- [ ] Phase S-5: AoE 瞄準系統 — aoe.py 新建 + 質心計算 + 友軍警告
+- [ ] Phase S-6: 渲染適配 — float → grid snap 顯示
+- [ ] Phase S-7: 部署與生成 — spawn 轉公尺 + 碰撞驗證
+- [ ] Phase S-8: TUI / Bot 整合 — grid_distance → distance + AoE 流程
+
 ### 2-C: 休息機制 (rest.py)
 - [ ] Step 1: 短休 — Hit Dice 恢復 HP、職業短休資源回復
 - [ ] Step 2: 長休 — 全滿 HP、法術欄位回復、力竭降一級、Hit Dice 回復一半
@@ -80,6 +91,31 @@
 - [x] Step 5: 怪物自動行動修復 — set_timer 排程 + 攻擊後自動結束回合
 - [x] Step 6: 法術指令 (cast <法術> <目標>)
 - [x] Step 7: 移動指令 (move <方向/座標>)
+
+### 2-H-fix: TUI 戰鬥 Bug 修復（5 項）
+- [x] Fix 2: spawn/prop 座標 grid→公尺轉換（loader.py）
+- [x] Fix 3: 玩家移動輸入 grid→公尺 + _step_move_to 改用 move_entity
+- [x] Fix 4: 近戰攻擊射程判定統一公尺（combat.py）
+- [x] Fix 5: 近戰自動移動提示（Fix 4 修完後自動修復）
+- [x] Fix 1: 0 HP 角色自動 UNCONSCIOUS + 回合跳過
+
+### 2-I: 三層測試框架
+> AI 自動對戰整合測試 + 結構化 Log + D&D 規則斷言
+- [x] Phase A: 基礎設施 — Action/PlayerStrategy/RandomStrategy/GreedyMeleeStrategy/ScriptedStrategy + CombatLogger
+- [x] Phase B: HeadlessCombatRunner — 純 Python 無頭戰鬥引擎（BFS 移動 + 攻擊 + OA + 條件跳過）
+- [x] Phase C: 規則斷言 + 整合測試 — 7 項 D&D 斷言 + 24 個 pytest（多種子壓力測試）
+- [x] Phase D: 人類試玩 Log 強化 — app.py 每輪自動記錄地圖快照 + 狀態面板到 log 檔
+
+### 2-J: TUI 戰鬥移動引導重設計
+> 目標：移動不再主動提示，改為攻擊流程內嵌詢問；主選單攻擊優先，移動降至末段
+- [ ] Step 1: 主選單重排 — 攻擊/法術/閃避/撤離置前，移動降至末段（仍可隨時使用）
+- [ ] Step 2: 近戰攻擊流程不變 — 距離不足時維持現有 confirm_move_attack 自動接近邏輯
+- [ ] Step 3: 遠程武器佔位詢問 — 選完目標且射程足夠後，進入 `ranged_position` phase
+  - 在敵方觸及範圍內：警告藉機攻擊風險，選項含「吃 OA 直接移開」「撤離動作後移動」「不動直接射擊」
+  - 不在觸及範圍：選項含「遠離敵人」「移動到其他位置攻擊」「不移動直接攻擊」
+  - 射程不足：保留現有 confirm_move_attack 邏輯（詢問自動接近）
+- [ ] Step 4: 法術佔位詢問 — 同遠程流程（射程足夠但在近戰觸及範圍內時詢問是否先調整佔位）
+- [ ] Step 5: 整合測試 — 更新 HeadlessCombatRunner 策略以驗證新流程
 
 ### 2-E: Phase 1 已完成模組的測試補齊
 - [x] conftest.py — 共用 fixtures（std_fighter/wizard/cleric + goblin/skeleton/ogre + rng42）

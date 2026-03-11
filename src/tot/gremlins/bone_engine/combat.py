@@ -13,6 +13,7 @@ from dataclasses import dataclass
 from uuid import UUID
 
 from tot.gremlins.bone_engine.conditions import (
+    apply_condition,
     can_take_action,
     exhaustion_penalty,
 )
@@ -302,11 +303,11 @@ def validate_attack_preconditions(
         return "攻擊者無力化，無法行動"
     if state.turn_state.action_used:
         return "行動已使用"
-    # 近戰：格數判定（range_normal=1 表示 1 格觸及範圍）
+    # 近戰：range_normal 為格數（1=近戰一格，2=長觸及兩格），乘以 grid_size 得公尺
     if not weapon.is_ranged:
-        grid_count = distance / grid_size
-        if grid_count > weapon.range_normal:
-            return f"目標超出近戰射程（{weapon.range_normal} 格，當前 {grid_count:.0f} 格）"
+        reach_m = weapon.range_normal * grid_size
+        if distance > reach_m:
+            return f"目標超出近戰射程（射程 {reach_m:.1f}m，距離 {distance:.1f}m）"
     else:
         # 遠程武器長射程檢查
         max_range = weapon.range_long or weapon.range_normal
@@ -504,6 +505,10 @@ def apply_damage(
             overflow = actual - hp_before
             if overflow >= target.hp_max:
                 result.instant_death = True
+
+        # HP 歸零 → 自動施加昏迷 + 倒地（D&D 5e 規則）
+        apply_condition(target, Condition.UNCONSCIOUS, source="damage")
+        apply_condition(target, Condition.PRONE, source="damage")
 
     return result
 
