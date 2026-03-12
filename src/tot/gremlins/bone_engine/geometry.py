@@ -91,7 +91,8 @@ def extract_static_obstacles(map_state: MapState) -> list[AABB]:
     """從地圖提取所有靜態障礙物的 AABB 列表。
 
     包含：
-    - is_blocking 的 terrain cell
+    - Wall AABB（新格式）
+    - is_blocking 的 terrain cell（舊格式相容）
     - is_blocking 的 manifest Props（牆壁等靜態物）
     - is_blocking 的 runtime Props（動態放置的物件）
     不含 Actor（Actor 是動態的，由 pathfinding 層另外處理）。
@@ -100,7 +101,13 @@ def extract_static_obstacles(map_state: MapState) -> list[AABB]:
     gs = m.grid_size_m
     obstacles: list[AABB] = []
 
-    # 地形阻擋
+    # Wall AABB（新格式）
+    for w in map_state.walls:
+        obstacles.append(AABB(w.x, w.y, w.x + w.width, w.y + w.height))
+    for w in m.walls:
+        obstacles.append(AABB(w.x, w.y, w.x + w.width, w.y + w.height))
+
+    # 地形阻擋（舊格式相容）
     if map_state.terrain:
         for gy, row in enumerate(map_state.terrain):
             for gx, tile in enumerate(row):

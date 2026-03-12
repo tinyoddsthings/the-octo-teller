@@ -106,7 +106,7 @@ def build_actor_lists(
 def move_toward_target(
     actor: Actor,
     target_id: UUID,
-    reach_grids: int,
+    reach_m: float,
     mover: Character | Monster | None,
     combat_state: CombatState,
     map_state: MapState,
@@ -123,7 +123,6 @@ def move_toward_target(
     greedy_fallback=True：速度不足時盡量靠近（NPC 用）。
     greedy_fallback=False：到不了就回傳 None。
     """
-    gs = map_state.manifest.grid_size_m
     tgt_pos = get_actor_position(target_id, map_state)
     speed_left = combat_state.turn_state.movement_remaining
 
@@ -131,7 +130,6 @@ def move_toward_target(
         return None
 
     cur_pos = Position(x=actor.x, y=actor.y)
-    reach_m = reach_grids * gs
 
     # 已在範圍內
     cur_dist = distance(cur_pos, tgt_pos)
@@ -189,7 +187,7 @@ def move_toward_target(
 def path_to_attack_range(
     attacker_id: UUID,
     target_id: UUID,
-    range_grids: int,
+    reach_m: float,
     combat_state: CombatState,
     map_state: MapState,
     combatant_map: dict[UUID, Character | Monster],
@@ -201,7 +199,6 @@ def path_to_attack_range(
     回傳 (x_m, y_m, 移動消耗, 路徑) 或 None。
     路徑用於 step_move_to 直接沿路徑點移動。
     """
-    gs = map_state.manifest.grid_size_m
     actor = _find_actor(attacker_id, map_state)
     tgt_pos = get_actor_position(target_id, map_state)
     if not actor or not tgt_pos:
@@ -228,7 +225,6 @@ def path_to_attack_range(
         exclude_id=target_id,
     )
 
-    reach_m = range_grids * gs
     path = find_path_to_range(
         start=start,
         target=tgt_pos,

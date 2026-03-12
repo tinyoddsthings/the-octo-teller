@@ -162,14 +162,13 @@ def is_in_enemy_reach(
     combatant_map: dict[UUID, Character | Monster],
 ) -> bool:
     """檢查角色是否在任何敵方的觸及範圍內。"""
-    from tot.gremlins.bone_engine.spatial import grid_distance
+    from tot.gremlins.bone_engine.spatial import distance
 
     if not map_state:
         return False
     actor = get_actor(combatant.id, map_state)
     if not actor:
         return False
-    gs = map_state.manifest.grid_size_m
     for other in map_state.actors:
         if other.combatant_id == combatant.id or not other.is_alive:
             continue
@@ -180,13 +179,12 @@ def is_in_enemy_reach(
             continue
         if isinstance(combatant, Monster) and isinstance(enemy, Monster):
             continue
-        reach = 1
+        reach_m = 1.5
         if isinstance(enemy, Character) and enemy.weapons:
-            reach = enemy.weapons[0].range_normal
+            reach_m = enemy.weapons[0].range_normal
         elif isinstance(enemy, Monster) and enemy.actions:
-            reach = enemy.actions[0].reach
-        reach_m = reach * gs
-        dist = grid_distance(Position(x=other.x, y=other.y), Position(x=actor.x, y=actor.y), gs)
+            reach_m = enemy.actions[0].reach
+        dist = distance(Position(x=other.x, y=other.y), Position(x=actor.x, y=actor.y))
         if dist <= reach_m:
             return True
     return False

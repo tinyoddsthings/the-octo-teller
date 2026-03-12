@@ -4,7 +4,7 @@
 - S-1 浮點座標模型
 - S-2 Euclidean 距離 + actors_in_radius
 - S-3 碰撞系統（體型半徑、穿越規則、停留判定）
-- 既有功能迴歸（LOS、掩蔽、移動、BFS）
+- 既有功能迴歸（LOS、掩蔽、移動）
 """
 
 from __future__ import annotations
@@ -15,14 +15,13 @@ import pytest
 
 from tot.gremlins.bone_engine.spatial import (
     actors_in_radius,
-    bfs_path_to_range,
     can_end_move_at,
     can_traverse,
     check_collision,
+    determine_cover,
     determine_cover_from_grid,
     distance,
     find_nearest_valid_position,
-    grid_distance,
     has_hostile_within_melee,
     has_line_of_sight,
     is_position_clear,
@@ -43,6 +42,7 @@ from tot.models import (
     Spell,
     SpellSchool,
     TerrainTile,
+    Wall,
     Zone,
 )
 
@@ -50,23 +50,25 @@ from tot.models import (
 # Fixtures
 # ---------------------------------------------------------------------------
 
+GS = 1.5
+
 
 @pytest.fixture
 def empty_map() -> MapState:
-    """5×5 空白地圖（grid_size=1.5m）。"""
-    manifest = MapManifest(name="test", width=5, height=5, grid_size_m=1.5)
+    """5×5 空白地圖（7.5m × 7.5m）。"""
+    manifest = MapManifest(name="test", width=7.5, height=7.5, grid_size_m=GS)
     terrain = [[TerrainTile() for _ in range(5)] for _ in range(5)]
     return MapState(manifest=manifest, terrain=terrain)
 
 
 @pytest.fixture
 def map_with_wall() -> MapState:
-    """5×5 地圖，(2,2) 有一面牆。"""
+    """7.5m × 7.5m 地圖，(2,2) 格子有 blocking prop。"""
     manifest = MapManifest(
         name="wall_test",
-        width=5,
-        height=5,
-        grid_size_m=1.5,
+        width=7.5,
+        height=7.5,
+        grid_size_m=GS,
         props=[Prop(id="wall1", x=3.75, y=3.75, symbol="🧱", is_blocking=True, prop_type="wall")],
     )
     terrain = [[TerrainTile() for _ in range(5)] for _ in range(5)]
@@ -77,7 +79,7 @@ def _make_actor(
     actor_id: str,
     gx: int,
     gy: int,
-    gs: float = 1.5,
+    gs: float = GS,
     *,
     alive: bool = True,
     combatant_type: str = "monster",
@@ -175,15 +177,6 @@ class TestDistance:
         a = Position.from_grid(0, 0, 1.5)
         b = Position.from_grid(1, 1, 1.5)
         assert distance(a, b) == pytest.approx(1.5 * math.sqrt(2))
-
-
-class TestGridDistanceDeprecated:
-    """grid_distance（deprecated）仍正確工作。"""
-
-    def test_chebyshev(self):
-        a = Position.from_grid(0, 0, 1.5)
-        b = Position.from_grid(3, 2, 1.5)
-        assert grid_distance(a, b, 1.5) == pytest.approx(4.5)  # max(3,2)*1.5
 
 
 class TestActorsInRadius:
@@ -318,10 +311,10 @@ class TestFindNearestValid:
         empty_map.actors = [blocker]
         pos = Position.from_grid(2, 2, 1.5)
         result = find_nearest_valid_position(pos, Size.MEDIUM, empty_map, exclude_id="me")
-        # 應找到鄰格
-        rgx, rgy = result.to_grid(1.5)
-        assert (rgx, rgy) != (2, 2)
-        assert 0 <= rgx < 5 and 0 <= rgy < 5
+        # 應找到不同位置
+        d = math.sqrt((result.x - pos.x) ** 2 + (result.y - pos.y) ** 2)
+        assert d > 0.1  # 離開原位
+        assert 0 < result.x < 7.5 and 0 < result.y < 7.5  # 在地圖內
 
 
 # ===========================================================================
@@ -330,7 +323,7 @@ class TestFindNearestValid:
 
 
 class TestLineOfSight:
-    """視線判定（float Position 輸入）。"""
+    """視線判定（Ray-AABB）。"""
 
     def test_clear_los(self, empty_map: MapState):
         a = Position.from_grid(0, 0, 1.5)
@@ -340,8 +333,22 @@ class TestLineOfSight:
     def test_blocked_by_wall(self, map_with_wall: MapState):
         a = Position.from_grid(0, 0, 1.5)
         b = Position.from_grid(4, 4, 1.5)
-        # (2,2) 有牆，Bresenham 路徑會經過
+        # prop at (3.75, 3.75) 的 AABB (3.0, 3.0, 4.5, 4.5) 擋住對角線
         assert has_line_of_sight(a, b, map_with_wall) is False
+
+    def test_blocked_by_wall_aabb(self):
+        """Wall AABB 直接阻擋視線。"""
+        manifest = MapManifest(
+            name="wall_test",
+            width=15.0,
+            height=15.0,
+            grid_size_m=GS,
+            walls=[Wall(x=4.5, y=4.5, width=1.5, height=1.5, name="wall")],
+        )
+        ms = MapState(manifest=manifest, walls=[Wall(x=4.5, y=4.5, width=1.5, height=1.5)])
+        a = Position(x=2.25, y=5.25)
+        b = Position(x=8.25, y=5.25)
+        assert has_line_of_sight(a, b, ms) is False
 
 
 class TestCover:
@@ -350,13 +357,19 @@ class TestCover:
     def test_no_cover(self, empty_map: MapState):
         a = Position.from_grid(0, 0, 1.5)
         b = Position.from_grid(3, 0, 1.5)
-        assert determine_cover_from_grid(a, b, empty_map) == CoverType.NONE
+        assert determine_cover(a, b, empty_map) == CoverType.NONE
 
     def test_half_cover(self, map_with_wall: MapState):
         a = Position.from_grid(1, 2, 1.5)
         b = Position.from_grid(3, 2, 1.5)
-        result = determine_cover_from_grid(a, b, map_with_wall)
+        result = determine_cover(a, b, map_with_wall)
         assert result in (CoverType.HALF, CoverType.THREE_QUARTERS)
+
+    def test_alias(self, empty_map: MapState):
+        """determine_cover_from_grid 是 determine_cover 的別名。"""
+        a = Position.from_grid(0, 0, 1.5)
+        b = Position.from_grid(3, 0, 1.5)
+        assert determine_cover_from_grid(a, b, empty_map) == CoverType.NONE
 
 
 class TestMoveEntity:
@@ -470,42 +483,6 @@ class TestIsPositionClear:
         assert is_position_clear(pos, 0.75, empty_map) is False
 
 
-class TestBFS:
-    """BFS 尋路。"""
-
-    def test_already_in_range(self, empty_map: MapState):
-        start = Position.from_grid(2, 2, 1.5)
-        target = Position.from_grid(3, 2, 1.5)
-        path = bfs_path_to_range(
-            start,
-            target,
-            1,
-            empty_map,
-            10,
-            mover_id=_make_actor("x", 0, 0).combatant_id,
-            friendly_ids=set(),
-        )
-        assert path == []
-
-    def test_basic_path(self, empty_map: MapState):
-        start = Position.from_grid(0, 0, 1.5)
-        target = Position.from_grid(4, 0, 1.5)
-        from uuid import uuid4
-
-        mid = uuid4()
-        path = bfs_path_to_range(
-            start,
-            target,
-            1,
-            empty_map,
-            10,
-            mover_id=mid,
-            friendly_ids=set(),
-        )
-        assert path is not None
-        assert len(path) > 0
-
-
 class TestSpellRange:
     """法術射程驗證。"""
 
@@ -534,17 +511,17 @@ class TestSpellRange:
 
 
 class TestZoneQuery:
-    """區域查詢。"""
+    """區域查詢（Zone 邊界為公尺座標）。"""
 
     def test_float_position(self):
-        zones = [Zone(name="z1", x_min=0, y_min=0, x_max=3, y_max=3)]
-        z = zone_for_position(3.75, 3.75, zones, grid_size=1.5)
+        zones = [Zone(name="z1", x_min=0, y_min=0, x_max=6.0, y_max=6.0)]
+        z = zone_for_position(3.75, 3.75, zones)
         assert z is not None
         assert z.name == "z1"
 
     def test_outside(self):
-        zones = [Zone(name="z1", x_min=0, y_min=0, x_max=1, y_max=1)]
-        z = zone_for_position(7.5, 7.5, zones, grid_size=1.5)
+        zones = [Zone(name="z1", x_min=0, y_min=0, x_max=1.5, y_max=1.5)]
+        z = zone_for_position(7.5, 7.5, zones)
         assert z is None
 
 

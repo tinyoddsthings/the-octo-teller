@@ -24,7 +24,6 @@ from tot.gremlins.bone_engine.spatial import (
     can_end_move_at,
     distance,
     get_actor_position,
-    grid_distance,
     is_position_clear,
     move_entity,
     parse_spell_range_meters,
@@ -283,7 +282,7 @@ def execute_attack(
 def simulate_move_to_range(
     attacker_id: UUID,
     target_id: UUID,
-    range_grids: int,
+    reach_m: float,
     combat_state: CombatState,
     map_state: MapState,
     combatant_map: dict[UUID, Character | Monster],
@@ -298,7 +297,7 @@ def simulate_move_to_range(
     return path_to_attack_range(
         attacker_id,
         target_id,
-        range_grids,
+        reach_m,
         combat_state,
         map_state,
         combatant_map,
@@ -451,18 +450,14 @@ async def player_attack(
         atk_pos = get_actor_position(attacker.id, map_state)
         tgt_pos = get_actor_position(target.id, map_state)
         if atk_pos and tgt_pos:
-            gs = map_state.manifest.grid_size_m
-            dist_euclidean = distance(atk_pos, tgt_pos)
-            dist_chebyshev = grid_distance(atk_pos, tgt_pos, gs)
+            dist_m = distance(atk_pos, tgt_pos)
             if attacker.weapons:
                 weapon = attacker.weapons[0]
-                check_dist = dist_euclidean if weapon.is_ranged else dist_chebyshev
                 err = validate_attack_preconditions(
                     attacker,
                     weapon,
                     combat_state,
-                    distance=check_dist,
-                    grid_size=gs,
+                    dist=dist_m,
                 )
                 if err and err != "行動已使用":
                     reach = weapon.range_normal
@@ -478,9 +473,8 @@ async def player_attack(
                     )
                     if sim:
                         mx, my, mcost, _sim_path = sim
-                        mgx, mgy = pos_to_grid(mx, my, gs)
                         log.log(
-                            f"[yellow]距離不足！移動到 ({mgx}, {mgy}) "
+                            f"[yellow]距離不足！移動到 ({mx:.1f}, {my:.1f}) "
                             f"後攻擊？消耗 {mcost:.1f}m 移動（y/n）[/]"
                         )
                         set_confirm_state_fn(
@@ -490,7 +484,7 @@ async def player_attack(
                             None,
                         )
                         return
-                    log.log(f"[red]{err}（距離 {check_dist:.1f}m，移動距離不足以接近）[/]")
+                    log.log(f"[red]{err}（距離 {dist_m:.1f}m，移動距離不足以接近）[/]")
                     show_action_choices_fn()
                     return
 
@@ -528,16 +522,15 @@ async def player_cast(
         caster_pos = get_actor_position(caster.id, map_state)
         tgt_pos = get_actor_position(target.id, map_state)
         if caster_pos and tgt_pos:
-            gs = map_state.manifest.grid_size_m
             dist = distance(caster_pos, tgt_pos)
-            range_err = validate_spell_range(spell, dist, gs)
+            range_err = validate_spell_range(spell, dist)
             if range_err:
-                range_m = parse_spell_range_meters(spell.range, gs)
-                range_grids = max(1, int(range_m / gs)) if range_m else 1
+                range_m = parse_spell_range_meters(spell.range)
+                reach = range_m if range_m else 1.5
                 sim = simulate_move_to_range(
                     caster.id,
                     target.id,
-                    range_grids,
+                    reach,
                     combat_state,
                     map_state,
                     combatant_map,
@@ -546,9 +539,8 @@ async def player_cast(
                 )
                 if sim:
                     mx, my, mcost, _sim_path = sim
-                    mgx, mgy = pos_to_grid(mx, my, gs)
                     log.log(
-                        f"[yellow]法術射程不足！移動到 ({mgx}, {mgy}) "
+                        f"[yellow]法術射程不足！移動到 ({mx:.1f}, {my:.1f}) "
                         f"後施放？消耗 {mcost:.1f}m 移動（y/n）[/]"
                     )
                     set_confirm_state_fn(

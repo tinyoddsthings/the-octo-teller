@@ -50,8 +50,10 @@ class MapRenderer:
 
     def __init__(self, map_state: MapState) -> None:
         self._ms = map_state
-        self._w = map_state.manifest.width
-        self._h = map_state.manifest.height
+        gs = map_state.manifest.grid_size_m
+        # 以 grid_size_m 推算格數（過渡期：寬高已改公尺，但 renderer 仍用格數）
+        self._w = int(map_state.manifest.width / gs)
+        self._h = int(map_state.manifest.height / gs)
 
     def render_full(self, *, rich_markup: bool = False) -> str:
         """完整地圖（DM 視角），含座標軸標籤。
@@ -167,7 +169,8 @@ class MapRenderer:
                     row.append(cell)
                     continue
 
-                target = Position(x=map_x, y=map_y)
+                # 轉為公尺座標（格子中心）做視線判定
+                target = Position(x=map_x * gs + gs / 2, y=map_y * gs + gs / 2)
                 if has_line_of_sight(viewer, target, self._ms):
                     # 有視線 → 可見
                     row.append(cell)

@@ -22,11 +22,10 @@ from tot.gremlins.bone_engine.combat import (
     validate_attack_preconditions,
 )
 from tot.gremlins.bone_engine.conditions import can_take_action, tick_conditions_end_of_turn
+from tot.gremlins.bone_engine.pathfinding import find_furthest_along_path
 from tot.gremlins.bone_engine.spatial import (
-    bfs_path_to_range,
+    distance,
     get_actor_position,
-    grid_distance,
-    move_entity,
 )
 from tot.models import (
     Ability,
@@ -95,11 +94,11 @@ def _get_weapon(combatant: Character | Monster) -> Weapon | MonsterAction | None
     return combatant.weapons[0] if combatant.weapons else None
 
 
-def _get_reach(combatant: Character | Monster) -> int:
-    """取得觸及範圍（格數）。"""
+def _get_reach(combatant: Character | Monster) -> float:
+    """取得觸及範圍（公尺）。"""
     weapon = _get_weapon(combatant)
     if weapon is None:
-        return 1
+        return 1.5
     if isinstance(weapon, MonsterAction):
         return weapon.reach
     return weapon.range_normal
@@ -294,13 +293,12 @@ class HeadlessCombatRunner:
         dist = 1.5
         atk_pos = get_actor_position(attacker.id, self.map_state)
         tgt_pos = get_actor_position(target.id, self.map_state)
-        gs = self.map_state.manifest.grid_size_m
         if atk_pos and tgt_pos:
-            dist = grid_distance(atk_pos, tgt_pos, gs)
+            dist = distance(atk_pos, tgt_pos)
 
         # 前置條件檢查（MonsterAction 不走 validate_attack_preconditions）
         if isinstance(weapon, Weapon):
-            error = validate_attack_preconditions(attacker, weapon, self.combat_state, dist, gs)
+            error = validate_attack_preconditions(attacker, weapon, self.combat_state, dist)
             if error:
                 self.logger.log_action(
                     attacker.id, atk_name, "attack_fail", f"{atk_name} 攻擊失敗：{error}"
@@ -312,7 +310,7 @@ class HeadlessCombatRunner:
                 return
             if self.combat_state.turn_state.action_used:
                 return
-            reach_m = weapon.reach * gs
+            reach_m = weapon.reach
             if dist > reach_m:
                 self.logger.log_action(
                     attacker.id,
@@ -383,43 +381,55 @@ class HeadlessCombatRunner:
             self._sync_actor_alive()
 
     def _do_move(self, combatant: Character | Monster, action: Action) -> None:
-        """執行移動——使用 BFS 尋路靠近目標。"""
+        """執行移動——使用 A* 尋路靠近目標。"""
+        import math
+
         actor = _get_actor(combatant.id, self.map_state)
         if not actor:
             return
 
         name = _display_name(combatant)
-        gs = self.map_state.manifest.grid_size_m
         speed_left = self.combat_state.turn_state.movement_remaining
 
         target_pos = action.position
         if not target_pos and action.target_id:
             target_pos = get_actor_position(action.target_id, self.map_state)
 
-        if not target_pos or speed_left < gs:
+        if not target_pos or speed_left < 0.01:
             return
 
-        reach = _get_reach(combatant)
+        reach_m = _get_reach(combatant)
 
         # 已在範圍內 → 不需移動
         cur_pos = Position(x=actor.x, y=actor.y)
-        if grid_distance(cur_pos, target_pos, gs) <= reach * gs:
+        if distance(cur_pos, target_pos) <= reach_m:
             return
 
-        # BFS 尋路
-        max_steps = int(speed_left / gs)
-        if max_steps <= 0:
-            return
-
+        # A* 尋路
         friendly_ids = self._build_friendly_ids(combatant)
-        path = bfs_path_to_range(
+        blocked = [
+            a
+            for a in self.map_state.actors
+            if a.is_alive
+            and a.is_blocking
+            and a.combatant_id not in friendly_ids
+            and a.id != actor.id
+        ]
+        passable = [
+            a
+            for a in self.map_state.actors
+            if a.is_alive and a.is_blocking and a.combatant_id in friendly_ids and a.id != actor.id
+        ]
+
+        path = find_furthest_along_path(
             start=cur_pos,
             target=target_pos,
-            reach_grids=reach,
+            reach_m=reach_m,
             map_state=self.map_state,
-            max_steps=max_steps,
-            mover_id=actor.combatant_id,
-            friendly_ids=friendly_ids,
+            mover_radius=0.75,
+            max_cost=speed_left,
+            blocked_actors=blocked,
+            passable_actors=passable,
         )
 
         old_x, old_y = actor.x, actor.y
@@ -427,53 +437,23 @@ class HeadlessCombatRunner:
 
         if path is not None and len(path) > 0:
             for step in path:
-                if speed_left < gs:
-                    break
                 step_old_x, step_old_y = actor.x, actor.y
+                step_dist = math.sqrt((step.x - actor.x) ** 2 + (step.y - actor.y) ** 2)
                 actor.x = step.x
                 actor.y = step.y
-                speed_left -= gs
-                total_movement += gs
-                # 檢查 OA
-                if self._check_oa_for_step(combatant, step_old_x, step_old_y, actor.x, actor.y):
-                    break
-        else:
-            # Greedy fallback
-            for _ in range(max_steps):
-                if speed_left < gs:
-                    break
-                cp = Position(x=actor.x, y=actor.y)
-                if grid_distance(cp, target_pos, gs) <= reach * gs:
-                    break
-                dx = 0 if target_pos.x == actor.x else (1 if target_pos.x > actor.x else -1)
-                dy = 0 if target_pos.y == actor.y else (1 if target_pos.y > actor.y else -1)
-                step_old_x, step_old_y = actor.x, actor.y
-                res = move_entity(actor, dx, dy, self.map_state, speed_left)
-                ok, speed_left = res.success, res.speed_remaining
-                if not ok:
-                    if dx != 0:
-                        res = move_entity(actor, dx, 0, self.map_state, speed_left)
-                        ok, speed_left = res.success, res.speed_remaining
-                    if not ok and dy != 0:
-                        res = move_entity(actor, 0, dy, self.map_state, speed_left)
-                        ok, speed_left = res.success, res.speed_remaining
-                    if not ok:
-                        break
-                total_movement += gs
+                speed_left -= step_dist
+                total_movement += step_dist
                 if self._check_oa_for_step(combatant, step_old_x, step_old_y, actor.x, actor.y):
                     break
 
-        self.combat_state.turn_state.movement_remaining = speed_left
+        self.combat_state.turn_state.movement_remaining = max(0.0, speed_left)
 
         if actor.x != old_x or actor.y != old_y:
-            import math
-
-            gx, gy = int(math.floor(actor.x / gs)), int(math.floor(actor.y / gs))
             self.logger.log_action(
                 combatant.id,
                 name,
                 "move",
-                f"{name} 移動到 ({gx}, {gy})",
+                f"{name} 移動到 ({actor.x:.1f}, {actor.y:.1f})",
                 movement_used=total_movement,
                 position=Position(x=actor.x, y=actor.y),
             )
@@ -490,8 +470,6 @@ class HeadlessCombatRunner:
         if mover.has_condition(Condition.DISENGAGING):
             return False
 
-        gs = self.map_state.manifest.grid_size_m
-
         for entry in self.combat_state.initiative_order:
             enemy = self._combatant_map.get(entry.combatant_id)
             if not enemy or not enemy.is_alive or enemy.id == mover.id:
@@ -505,14 +483,13 @@ class HeadlessCombatRunner:
             if not enemy_actor:
                 continue
 
-            reach = _get_reach(enemy)
-            reach_m = reach * gs
+            reach_m = _get_reach(enemy)
             enemy_pos = Position(x=enemy_actor.x, y=enemy_actor.y)
 
-            old_dist = grid_distance(Position(x=old_x, y=old_y), enemy_pos, gs)
+            old_dist = distance(Position(x=old_x, y=old_y), enemy_pos)
             if old_dist > reach_m:
                 continue
-            new_dist = grid_distance(Position(x=new_x, y=new_y), enemy_pos, gs)
+            new_dist = distance(Position(x=new_x, y=new_y), enemy_pos)
             if new_dist <= reach_m:
                 continue
 

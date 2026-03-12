@@ -152,14 +152,14 @@ class TestExtractStaticObstacles:
 
     def test_empty_map(self):
         """空白地圖 → 無障礙物。"""
-        manifest = MapManifest(name="test", width=5, height=5, grid_size_m=1.5)
+        manifest = MapManifest(name="test", width=7.5, height=7.5, grid_size_m=1.5)
         terrain = [[TerrainTile() for _ in range(5)] for _ in range(5)]
         ms = MapState(manifest=manifest, terrain=terrain)
         assert extract_static_obstacles(ms) == []
 
     def test_blocking_terrain(self):
         """阻擋地形 → 產生 AABB。"""
-        manifest = MapManifest(name="test", width=5, height=5, grid_size_m=1.5)
+        manifest = MapManifest(name="test", width=7.5, height=7.5, grid_size_m=1.5)
         terrain = [[TerrainTile() for _ in range(5)] for _ in range(5)]
         terrain[2][3] = TerrainTile(is_blocking=True, name="wall")
         ms = MapState(manifest=manifest, terrain=terrain)
@@ -180,8 +180,8 @@ class TestExtractStaticObstacles:
         )
         manifest = MapManifest(
             name="test",
-            width=5,
-            height=5,
+            width=7.5,
+            height=7.5,
             grid_size_m=1.5,
             props=[wall],
         )
@@ -202,8 +202,8 @@ class TestExtractStaticObstacles:
         )
         manifest = MapManifest(
             name="test",
-            width=5,
-            height=5,
+            width=7.5,
+            height=7.5,
             grid_size_m=1.5,
             props=[wall],
         )

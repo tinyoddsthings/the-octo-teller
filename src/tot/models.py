@@ -330,15 +330,15 @@ class Weapon(BaseModel):
     damage_dice: str  # 例如 "1d8"
     damage_type: DamageType
     properties: list[WeaponProperty] = Field(default_factory=list)
-    range_normal: int = 1  # 格數；1 = 近戰一格，2 = 長觸及兩格
-    range_long: int | None = None  # 遠程/投擲武器的長射程
+    range_normal: float = 1.5  # 公尺；1.5 = 近戰、3.0 = 長觸及
+    range_long: float | None = None  # 遠程/投擲武器的長射程（公尺）
     is_martial: bool = False
     mastery: WeaponMastery | None = None  # 2024 武器專精
 
     @computed_field
     @property
     def is_ranged(self) -> bool:
-        return self.range_normal > 1
+        return self.range_normal > 1.5
 
     @computed_field
     @property
@@ -495,7 +495,7 @@ class MonsterAction(BaseModel):
     attack_bonus: int | None = None  # None = 無攻擊骰（豁免制法術）
     damage_dice: str = ""
     damage_type: DamageType | None = None
-    reach: int = 1  # 公尺
+    reach: float = 1.5  # 觸及距離（公尺）
     description: str = ""
     save_dc: int | None = None
     save_ability: Ability | None = None
@@ -658,6 +658,17 @@ class Prop(Entity):
     cover_bonus: int = 0  # 作為掩體的 AC 加值
 
 
+class Wall(BaseModel):
+    """牆壁障礙物（AABB 矩形，取代 TerrainTile 的 grid-based 地形）。"""
+
+    x: float  # min-x（公尺）
+    y: float  # min-y（公尺）
+    width: float  # 寬（公尺）
+    height: float  # 高（公尺）
+    name: str = "wall"
+    symbol: str = "#"
+
+
 class TerrainTile(BaseModel):
     """地形格。"""
 
@@ -676,10 +687,10 @@ class Zone(BaseModel):
     """命名區域，提供敘事語境給 Narrator。"""
 
     name: str
-    x_min: int
-    y_min: int
-    x_max: int
-    y_max: int
+    x_min: float
+    y_min: float
+    x_max: float
+    y_max: float
     description: str = ""
 
 
@@ -700,9 +711,10 @@ class MapManifest(BaseModel):
     """地圖靜態定義，從 JSON 載入。"""
 
     name: str
-    width: int
-    height: int
-    grid_size_m: float = 1.5  # 每格公尺數（D&D 標準 5ft ≈ 1.5m）
+    width: float  # 地圖寬度（公尺）
+    height: float  # 地圖高度（公尺）
+    grid_size_m: float = 1.5  # 過渡期保留，後續 commit 移除
+    walls: list[Wall] = Field(default_factory=list)
     props: list[Prop] = Field(default_factory=list)
     zones: list[Zone] = Field(default_factory=list)
     zone_connections: list[ZoneConnection] = Field(default_factory=list)
@@ -714,6 +726,7 @@ class MapState(BaseModel):
 
     manifest: MapManifest
     terrain: list[list[TerrainTile]] = Field(default_factory=list)  # [y][x]，y=0 為最底列
+    walls: list[Wall] = Field(default_factory=list)  # 牆壁 AABB 清單（過渡期與 terrain 並存）
     actors: list[Actor] = Field(default_factory=list)
     props: list[Prop] = Field(default_factory=list)  # 執行期動態追加的物件
 

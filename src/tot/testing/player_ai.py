@@ -14,7 +14,6 @@ from uuid import UUID
 from tot.gremlins.bone_engine.spatial import (
     distance,
     get_actor_position,
-    grid_distance,
 )
 from tot.models import (
     Actor,
@@ -111,7 +110,7 @@ class RandomStrategy:
         melee_targets: list[Combatant] = []
         for enemy in enemies:
             enemy_pos = get_actor_position(enemy.id, map_state)
-            if enemy_pos and grid_distance(actor_pos, enemy_pos, gs) <= gs:
+            if enemy_pos and distance(actor_pos, enemy_pos) <= 1.5:
                 melee_targets.append(enemy)
 
         # 如果動作未用且有近戰目標 → 隨機選擇攻擊
@@ -180,7 +179,7 @@ class GreedyMeleeStrategy:
             return Action(type=ActionType.END_TURN)
 
         # 在攻擊範圍內 → 攻擊
-        in_melee = grid_distance(actor_pos, nearest_pos, gs) <= gs
+        in_melee = distance(actor_pos, nearest_pos) <= 1.5
         if in_melee and not action_used:
             return Action(type=ActionType.ATTACK, target_id=nearest_enemy.id)
 

@@ -51,10 +51,10 @@ GS = 1.5  # 標準 grid_size
 # ---------------------------------------------------------------------------
 
 
-def _make_map(width: int = 10, height: int = 10) -> MapState:
-    """空白地圖。"""
-    manifest = MapManifest(name="test", width=width, height=height, grid_size_m=GS)
-    terrain = [[TerrainTile() for _ in range(width)] for _ in range(height)]
+def _make_map(grid_w: int = 10, grid_h: int = 10) -> MapState:
+    """空白地圖（width/height 為公尺）。"""
+    manifest = MapManifest(name="test", width=grid_w * GS, height=grid_h * GS, grid_size_m=GS)
+    terrain = [[TerrainTile() for _ in range(grid_w)] for _ in range(grid_h)]
     return MapState(manifest=manifest, terrain=terrain)
 
 
@@ -69,7 +69,7 @@ def _make_character(
     char_id: UUID | None = None,
     hp: int = 20,
     ac: int = 15,
-    weapon_reach: int = 1,
+    weapon_reach: float = 1.5,
 ) -> Character:
     return Character(
         id=char_id or uuid4(),
@@ -98,7 +98,7 @@ def _make_monster(
     mon_id: UUID | None = None,
     hp: int = 7,
     ac: int = 13,
-    reach: int = 1,
+    reach: float = 1.5,
 ) -> Monster:
     return Monster(
         id=mon_id or uuid4(),
@@ -270,7 +270,7 @@ class TestMoveTowardTarget:
         result = move_toward_target(
             pc_actor,
             mon.id,
-            1,
+            1.5,
             pc,
             cs,
             map_state,
@@ -296,7 +296,7 @@ class TestMoveTowardTarget:
         result = move_toward_target(
             pc_actor,
             mon.id,
-            1,
+            1.5,
             pc,
             cs,
             map_state,
@@ -324,7 +324,7 @@ class TestMoveTowardTarget:
         result = move_toward_target(
             pc_actor,
             mon.id,
-            1,
+            1.5,
             pc,
             cs,
             map_state,
@@ -353,7 +353,7 @@ class TestMoveTowardTarget:
         result = move_toward_target(
             pc_actor,
             mon.id,
-            1,
+            1.5,
             pc,
             cs,
             map_state,
@@ -382,7 +382,7 @@ class TestMoveTowardTarget:
         result = move_toward_target(
             pc_actor,
             mon.id,
-            1,
+            1.5,
             pc,
             cs,
             map_state,
@@ -456,12 +456,12 @@ class TestPathToAttackRange:
 
 class TestGetReachM:
     def test_character_with_weapon(self):
-        pc = _make_character("PC", weapon_reach=2)
-        assert get_reach_m(pc, GS) == 2 * GS
+        pc = _make_character("PC", weapon_reach=3.0)
+        assert get_reach_m(pc) == 3.0
 
     def test_monster_with_action(self):
-        mon = _make_monster("Ogre", reach=2)
-        assert get_reach_m(mon, GS) == 2 * GS
+        mon = _make_monster("Ogre", reach=3.0)
+        assert get_reach_m(mon) == 3.0
 
     def test_default_reach(self):
         pc = Character(
@@ -473,7 +473,7 @@ class TestGetReachM:
             ac=10,
             speed=30,
         )
-        assert get_reach_m(pc, GS) == 1 * GS
+        assert get_reach_m(pc) == 1.5
 
 
 # ===========================================================================

@@ -270,10 +270,9 @@ def _euclidean(x1: float, y1: float, x2: float, y2: float) -> float:
 
 
 def _in_map_bounds(x: float, y: float, map_state: MapState, margin: float = 0.0) -> bool:
-    """檢查座標是否在地圖範圍內。"""
+    """檢查座標是否在地圖範圍內（width/height 為公尺）。"""
     m = map_state.manifest
-    gs = m.grid_size_m
-    return margin <= x <= m.width * gs - margin and margin <= y <= m.height * gs - margin
+    return margin <= x <= m.width - margin and margin <= y <= m.height - margin
 
 
 def _point_in_any_inflated(x: float, y: float, inflated: list[AABB]) -> bool:

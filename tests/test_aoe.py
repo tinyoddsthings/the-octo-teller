@@ -54,14 +54,14 @@ def _make_actor(
     )
 
 
-def _make_map(actors: list[Actor], width: int = 10, height: int = 10) -> MapState:
-    """建立含 actors 的空白地圖。"""
+def _make_map(actors: list[Actor], grid_w: int = 10, grid_h: int = 10) -> MapState:
+    """建立含 actors 的空白地圖（width/height 為公尺）。"""
     return MapState(
         manifest=MapManifest(
             id="test",
             name="test",
-            width=width,
-            height=height,
+            width=grid_w * GS,
+            height=grid_h * GS,
             grid_size_m=GS,
         ),
         actors=actors,

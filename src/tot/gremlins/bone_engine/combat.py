@@ -18,7 +18,7 @@ from tot.gremlins.bone_engine.conditions import (
     exhaustion_penalty,
 )
 from tot.gremlins.bone_engine.dice import DiceResult, RollType, roll, roll_d20
-from tot.gremlins.bone_engine.spatial import grid_distance
+from tot.gremlins.bone_engine.spatial import distance
 from tot.models import (
     Ability,
     ActiveCondition,
@@ -299,24 +299,23 @@ def validate_attack_preconditions(
     attacker: Character | Monster,
     weapon: Weapon,
     state: CombatState,
-    distance: float = 1.5,
-    grid_size: float = 1.5,
+    dist: float = 1.5,
 ) -> str | None:
     """驗證攻擊的前置條件，回傳錯誤訊息或 None 表示通過。"""
     if not can_take_action(attacker):
         return "攻擊者無力化，無法行動"
     if state.turn_state.action_used:
         return "行動已使用"
-    # 近戰：range_normal 為格數（1=近戰一格，2=長觸及兩格），乘以 grid_size 得公尺
+    # 近戰：range_normal 已是公尺（1.5=近戰、3.0=長觸及）
     if not weapon.is_ranged:
-        reach_m = weapon.range_normal * grid_size
-        if distance > reach_m:
-            return f"目標超出近戰射程（射程 {reach_m:.1f}m，距離 {distance:.1f}m）"
+        reach_m = weapon.range_normal
+        if dist > reach_m:
+            return f"目標超出近戰射程（射程 {reach_m:.1f}m，距離 {dist:.1f}m）"
     else:
         # 遠程武器長射程檢查
         max_range = weapon.range_long or weapon.range_normal
-        if distance > max_range:
-            return f"目標超出武器最大射程（{max_range}m，當前 {distance:.1f}m）"
+        if dist > max_range:
+            return f"目標超出武器最大射程（{max_range}m，當前 {dist:.1f}m）"
     return None
 
 
@@ -1276,17 +1275,17 @@ class StepOAResult:
     oa_result: OpportunityAttackResult
 
 
-def get_reach_m(combatant: Character | Monster, grid_size_m: float) -> float:
+def get_reach_m(combatant: Character | Monster) -> float:
     """取得戰鬥者的觸及距離（公尺）。
 
     集中 reach 提取邏輯，避免在多處重複。
+    range_normal / reach 已是公尺值。
     """
-    reach_grids = 1
     if isinstance(combatant, Character) and combatant.weapons:
-        reach_grids = combatant.weapons[0].range_normal
-    elif isinstance(combatant, Monster) and combatant.actions:
-        reach_grids = combatant.actions[0].reach
-    return reach_grids * grid_size_m
+        return combatant.weapons[0].range_normal
+    if isinstance(combatant, Monster) and combatant.actions:
+        return combatant.actions[0].reach
+    return 1.5
 
 
 def _find_actor_in_map(combatant_id: UUID, map_state: MapState) -> Actor | None:
@@ -1319,7 +1318,6 @@ def check_opportunity_attacks_on_step(
     if mover.has_condition(Condition.DISENGAGING):
         return []
 
-    gs = map_state.manifest.grid_size_m
     results: list[StepOAResult] = []
 
     for entry in combat_state.initiative_order:
@@ -1336,13 +1334,13 @@ def check_opportunity_attacks_on_step(
         if not enemy_actor:
             continue
 
-        reach_m = get_reach_m(enemy, gs)
+        reach_m = get_reach_m(enemy)
         enemy_pos = Position(x=enemy_actor.x, y=enemy_actor.y)
 
-        old_dist = grid_distance(Position(x=old_x, y=old_y), enemy_pos, gs)
+        old_dist = distance(Position(x=old_x, y=old_y), enemy_pos)
         if old_dist > reach_m:
             continue
-        new_dist = grid_distance(Position(x=new_x, y=new_y), enemy_pos, gs)
+        new_dist = distance(Position(x=new_x, y=new_y), enemy_pos)
         if new_dist <= reach_m:
             continue
 

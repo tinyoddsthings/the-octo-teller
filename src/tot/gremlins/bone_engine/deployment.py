@@ -14,7 +14,11 @@ from uuid import UUID
 from tot.gremlins.bone_engine.combat import start_combat
 from tot.gremlins.bone_engine.dice import roll_d20
 from tot.gremlins.bone_engine.exploration import prepare_combat_from_node
-from tot.gremlins.bone_engine.spatial import place_actors_at_spawn
+from tot.gremlins.bone_engine.spatial import (
+    check_collision,
+    is_position_clear,
+    place_actors_at_spawn,
+)
 from tot.models import (
     Ability,
     Actor,
@@ -135,26 +139,20 @@ def get_spawn_zone(
 # ---------------------------------------------------------------------------
 
 
-def _spawn_to_meters(sp: Position, grid_size: float) -> tuple[float, float]:
-    """將 spawn point（網格座標）轉為公尺座標（格子中心）。"""
-    return sp.x * grid_size + grid_size / 2, sp.y * grid_size + grid_size / 2
-
-
 def _place_monsters(
     monsters: list[Monster],
     map_state: MapState,
 ) -> None:
-    """將怪物放置到 enemies spawn points（轉為公尺座標）。"""
-    gs = map_state.manifest.grid_size_m
+    """將怪物放置到 enemies spawn points（公尺座標）。"""
     enemy_spawns = map_state.manifest.spawn_points.get("enemies", [])
     for i, mon in enumerate(monsters):
         if i >= len(enemy_spawns):
             break
-        mx, my = _spawn_to_meters(enemy_spawns[i], gs)
+        sp = enemy_spawns[i]
         actor = Actor(
             id=f"mob_{i}",
-            x=mx,
-            y=my,
+            x=sp.x,
+            y=sp.y,
             symbol="👹",
             combatant_id=mon.id,
             combatant_type="monster",
@@ -171,8 +169,7 @@ def _place_characters(
     map_state: MapState,
     marching_order: MarchingOrder | None = None,
 ) -> dict[str, Position]:
-    """將角色按行軍順序放置到佈陣區域（轉為公尺座標）。回傳放置結果。"""
-    gs = map_state.manifest.grid_size_m
+    """將角色按行軍順序放置到佈陣區域（公尺座標）。回傳放置結果。"""
     # 依行軍順序排列角色
     if marching_order:
         id_to_char = {c.id: c for c in characters}
@@ -187,11 +184,10 @@ def _place_characters(
         if i >= len(spawn_zone):
             break
         sp = spawn_zone[i]
-        mx, my = _spawn_to_meters(sp, gs)
         actor = Actor(
             id=f"pc_{i}",
-            x=mx,
-            y=my,
+            x=sp.x,
+            y=sp.y,
             symbol="🧙",
             combatant_id=char.id,
             combatant_type="character",
@@ -200,7 +196,7 @@ def _place_characters(
             is_alive=char.is_alive,
         )
         map_state.actors.append(actor)
-        placements[str(char.id)] = Position(x=mx, y=my)
+        placements[str(char.id)] = Position(x=sp.x, y=sp.y)
 
     return placements
 
@@ -233,49 +229,33 @@ def manual_deploy(
     """手動調整角色位置。
 
     position 為公尺座標。
-    驗證：目標在佈陣區內、不與他人重疊、不在阻擋地形上。
+    驗證：目標在佈陣區內、不與他人重疊、不在障礙物上。
     """
-    import math
+    from tot.models import SIZE_RADIUS_M
 
     cid = str(character_id)
     if cid not in deployment.placements:
         msg = f"角色 {cid} 不在佈陣中"
         raise ValueError(msg)
 
-    gs = deployment.map_state.manifest.grid_size_m
-    pos_grid = (int(math.floor(position.x / gs)), int(math.floor(position.y / gs)))
+    ms = deployment.map_state
 
-    # 檢查是否在佈陣區內（比對網格座標）
-    spawn_grids = {
-        (int(math.floor(sp.x / gs)), int(math.floor(sp.y / gs))) for sp in deployment.spawn_zone
-    }
-    if pos_grid not in spawn_grids:
+    # 檢查是否在佈陣區內（比對公尺座標，容差 0.01m）
+    in_zone = any(
+        abs(sp.x - position.x) < 0.01 and abs(sp.y - position.y) < 0.01
+        for sp in deployment.spawn_zone
+    )
+    if not in_zone:
         msg = f"位置 ({position.x}, {position.y}) 不在佈陣區域內"
         raise ValueError(msg)
 
-    # 檢查阻擋地形
-    ms = deployment.map_state
-    gx, gy = pos_grid
-    if (
-        ms.terrain
-        and 0 <= gy < len(ms.terrain)
-        and 0 <= gx < len(ms.terrain[gy])
-        and ms.terrain[gy][gx].is_blocking
-    ):
-        msg = f"位置 ({position.x}, {position.y}) 是阻擋地形"
+    # 檢查靜態障礙物（circle-AABB）
+    mover_radius = SIZE_RADIUS_M[Size.MEDIUM]
+    if not is_position_clear(position, mover_radius, ms):
+        msg = f"位置 ({position.x}, {position.y}) 被障礙物擋住"
         raise ValueError(msg)
 
-    # 檢查靜態 Prop 阻擋
-    for prop in ms.manifest.props:
-        pgx, pgy = int(math.floor(prop.x / gs)), int(math.floor(prop.y / gs))
-        if pgx == gx and pgy == gy and prop.is_blocking:
-            msg = f"位置 ({position.x}, {position.y}) 被 {prop.name} 擋住"
-            raise ValueError(msg)
-
     # 檢查碰撞（半徑距離判定）
-    from tot.gremlins.bone_engine.spatial import check_collision
-
-    # 找出自己的 Actor id 以排除
     own_actor = next(
         (a for a in ms.actors if str(a.combatant_id) == cid),
         None,
@@ -304,26 +284,21 @@ def manual_deploy(
 
 def validate_deployment(deployment: DeploymentState) -> list[str]:
     """檢查佈陣是否完備。回傳錯誤訊息列表（空 = 通過）。"""
-    import math
-
     errors: list[str] = []
-    gs = deployment.map_state.manifest.grid_size_m
 
-    # 佈陣區的網格座標集合
-    spawn_grids = {
-        (int(math.floor(sp.x / gs)), int(math.floor(sp.y / gs))) for sp in deployment.spawn_zone
-    }
+    # 佈陣區的公尺座標集合（用 tuple 做 key，容差比對）
+    spawn_coords = {(round(sp.x, 2), round(sp.y, 2)) for sp in deployment.spawn_zone}
 
-    # 檢查位置是否都在佈陣區內（比對網格座標）
+    # 檢查位置是否都在佈陣區內
     for cid, pos in deployment.placements.items():
-        pos_grid = (int(math.floor(pos.x / gs)), int(math.floor(pos.y / gs)))
-        if pos_grid not in spawn_grids:
+        pos_key = (round(pos.x, 2), round(pos.y, 2))
+        if pos_key not in spawn_coords:
             errors.append(f"角色 {cid} 的位置 ({pos.x}, {pos.y}) 不在佈陣區域內")
 
-    # 檢查是否有重疊（比對網格座標）
-    seen: set[tuple[int, int]] = set()
+    # 檢查是否有重疊（比對公尺座標）
+    seen: set[tuple[float, float]] = set()
     for pos in deployment.placements.values():
-        key = (int(math.floor(pos.x / gs)), int(math.floor(pos.y / gs)))
+        key = (round(pos.x, 2), round(pos.y, 2))
         if key in seen:
             errors.append(f"位置 ({pos.x}, {pos.y}) 有多個角色重疊")
         seen.add(key)

@@ -1,10 +1,9 @@
 """Bone Engine 空間邏輯。
 
-距離計算、Bresenham 視線、移動驗證、掩蔽偵測、區域查詢。
+距離計算、視線判定（Ray-AABB）、移動驗證、掩蔽偵測、區域查詢。
 純確定性，無 LLM、無隨機性。座標系為左下原點（X 向右、Y 向上）。
 
-座標單位為公尺（float），地形/牆壁/道具仍用整數網格。
-內部透過 floor(pos / grid_size) 將公尺座標映射到網格 cell。
+座標單位為公尺（float），障礙物以 Wall AABB 表示。
 """
 
 from __future__ import annotations
@@ -14,8 +13,10 @@ import re
 from uuid import UUID
 
 from tot.gremlins.bone_engine.geometry import (
+    AABB,
     circle_aabb_overlap,
     extract_static_obstacles,
+    segment_aabb_intersect,
 )
 from tot.models import (
     SIZE_ORDER,
@@ -23,7 +24,6 @@ from tot.models import (
     Actor,
     Character,
     CoverType,
-    Entity,
     MapState,
     Monster,
     MoveEvent,
@@ -35,12 +35,6 @@ from tot.models import (
     ZoneConnection,
 )
 
-
-def _to_grid(x_m: float, y_m: float, grid_size: float) -> tuple[int, int]:
-    """公尺座標 → 網格 cell（內部 helper）。"""
-    return int(math.floor(x_m / grid_size)), int(math.floor(y_m / grid_size))
-
-
 # ---------------------------------------------------------------------------
 # 距離計算
 # ---------------------------------------------------------------------------
@@ -49,19 +43,6 @@ def _to_grid(x_m: float, y_m: float, grid_size: float) -> tuple[int, int]:
 def distance(a: Position, b: Position) -> float:
     """Euclidean 距離（公尺）。"""
     return math.sqrt((a.x - b.x) ** 2 + (a.y - b.y) ** 2)
-
-
-def grid_distance(a: Position, b: Position, grid_size: float = 1.5) -> float:
-    """Chebyshev 距離 × 格子大小（公尺）。
-
-    D&D 5e 格子戰鬥的標準距離計量：對角線 = 1 格。
-    用於近戰觸及範圍、藉機攻擊等格子距離判定。
-    遠程攻擊/法術射程可用 distance()（Euclidean）。
-    """
-    gs = grid_size
-    agx, agy = _to_grid(a.x, a.y, gs)
-    bgx, bgy = _to_grid(b.x, b.y, gs)
-    return max(abs(agx - bgx), abs(agy - bgy)) * gs
 
 
 def actors_in_radius(
@@ -85,89 +66,14 @@ def actors_in_radius(
     return result
 
 
-def positions_in_radius(
-    center: Position,
-    radius_m: float,
-    grid_size: float = 1.5,
-) -> list[Position]:
-    """半徑內所有格子座標（舊版 AoE 用，保留相容）。
-
-    .. deprecated:: 使用 actors_in_radius() 取代。
-    """
-    radius_grids = int(radius_m / grid_size)
-    gs = grid_size
-    cgx, cgy = _to_grid(center.x, center.y, gs)
-    result: list[Position] = []
-    for dx in range(-radius_grids, radius_grids + 1):
-        for dy in range(-radius_grids, radius_grids + 1):
-            if max(abs(dx), abs(dy)) <= radius_grids:
-                result.append(Position.from_grid(cgx + dx, cgy + dy, gs))
-    return result
-
-
 # ---------------------------------------------------------------------------
-# Bresenham 視線
+# 視線判定（Ray-AABB）
 # ---------------------------------------------------------------------------
 
 
-def bresenham_line(
-    x0: int,
-    y0: int,
-    x1: int,
-    y1: int,
-) -> list[tuple[int, int]]:
-    """Bresenham 直線演算法，回傳路徑上的所有座標（含起終點）。"""
-    points: list[tuple[int, int]] = []
-    dx = abs(x1 - x0)
-    dy = abs(y1 - y0)
-    sx = 1 if x0 < x1 else -1
-    sy = 1 if y0 < y1 else -1
-    err = dx - dy
-
-    while True:
-        points.append((x0, y0))
-        if x0 == x1 and y0 == y1:
-            break
-        e2 = 2 * err
-        if e2 > -dy:
-            err -= dy
-            x0 += sx
-        if e2 < dx:
-            err += dx
-            y0 += sy
-
-    return points
-
-
-def _is_blocking_at(x: int, y: int, map_state: MapState) -> bool:
-    """檢查指定網格 cell 是否有阻擋物（地形、活著的 Actor、阻擋型 Prop）。
-
-    x, y 為網格座標（int）。
-    """
-    m = map_state.manifest
-    gs = m.grid_size_m
-    # 邊界外視為阻擋
-    if x < 0 or x >= m.width or y < 0 or y >= m.height:
-        return True
-    # 地形阻擋
-    if map_state.terrain and map_state.terrain[y][x].is_blocking:
-        return True
-    # manifest 中的靜態 Prop（Prop 座標仍為整數網格）
-    for p in m.props:
-        pgx, pgy = _to_grid(p.x, p.y, gs)
-        if pgx == x and pgy == y and p.is_blocking:
-            return True
-    # 執行期動態 Prop
-    for p in map_state.props:
-        pgx, pgy = _to_grid(p.x, p.y, gs)
-        if pgx == x and pgy == y and p.is_blocking:
-            return True
-    # 活著的 Actor 視為阻擋（死亡降級後不阻擋）
-    for a in map_state.actors:
-        agx, agy = _to_grid(a.x, a.y, gs)
-        if agx == x and agy == y and a.is_alive and a.is_blocking:
-            return True
-    return False
+def _near(ax: float, ay: float, bx: float, by: float, tol: float = 0.01) -> bool:
+    """兩點是否接近（容差 tol 公尺）。"""
+    return abs(ax - bx) < tol and abs(ay - by) < tol
 
 
 def has_line_of_sight(
@@ -175,16 +81,31 @@ def has_line_of_sight(
     target: Position,
     map_state: MapState,
 ) -> bool:
-    """視線判定：Bresenham 路徑上（不含起終點）若有 is_blocking 則遮擋。
+    """視線判定：線段 origin→target 是否被靜態障礙物或活的 Actor 遮擋。
 
-    接受公尺座標 Position，內部轉為網格座標做 Bresenham。
+    使用 Ray-AABB（Liang-Barsky）對所有靜態障礙 AABB 和
+    活著的 blocking Actor 做線段交叉檢查。
+    起終點所在的 Actor 不參與遮擋判定。
     """
-    gs = map_state.manifest.grid_size_m
-    ox, oy = _to_grid(origin.x, origin.y, gs)
-    tx, ty = _to_grid(target.x, target.y, gs)
-    path = bresenham_line(ox, oy, tx, ty)
-    # 跳過起點和終點
-    return all(not _is_blocking_at(x, y, map_state) for x, y in path[1:-1])
+    obstacles = extract_static_obstacles(map_state)
+
+    # 靜態障礙物
+    for ob in obstacles:
+        if segment_aabb_intersect(origin.x, origin.y, target.x, target.y, ob):
+            return False
+
+    # 活著的 blocking Actor（排除在起點或終點位置的 Actor）
+    for a in map_state.actors:
+        if not a.is_alive or not a.is_blocking:
+            continue
+        if _near(a.x, a.y, origin.x, origin.y) or _near(a.x, a.y, target.x, target.y):
+            continue
+        r = SIZE_RADIUS_M.get(Size.MEDIUM, 0.75)
+        actor_aabb = AABB(a.x - r, a.y - r, a.x + r, a.y + r)
+        if segment_aabb_intersect(origin.x, origin.y, target.x, target.y, actor_aabb):
+            return False
+
+    return True
 
 
 # ---------------------------------------------------------------------------
@@ -192,61 +113,18 @@ def has_line_of_sight(
 # ---------------------------------------------------------------------------
 
 
-def is_valid_position(x: int, y: int, map_state: MapState) -> bool:
-    """檢查網格座標是否在地圖內且非阻擋（可通行）。
+def is_valid_position(x: float, y: float, map_state: MapState) -> bool:
+    """檢查公尺座標是否在地圖內且無靜態障礙物。
 
-    x, y 為網格座標（int）。
+    用 circle-AABB 碰撞判定（Medium 半徑 0.75m）。
+    不檢查 Actor（由 can_end_move_at 另外處理）。
     """
-    m = map_state.manifest
-    gs = m.grid_size_m
-    if x < 0 or x >= m.width or y < 0 or y >= m.height:
-        return False
-    # 地形阻擋
-    if map_state.terrain and map_state.terrain[y][x].is_blocking:
-        return False
-    # 靜態 Prop 阻擋
-    for p in m.props:
-        pgx, pgy = _to_grid(p.x, p.y, gs)
-        if pgx == x and pgy == y and p.is_blocking:
-            return False
-    # 動態 Prop 阻擋
-    for p in map_state.props:
-        pgx, pgy = _to_grid(p.x, p.y, gs)
-        if pgx == x and pgy == y and p.is_blocking:
-            return False
-    # 活著的 Actor 佔據
-    for a in map_state.actors:
-        agx, agy = _to_grid(a.x, a.y, gs)
-        if agx == x and agy == y and a.is_alive and a.is_blocking:
-            return False
-    return True
+    return is_position_clear(Position(x=x, y=y), SIZE_RADIUS_M[Size.MEDIUM], map_state)
 
 
 # ---------------------------------------------------------------------------
 # 實體查詢
 # ---------------------------------------------------------------------------
-
-
-def get_entities_at(x: int, y: int, map_state: MapState) -> list[Entity]:
-    """取得指定網格 cell 上的所有實體（Actor + Prop）。
-
-    x, y 為網格座標（int）。
-    """
-    gs = map_state.manifest.grid_size_m
-    result: list[Entity] = []
-    for a in map_state.actors:
-        agx, agy = _to_grid(a.x, a.y, gs)
-        if agx == x and agy == y:
-            result.append(a)
-    for p in map_state.manifest.props:
-        pgx, pgy = _to_grid(p.x, p.y, gs)
-        if pgx == x and pgy == y:
-            result.append(p)
-    for p in map_state.props:
-        pgx, pgy = _to_grid(p.x, p.y, gs)
-        if pgx == x and pgy == y:
-            result.append(p)
-    return result
 
 
 def get_actor_position(combatant_id: UUID, map_state: MapState) -> Position | None:
@@ -360,37 +238,32 @@ def find_nearest_valid_position(
     map_state: MapState,
     exclude_id: str | None = None,
 ) -> Position:
-    """找到離 pos 最近的有效位置（無碰撞、地形可通行）。
+    """找到離 pos 最近的有效位置（無碰撞、靜態障礙可通行）。
 
-    以 BFS 在網格上搜尋，回傳格子中心公尺座標。
+    在連續空間中以螺旋方式搜尋，步長 0.75m（半格）。
     """
-    gs = map_state.manifest.grid_size_m
-    gx, gy = _to_grid(pos.x, pos.y, gs)
-
     # 先檢查原位置
-    if is_valid_position(gx, gy, map_state) and can_end_move_at(pos, size, map_state, exclude_id):
+    if is_valid_position(pos.x, pos.y, map_state) and can_end_move_at(
+        pos, size, map_state, exclude_id
+    ):
         return pos
 
-    # BFS 螺旋展開搜尋
-    from collections import deque
-
-    visited: set[tuple[int, int]] = {(gx, gy)}
-    queue: deque[tuple[int, int]] = deque([(gx, gy)])
-    dirs = [(-1, 0), (1, 0), (0, -1), (0, 1), (-1, -1), (-1, 1), (1, -1), (1, 1)]
-
-    while queue:
-        cx, cy = queue.popleft()
-        for dx, dy in dirs:
-            nx, ny = cx + dx, cy + dy
-            if (nx, ny) in visited:
-                continue
-            visited.add((nx, ny))
-            candidate = Position.from_grid(nx, ny, gs)
-            if is_valid_position(nx, ny, map_state) and can_end_move_at(
+    # 螺旋搜尋
+    step = 0.75  # 搜尋步長
+    max_rings = 20  # 最多搜尋 20 圈
+    for ring in range(1, max_rings + 1):
+        r = ring * step
+        # 每圈 8*ring 個採樣點
+        n_samples = 8 * ring
+        for i in range(n_samples):
+            angle = 2 * math.pi * i / n_samples
+            cx = pos.x + r * math.cos(angle)
+            cy = pos.y + r * math.sin(angle)
+            candidate = Position(x=round(cx, 2), y=round(cy, 2))
+            if is_valid_position(cx, cy, map_state) and can_end_move_at(
                 candidate, size, map_state, exclude_id
             ):
                 return candidate
-            queue.append((nx, ny))
 
     # 退回原位置（不應發生）
     return pos
@@ -411,12 +284,11 @@ def is_position_clear(
     不檢查 Actor（由 can_end_move_at / can_traverse 另外處理）。
     """
     m = map_state.manifest
-    gs = m.grid_size_m
 
-    # 地圖邊界
-    if pos.x - radius < 0 or pos.x + radius > m.width * gs:
+    # 地圖邊界（width/height 為公尺）
+    if pos.x - radius < 0 or pos.x + radius > m.width:
         return False
-    if pos.y - radius < 0 or pos.y + radius > m.height * gs:
+    if pos.y - radius < 0 or pos.y + radius > m.height:
         return False
 
     # 靜態障礙物
@@ -447,7 +319,6 @@ def move_entity(
     - 不可在任何生物空間內結束移動（敵友皆然）
     - 離開敵對觸及範圍 → 回傳 OA 事件
     """
-    gs = map_state.manifest.grid_size_m
     allies = allies or set()
     events: list[MoveEvent] = []
     mover_radius = SIZE_RADIUS_M.get(mover_size, 0.75)
@@ -483,17 +354,8 @@ def move_entity(
     # 3. 成本計算
     cost = math.sqrt((tx - actor.x) ** 2 + (ty - actor.y) ** 2)
 
-    # 困難地形
-    tgt_gx, tgt_gy = _to_grid(tx, ty, gs)
-    terrain_difficult = (
-        map_state.terrain
-        and 0 <= tgt_gy < len(map_state.terrain)
-        and 0 <= tgt_gx < len(map_state.terrain[tgt_gy])
-        and map_state.terrain[tgt_gy][tgt_gx].is_difficult
-    )
-    if terrain_difficult:
-        cost *= 2
-    elif difficult_from_creature:
+    # 穿越友軍困難地形
+    if difficult_from_creature:
         cost *= 2
         events.append(
             MoveEvent(
@@ -542,30 +404,45 @@ def move_entity(
 # ---------------------------------------------------------------------------
 
 
-def determine_cover_from_grid(
+def determine_cover(
     attacker: Position,
     target: Position,
     map_state: MapState,
 ) -> CoverType:
-    """根據 Bresenham 路徑上的阻擋物判定掩蔽。
+    """根據攻擊線段穿過的障礙物 AABB 判定掩蔽。
 
-    接受公尺座標 Position，內部轉為網格座標做 Bresenham。
-    不含起終點。1 個阻擋 = 半掩蔽(+2 AC)，2+ 個 = 3/4 掩蔽(+5 AC)。
+    不含起終點上的 Actor。
+    1 個障礙物 = 半掩蔽(+2 AC)，2+ 個 = 3/4 掩蔽(+5 AC)。
     完全掩蔽（Total）需由上層判定（如完全在牆後、無視線）。
     """
-    gs = map_state.manifest.grid_size_m
-    ax, ay = _to_grid(attacker.x, attacker.y, gs)
-    tx, ty = _to_grid(target.x, target.y, gs)
-    path = bresenham_line(ax, ay, tx, ty)
+    obstacles = extract_static_obstacles(map_state)
     blocking_count = 0
-    for x, y in path[1:-1]:
-        if _is_blocking_at(x, y, map_state):
+
+    # 靜態障礙物
+    for ob in obstacles:
+        if segment_aabb_intersect(attacker.x, attacker.y, target.x, target.y, ob):
             blocking_count += 1
+
+    # 活著的 blocking Actor 也提供掩蔽（排除起終點上的）
+    for a in map_state.actors:
+        if not a.is_alive or not a.is_blocking:
+            continue
+        if _near(a.x, a.y, attacker.x, attacker.y) or _near(a.x, a.y, target.x, target.y):
+            continue
+        r = SIZE_RADIUS_M.get(Size.MEDIUM, 0.75)
+        actor_aabb = AABB(a.x - r, a.y - r, a.x + r, a.y + r)
+        if segment_aabb_intersect(attacker.x, attacker.y, target.x, target.y, actor_aabb):
+            blocking_count += 1
+
     if blocking_count >= 2:
         return CoverType.THREE_QUARTERS
     if blocking_count == 1:
         return CoverType.HALF
     return CoverType.NONE
+
+
+# 過渡期別名
+determine_cover_from_grid = determine_cover
 
 
 # ---------------------------------------------------------------------------
@@ -576,18 +453,10 @@ def determine_cover_from_grid(
 def zone_for_position(
     x: float | int, y: float | int, zones: list[Zone], grid_size: float = 1.5
 ) -> Zone | None:
-    """座標 → 所屬區域。接受公尺或網格座標，自動偵測。
-
-    Zone 邊界定義為網格座標，若傳入 float 會先轉為網格座標。
-    多區域重疊時回傳第一個符合的。
-    """
-    # 若為 float 且不是整數值，視為公尺座標
-    if isinstance(x, float) and not x.is_integer():
-        gx, gy = _to_grid(x, y, grid_size)
-    else:
-        gx, gy = int(x), int(y)
+    """座標 → 所屬區域。Zone 邊界為公尺座標，直接比較。"""
+    fx, fy = float(x), float(y)
     for z in zones:
-        if z.x_min <= gx <= z.x_max and z.y_min <= gy <= z.y_max:
+        if z.x_min <= fx <= z.x_max and z.y_min <= fy <= z.y_max:
             return z
     return None
 
@@ -604,38 +473,33 @@ def build_zone_adjacency(
 
 
 # ---------------------------------------------------------------------------
-# 生成位置
-# ---------------------------------------------------------------------------
-
-
-# ---------------------------------------------------------------------------
 # 法術射程驗證
 # ---------------------------------------------------------------------------
 
 
-def parse_spell_range_meters(range_str: str, grid_size: float = 1.5) -> float | None:
+def parse_spell_range_meters(range_str: str) -> float | None:
     """解析法術射程字串 → 公尺。"Self"/"Touch" → None。"""
     s = range_str.strip().lower()
     if s in ("self", "touch") or s.startswith("self"):
         return None
-    # "120ft" → 120 / 5 * 1.5 = 36.0m
+    # "120ft" → 120 * 0.3 = 36.0m（1ft = 0.3m）
     m = re.match(r"(\d+)\s*ft", s)
     if m:
-        return int(m.group(1)) / 5.0 * grid_size
+        return int(m.group(1)) * 0.3
     return None
 
 
-def validate_spell_range(spell: Spell, dist_m: float, grid_size: float = 1.5) -> str | None:
+def validate_spell_range(spell: Spell, dist_m: float) -> str | None:
     """驗證法術射程（距離為公尺）。回傳錯誤訊息或 None。"""
     range_str = spell.range.strip().lower()
     if range_str == "self" or range_str.startswith("self"):
         return None
     if range_str == "touch":
         # 觸碰法術：需要在近戰觸及範圍（1.5m for Medium）
-        if dist_m > grid_size:
+        if dist_m > 1.5:
             return f"觸碰法術需要在觸及範圍（當前 {dist_m:.1f}m）"
         return None
-    range_m = parse_spell_range_meters(spell.range, grid_size)
+    range_m = parse_spell_range_meters(spell.range)
     if range_m is not None and dist_m > range_m:
         return f"超出法術射程（{spell.range}≈{range_m:.0f}m，當前 {dist_m:.1f}m）"
     return None
@@ -646,124 +510,6 @@ def validate_spell_range(spell: Spell, dist_m: float, grid_size: float = 1.5) ->
 # ---------------------------------------------------------------------------
 
 
-# ---------------------------------------------------------------------------
-# BFS 尋路
-# ---------------------------------------------------------------------------
-
-
-def _is_passable_for_bfs(
-    x: int,
-    y: int,
-    map_state: MapState,
-    mover_id: UUID,
-    friendly_ids: set[UUID],
-) -> bool:
-    """BFS 用可通行判定（網格座標）。
-
-    .. deprecated:: 由 pathfinding.py 的 Visibility Graph + A* 取代。
-       保留供 combat_runner.py 過渡期使用。
-    """
-    m = map_state.manifest
-    gs = m.grid_size_m
-    if x < 0 or x >= m.width or y < 0 or y >= m.height:
-        return False
-    if map_state.terrain and map_state.terrain[y][x].is_blocking:
-        return False
-    for p in m.props:
-        pgx, pgy = _to_grid(p.x, p.y, gs)
-        if pgx == x and pgy == y and p.is_blocking:
-            return False
-    for p in map_state.props:
-        pgx, pgy = _to_grid(p.x, p.y, gs)
-        if pgx == x and pgy == y and p.is_blocking:
-            return False
-    for a in map_state.actors:
-        agx, agy = _to_grid(a.x, a.y, gs)
-        if agx == x and agy == y and a.is_alive and a.is_blocking:
-            if a.combatant_id == mover_id:
-                continue
-            if a.combatant_id in friendly_ids:
-                continue
-            return False
-    return True
-
-
-def bfs_path_to_range(
-    start: Position,
-    target: Position,
-    reach_grids: int,
-    map_state: MapState,
-    max_steps: int,
-    mover_id: UUID,
-    friendly_ids: set[UUID],
-) -> list[Position] | None:
-    """BFS 尋路（網格上）。
-
-    .. deprecated:: 由 pathfinding.py 的 find_path_to_range 取代。
-       保留供 combat_runner.py 過渡期使用。
-    """
-    from collections import deque
-
-    gs = map_state.manifest.grid_size_m
-    sgx, sgy = _to_grid(start.x, start.y, gs)
-    tgx, tgy = _to_grid(target.x, target.y, gs)
-
-    if max(abs(sgx - tgx), abs(sgy - tgy)) <= reach_grids:
-        return []
-
-    friendly_occupied: set[tuple[int, int]] = set()
-    for a in map_state.actors:
-        if (
-            a.is_alive
-            and a.is_blocking
-            and a.combatant_id in friendly_ids
-            and a.combatant_id != mover_id
-        ):
-            friendly_occupied.add(_to_grid(a.x, a.y, gs))
-
-    queue: deque[tuple[int, int, int]] = deque()
-    visited: dict[tuple[int, int], tuple[int, int] | None] = {(sgx, sgy): None}
-    queue.append((sgx, sgy, 0))
-
-    dirs = [(-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)]
-
-    while queue:
-        cx, cy, depth = queue.popleft()
-        if depth >= max_steps:
-            continue
-
-        for dx, dy in dirs:
-            nx, ny = cx + dx, cy + dy
-            if (nx, ny) in visited:
-                continue
-            if not _is_passable_for_bfs(nx, ny, map_state, mover_id, friendly_ids):
-                continue
-
-            visited[(nx, ny)] = (cx, cy)
-
-            can_stop = (nx, ny) not in friendly_occupied
-            if can_stop and max(abs(nx - tgx), abs(ny - tgy)) <= reach_grids:
-                path: list[Position] = []
-                cur: tuple[int, int] | None = (nx, ny)
-                while cur is not None and cur != (sgx, sgy):
-                    path.append(Position.from_grid(cur[0], cur[1], gs))
-                    cur = visited.get(cur)
-                path.reverse()
-                return path
-
-            queue.append((nx, ny, depth + 1))
-
-    return None
-
-
-def _spawn_to_meters(sp: Position, grid_size: float) -> tuple[float, float]:
-    """將 spawn point（網格座標）轉為公尺座標（格子中心）。
-
-    spawn_points 在 JSON 中是整數網格座標，轉換為公尺座標。
-    """
-    return sp.x * grid_size + grid_size / 2, sp.y * grid_size + grid_size / 2
-
-
 def place_actors_at_spawn(
     characters: list[Character],
     monsters: list[Monster],
@@ -772,18 +518,17 @@ def place_actors_at_spawn(
     """依 spawn_points 將戰鬥者放上地圖，建立 Actor 加入 map_state.actors。
 
     spawn_points 的 key 對應：'players' → characters、'enemies' → monsters。
-    spawn_points 為網格座標，自動轉換為公尺座標（格子中心）。
+    spawn_points 為公尺座標，直接使用。
     若 spawn_points 不足，多出的戰鬥者不會被放置。
     """
     spawns = map_state.manifest.spawn_points
-    gs = map_state.manifest.grid_size_m
 
     player_spawns = spawns.get("players", [])
     for i, char in enumerate(characters):
         if i >= len(player_spawns):
             break
-        mx, my = _spawn_to_meters(player_spawns[i], gs)
-        pos = Position(x=mx, y=my)
+        sp = player_spawns[i]
+        pos = Position(x=sp.x, y=sp.y)
         # 碰撞修正：若 spawn 點已被佔據，找最近有效位置
         if check_collision(pos, Size.MEDIUM, map_state):
             pos = find_nearest_valid_position(pos, Size.MEDIUM, map_state)
@@ -804,8 +549,8 @@ def place_actors_at_spawn(
     for i, mon in enumerate(monsters):
         if i >= len(enemy_spawns):
             break
-        mx, my = _spawn_to_meters(enemy_spawns[i], gs)
-        pos = Position(x=mx, y=my)
+        sp = enemy_spawns[i]
+        pos = Position(x=sp.x, y=sp.y)
         if check_collision(pos, Size.MEDIUM, map_state):
             pos = find_nearest_valid_position(pos, Size.MEDIUM, map_state)
         actor = Actor(

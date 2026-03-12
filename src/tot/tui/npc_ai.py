@@ -32,7 +32,6 @@ from tot.models import (
 from tot.tui.combat_bridge import (
     display_name,
     get_actor,
-    pos_to_grid,
 )
 
 if TYPE_CHECKING:
@@ -47,7 +46,7 @@ if TYPE_CHECKING:
 def greedy_move_toward(
     actor: Actor,
     target_id: UUID,
-    reach: int,
+    reach_m: float,
     mover: Character | Monster | None,
     combat_state: CombatState,
     map_state: MapState,
@@ -66,8 +65,6 @@ def greedy_move_toward(
         return float("inf")
 
     cur_pos = Position(x=actor.x, y=actor.y)
-    gs = map_state.manifest.grid_size_m
-    reach_m = reach * gs
 
     # 已在範圍內
     cur_dist = distance(cur_pos, tgt_pos)
@@ -81,7 +78,7 @@ def greedy_move_toward(
     result = move_toward_target(
         actor,
         target_id,
-        reach,
+        reach_m,
         mover,
         combat_state,
         map_state,
@@ -173,16 +170,14 @@ def monster_turn(
                     best_dist = d
                     target = pc
 
-    gs = map_state.manifest.grid_size_m
-    reach_m = get_reach_m(monster, gs)
-    reach_grids = max(1, round(reach_m / gs))
+    reach_m = get_reach_m(monster)
 
     if mon_actor:
         old_x, old_y = mon_actor.x, mon_actor.y
         best_dist = greedy_move_toward(
             mon_actor,
             target.id,
-            reach_grids,
+            reach_m,
             monster,
             combat_state,
             map_state,
@@ -195,10 +190,9 @@ def monster_turn(
             refresh_all_fn()
             return
         if mon_actor.x != old_x or mon_actor.y != old_y:
-            mgx, mgy = pos_to_grid(mon_actor.x, mon_actor.y, gs)
             log.log(
                 f"  [dim]{display_name(monster)} 移動到 "
-                f"({mgx}, {mgy})（距離 {target.name}: {best_dist:.1f}m）[/]"
+                f"({mon_actor.x:.1f}, {mon_actor.y:.1f})（距離 {target.name}: {best_dist:.1f}m）[/]"
             )
 
     in_range = True
@@ -297,15 +291,13 @@ def _ai_melee_turn(
                 best_dist = d
                 target = enemy
 
-    gs = map_state.manifest.grid_size_m
-    reach_m = get_reach_m(char, gs)
-    reach_grids = max(1, round(reach_m / gs))
+    reach_m = get_reach_m(char)
 
     old_x, old_y = char_actor.x, char_actor.y
     best_dist = greedy_move_toward(
         char_actor,
         target.id,
-        reach_grids,
+        reach_m,
         char,
         combat_state,
         map_state,
@@ -318,9 +310,8 @@ def _ai_melee_turn(
         refresh_all_fn()
         return
     if char_actor.x != old_x or char_actor.y != old_y:
-        cgx, cgy = pos_to_grid(char_actor.x, char_actor.y, gs)
         log.log(
-            f"  [dim]{char.name} 移動到 ({cgx}, {cgy})"
+            f"  [dim]{char.name} 移動到 ({char_actor.x:.1f}, {char_actor.y:.1f})"
             f"（距離 {display_name(target)}: {best_dist:.1f}m）[/]"
         )
 
@@ -402,9 +393,8 @@ def _ai_try_heal(
             caster_pos = get_actor_position(char.id, map_state)
             tgt_pos = get_actor_position(target.id, map_state)
             if caster_pos and tgt_pos:
-                gs = map_state.manifest.grid_size_m
                 dist = distance(caster_pos, tgt_pos)
-                range_err = validate_spell_range(spell, dist, gs)
+                range_err = validate_spell_range(spell, dist)
                 if range_err:
                     continue
 
@@ -504,13 +494,12 @@ def _find_ai_spell_target(
     if not caster_pos:
         return candidates[0] if candidates else None
 
-    gs = map_state.manifest.grid_size_m
     for enemy in candidates:
         tgt_pos = get_actor_position(enemy.id, map_state)
         if not tgt_pos:
             continue
         dist = distance(caster_pos, tgt_pos)
-        range_err = validate_spell_range(spell, dist, gs)
+        range_err = validate_spell_range(spell, dist)
         if not range_err:
             return enemy
 

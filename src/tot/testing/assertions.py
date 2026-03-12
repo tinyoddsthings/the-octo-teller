@@ -37,9 +37,8 @@ def assert_dead_actors_skip_turns(log: CombatLog) -> None:
 def assert_melee_range_valid(log: CombatLog) -> None:
     """近戰攻擊時距離應在合理範圍內（≤ 觸及範圍）。
 
-    由於 log 記錄的是 grid_distance（Chebyshev），
-    近戰攻擊通常 ≤ 1.5m（1 格）或 3.0m（長觸及 2 格）。
-    我們使用寬鬆的 4.5m 上限（允許 3 格容差）。
+    近戰攻擊通常 ≤ 1.5m（標準觸及）或 3.0m（長觸及）。
+    使用寬鬆的 4.5m 上限。
     """
     for entry in log.entries:
         if entry.action_type == "attack" and entry.distance_to_target > 4.5:

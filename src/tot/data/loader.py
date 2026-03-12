@@ -1,6 +1,7 @@
 """靜態資料載入器。
 
-從 JSON 檔案載入地圖 manifest 並建構 terrain 二維陣列。
+從 JSON 檔案載入地圖 manifest 並建構 MapState。
+支援新格式（walls + 公尺座標）和舊格式（terrain grid + grid_size_m）。
 """
 
 from __future__ import annotations
@@ -9,7 +10,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from tot.models import ExplorationMap, MapManifest, MapState, Position, TerrainTile
+from tot.models import ExplorationMap, MapManifest, MapState, Position, TerrainTile, Wall
 
 # 預設地圖資料夾
 _MAPS_DIR = Path(__file__).parent / "maps"
@@ -20,15 +21,15 @@ def load_map_manifest(
     *,
     name: str | None = None,
 ) -> MapState:
-    """從 JSON 載入地圖，回傳完整的 MapState（含 terrain 二維陣列）。
+    """從 JSON 載入地圖，回傳完整的 MapState。
 
     參數:
         path: JSON 檔案路徑。若未指定則從內建地圖資料夾以 name 查找。
         name: 內建地圖名稱（不含 .json），例如 'tutorial_room'。
 
-    terrain JSON 格式:
-        - {"symbol": "#", "positions": [[x,y], ...], "is_blocking": true, "name": "wall"}
-        - {"symbol": ".", "fill": true, ...}  ← fill=true 填滿未指定的格子
+    支援兩種格式：
+    - 新格式：直接包含 walls 和公尺座標
+    - 舊格式：terrain 定義 + grid_size_m，自動轉換為 walls
     """
     if path is None:
         if name is None:
@@ -39,32 +40,65 @@ def load_map_manifest(
     path = Path(path)
     raw: dict[str, Any] = json.loads(path.read_text(encoding="utf-8"))
 
-    # 取出 terrain 定義（載入器專用格式，不屬於 MapManifest）
+    # 偵測格式：有 "walls" key → 新格式
+    is_new_format = "walls" in raw
+
+    # 取出 terrain 定義（舊格式專用）
     terrain_defs: list[dict[str, Any]] = raw.pop("terrain", [])
 
-    # 解析 spawn_points：JSON 中是 {key: [{x, y}, ...]}，座標為 grid 座標
+    if is_new_format:
+        # 新格式：座標已是公尺，直接讀取
+        # spawn_points 中的座標已是公尺
+        raw_spawns = raw.get("spawn_points", {})
+        parsed_spawns: dict[str, list[Position]] = {}
+        for key, points in raw_spawns.items():
+            parsed_spawns[key] = [Position(x=p["x"], y=p["y"]) for p in points]
+        raw["spawn_points"] = parsed_spawns
+
+        # Props 座標已是公尺，不需轉換
+
+        manifest = MapManifest(**raw)
+
+        # 從 manifest.walls 複製到 MapState.walls
+        return MapState(
+            manifest=manifest,
+            walls=list(manifest.walls),
+            props=[],
+        )
+
+    # 舊格式：grid_size_m + terrain 定義
     gs = raw.get("grid_size_m", 1.5)
     raw_spawns = raw.get("spawn_points", {})
-    parsed_spawns: dict[str, list[Position]] = {}
+    parsed_spawns = {}
     for key, points in raw_spawns.items():
         parsed_spawns[key] = [Position.from_grid(p["x"], p["y"], gs) for p in points]
     raw["spawn_points"] = parsed_spawns
 
-    # Props 的 x/y 也是 grid 座標，轉為公尺（格子中心）
+    # Props 的 x/y 是 grid 座標，轉為公尺（格子中心）
     for prop in raw.get("props", []):
         gx, gy = prop["x"], prop["y"]
         prop["x"] = gx * gs + gs / 2
         prop["y"] = gy * gs + gs / 2
 
+    # 舊格式的 width/height 是格數，轉為公尺
+    raw["width"] = raw["width"] * gs
+    raw["height"] = raw["height"] * gs
+
     manifest = MapManifest(**raw)
 
-    # 建構 terrain[y][x] 二維陣列，y=0 為最底列
-    terrain = _build_terrain_grid(manifest.width, manifest.height, terrain_defs)
+    # 建構 terrain[y][x] 二維陣列（相容舊程式碼）
+    grid_w = int(manifest.width / gs)
+    grid_h = int(manifest.height / gs)
+    terrain = _build_terrain_grid(grid_w, grid_h, terrain_defs)
+
+    # 同時從 terrain 建構 walls
+    walls = _terrain_to_walls(terrain, gs)
 
     return MapState(
         manifest=manifest,
         terrain=terrain,
-        props=[],  # 執行期動態 props 初始為空
+        walls=walls,
+        props=[],
     )
 
 
@@ -118,6 +152,16 @@ def _build_terrain_grid(
                 grid[y][x] = TerrainTile()
 
     return grid  # type: ignore[return-value]
+
+
+def _terrain_to_walls(terrain: list[list[TerrainTile]], gs: float) -> list[Wall]:
+    """從 terrain grid 提取 blocking tiles 轉為 Wall AABB。"""
+    walls: list[Wall] = []
+    for gy, row in enumerate(terrain):
+        for gx, tile in enumerate(row):
+            if tile.is_blocking:
+                walls.append(Wall(x=gx * gs, y=gy * gs, width=gs, height=gs))
+    return walls
 
 
 # ---------------------------------------------------------------------------
