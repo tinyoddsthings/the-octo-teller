@@ -10,9 +10,9 @@ import math
 from typing import TYPE_CHECKING
 from uuid import UUID
 
-from tot.gremlins.bone_engine.combat import use_action
+from tot.gremlins.bone_engine.combat import get_reach_m, use_action
 from tot.gremlins.bone_engine.conditions import can_take_action
-from tot.gremlins.bone_engine.pathfinding import find_furthest_along_path, find_path_to_range
+from tot.gremlins.bone_engine.movement import move_toward_target
 from tot.gremlins.bone_engine.spatial import (
     distance,
     get_actor_position,
@@ -21,18 +21,15 @@ from tot.gremlins.bone_engine.spatial import (
 )
 from tot.gremlins.bone_engine.spells import can_cast, cast_spell, get_spell_by_name
 from tot.models import (
-    SIZE_RADIUS_M,
     Actor,
     Character,
     CombatState,
     MapState,
     Monster,
     Position,
-    Size,
     Spell,
 )
 from tot.tui.combat_bridge import (
-    build_friendly_ids,
     display_name,
     get_actor,
     pos_to_grid,
@@ -40,43 +37,6 @@ from tot.tui.combat_bridge import (
 
 if TYPE_CHECKING:
     from tot.tui.log_manager import LogManager
-
-
-# ---------------------------------------------------------------------------
-# 內部輔助：建立 blocked/passable actor 列表
-# ---------------------------------------------------------------------------
-
-
-def _build_actor_lists(
-    actor: Actor,
-    mover: Character | Monster | None,
-    map_state: MapState,
-    characters: list[Character],
-    monsters: list[Monster],
-    exclude_id: UUID | None = None,
-) -> tuple[list[Actor], list[Actor]]:
-    """區分敵方（blocked）和友方（passable）Actor。
-
-    exclude_id：攻擊目標不應視為障礙物，傳入後從 blocked 排除。
-    """
-    friendly_ids: set[UUID] = set()
-    if mover:
-        friendly_ids = build_friendly_ids(mover, characters, monsters)
-
-    blocked: list[Actor] = []
-    passable: list[Actor] = []
-    for a in map_state.actors:
-        if a.combatant_id == actor.combatant_id:
-            continue
-        if exclude_id and a.combatant_id == exclude_id:
-            continue
-        if not a.is_alive or not a.is_blocking:
-            continue
-        if a.combatant_id in friendly_ids:
-            passable.append(a)
-        else:
-            blocked.append(a)
-    return blocked, passable
 
 
 # ---------------------------------------------------------------------------
@@ -99,7 +59,6 @@ def greedy_move_toward(
     """A* 尋路移動 actor 靠近 target，回傳最終距離（公尺）。"""
     from tot.tui.actions import check_oa_for_step
 
-    gs = map_state.manifest.grid_size_m
     tgt_pos = get_actor_position(target_id, map_state)
     speed_left = combat_state.turn_state.movement_remaining
 
@@ -107,6 +66,7 @@ def greedy_move_toward(
         return float("inf")
 
     cur_pos = Position(x=actor.x, y=actor.y)
+    gs = map_state.manifest.grid_size_m
     reach_m = reach * gs
 
     # 已在範圍內
@@ -117,41 +77,21 @@ def greedy_move_toward(
     if speed_left < 0.01:
         return cur_dist
 
-    mover_size = Size.MEDIUM
-    if mover:
-        mover_size = getattr(mover, "size", Size.MEDIUM)
-    mover_radius = SIZE_RADIUS_M.get(mover_size, 0.75)
-
-    blocked_actors, passable_actors = _build_actor_lists(
-        actor, mover, map_state, characters, monsters, exclude_id=target_id
+    # 路徑規劃（純計算，不執行移動）
+    result = move_toward_target(
+        actor,
+        target_id,
+        reach,
+        mover,
+        combat_state,
+        map_state,
+        characters,
+        monsters,
+        greedy_fallback=True,
     )
 
-    # 先嘗試完整路徑
-    path = find_path_to_range(
-        start=cur_pos,
-        target=tgt_pos,
-        reach_m=reach_m,
-        map_state=map_state,
-        mover_radius=mover_radius,
-        max_cost=speed_left,
-        blocked_actors=blocked_actors,
-        passable_actors=passable_actors,
-    )
-
-    if path is None:
-        # 完全不可達 → 盡量靠近
-        path = find_furthest_along_path(
-            start=cur_pos,
-            target=tgt_pos,
-            reach_m=reach_m,
-            map_state=map_state,
-            mover_radius=mover_radius,
-            max_cost=speed_left,
-            blocked_actors=blocked_actors,
-            passable_actors=passable_actors,
-        )
-
-    if path and len(path) > 0:
+    if result is not None:
+        path, _ = result
         for wp in path:
             seg_dist = math.sqrt((wp.x - actor.x) ** 2 + (wp.y - actor.y) ** 2)
             if seg_dist < 0.01:
@@ -233,12 +173,11 @@ def monster_turn(
                     best_dist = d
                     target = pc
 
-    reach_grids = 1
-    if monster.actions:
-        reach_grids = monster.actions[0].reach
+    gs = map_state.manifest.grid_size_m
+    reach_m = get_reach_m(monster, gs)
+    reach_grids = max(1, round(reach_m / gs))
 
     if mon_actor:
-        gs = map_state.manifest.grid_size_m
         old_x, old_y = mon_actor.x, mon_actor.y
         best_dist = greedy_move_toward(
             mon_actor,
@@ -263,12 +202,10 @@ def monster_turn(
             )
 
     in_range = True
-    if mon_actor:
-        gs = map_state.manifest.grid_size_m
-        if best_dist > reach_grids * gs:
-            in_range = False
-            name = display_name(monster)
-            log.log(f"  [dim]{name} 無法接近 {target.name}（距離 {best_dist:.1f}m）[/]")
+    if mon_actor and best_dist > reach_m:
+        in_range = False
+        name = display_name(monster)
+        log.log(f"  [dim]{name} 無法接近 {target.name}（距離 {best_dist:.1f}m）[/]")
 
     if in_range:
         execute_attack(monster, target, combat_state, log)
@@ -360,15 +297,15 @@ def _ai_melee_turn(
                 best_dist = d
                 target = enemy
 
-    reach = 1
-    if char.weapons:
-        reach = char.weapons[0].range_normal
+    gs = map_state.manifest.grid_size_m
+    reach_m = get_reach_m(char, gs)
+    reach_grids = max(1, round(reach_m / gs))
 
     old_x, old_y = char_actor.x, char_actor.y
     best_dist = greedy_move_toward(
         char_actor,
         target.id,
-        reach,
+        reach_grids,
         char,
         combat_state,
         map_state,
@@ -380,7 +317,6 @@ def _ai_melee_turn(
     if not char.is_alive:
         refresh_all_fn()
         return
-    gs = map_state.manifest.grid_size_m
     if char_actor.x != old_x or char_actor.y != old_y:
         cgx, cgy = pos_to_grid(char_actor.x, char_actor.y, gs)
         log.log(
@@ -388,7 +324,7 @@ def _ai_melee_turn(
             f"（距離 {display_name(target)}: {best_dist:.1f}m）[/]"
         )
 
-    if best_dist <= reach * gs:
+    if best_dist <= reach_m:
         execute_attack(char, target, combat_state, log)
     else:
         log.log(f"  [dim]{char.name} 無法接近 {display_name(target)}[/]")

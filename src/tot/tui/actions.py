@@ -11,13 +11,14 @@ from uuid import UUID
 
 from tot.gremlins.bone_engine.combat import (
     apply_damage,
-    check_opportunity_attack,
+    check_opportunity_attacks_on_step,
     resolve_attack,
     roll_damage,
     use_action,
     validate_attack_preconditions,
 )
 from tot.gremlins.bone_engine.conditions import can_take_action
+from tot.gremlins.bone_engine.movement import build_actor_lists, path_to_attack_range
 from tot.gremlins.bone_engine.pathfinding import find_path_to_range
 from tot.gremlins.bone_engine.spatial import (
     can_end_move_at,
@@ -35,7 +36,6 @@ from tot.models import (
     Actor,
     Character,
     CombatState,
-    Condition,
     MapState,
     Monster,
     MonsterAction,
@@ -45,7 +45,6 @@ from tot.models import (
     Weapon,
 )
 from tot.tui.combat_bridge import (
-    build_friendly_ids,
     display_name,
     get_actor,
     get_attack_bonus,
@@ -150,66 +149,24 @@ def check_oa_for_step(
     log: LogManager,
 ) -> bool:
     """檢查移動一步時是否觸發藉機攻擊。回傳 True 表示 mover 倒下。"""
-    if mover.has_condition(Condition.DISENGAGING):
-        return False
+    results = check_opportunity_attacks_on_step(
+        mover,
+        old_x,
+        old_y,
+        new_x,
+        new_y,
+        combat_state,
+        map_state,
+        combatant_map,
+        characters,
+        monsters,
+    )
 
-    gs = map_state.manifest.grid_size_m
-
-    for entry in combat_state.initiative_order:
-        enemy = combatant_map.get(entry.combatant_id)
-        if not enemy or not enemy.is_alive or enemy.id == mover.id:
-            continue
-        if isinstance(mover, Character) and isinstance(enemy, Character):
-            continue
-        if isinstance(mover, Monster) and isinstance(enemy, Monster):
-            continue
-
-        enemy_actor = get_actor(enemy.id, map_state)
-        if not enemy_actor:
-            continue
-
-        reach = 1
-        if isinstance(enemy, Character) and enemy.weapons:
-            reach = enemy.weapons[0].range_normal
-        elif isinstance(enemy, Monster) and enemy.actions:
-            reach = enemy.actions[0].reach
-        reach_m = reach * gs
-        enemy_pos = Position(x=enemy_actor.x, y=enemy_actor.y)
-
-        old_dist = grid_distance(Position(x=old_x, y=old_y), enemy_pos, gs)
-        if old_dist > reach_m:
-            continue
-        new_dist = grid_distance(Position(x=new_x, y=new_y), enemy_pos, gs)
-        if new_dist <= reach_m:
-            continue
-
-        weapon: Weapon | None = None
-        if isinstance(enemy, Character) and enemy.weapons:
-            weapon = enemy.weapons[0]
-        elif isinstance(enemy, Monster) and enemy.actions:
-            act = enemy.actions[0]
-            weapon = Weapon(
-                name=act.name,
-                damage_dice=act.damage_dice,
-                damage_type=act.damage_type,
-                properties=[],
-            )
-
-        if not weapon:
-            continue
-
-        oa = check_opportunity_attack(
-            attacker=enemy,
-            target=mover,
-            entry=entry,
-            weapon=weapon,
-            target_ac=mover.ac,
-        )
-        if not oa.triggered:
-            continue
-
-        enemy_name = display_name(enemy)
+    for step_oa in results:
+        enemy_name = display_name(step_oa.attacker)
         mover_name = display_name(mover)
+        oa = step_oa.oa_result
+        weapon = step_oa.weapon
 
         if oa.attack_result and oa.attack_result.is_hit and oa.damage_result:
             apply_result = apply_damage(
@@ -338,66 +295,16 @@ def simulate_move_to_range(
     回傳 (x_m, y_m, 移動消耗, 路徑) 或 None。
     路徑用於 step_move_to 直接沿路徑點移動。
     """
-    import math
-
-    gs = map_state.manifest.grid_size_m
-    actor = get_actor(attacker_id, map_state)
-    tgt_pos = get_actor_position(target_id, map_state)
-    if not actor or not tgt_pos:
-        return None
-
-    speed_left = combat_state.turn_state.movement_remaining
-    if speed_left < 0.01:
-        return None
-
-    start = Position(x=actor.x, y=actor.y)
-
-    combatant = combatant_map.get(actor.combatant_id)
-    mover_size = Size.MEDIUM
-    if combatant:
-        mover_size = getattr(combatant, "size", Size.MEDIUM)
-    mover_radius = SIZE_RADIUS_M.get(mover_size, 0.75)
-
-    # 區分敵方/友方 Actor
-    blocked_actors: list[Actor] = []
-    passable_actors: list[Actor] = []
-    friendly_ids: set[UUID] = set()
-    if combatant:
-        friendly_ids = build_friendly_ids(combatant, characters, monsters)
-    for a in map_state.actors:
-        if a.combatant_id == actor.combatant_id:
-            continue
-        if a.combatant_id == target_id:  # 攻擊目標不是障礙物
-            continue
-        if not a.is_alive or not a.is_blocking:
-            continue
-        if a.combatant_id in friendly_ids:
-            passable_actors.append(a)
-        else:
-            blocked_actors.append(a)
-
-    reach_m = range_grids * gs
-    path = find_path_to_range(
-        start=start,
-        target=tgt_pos,
-        reach_m=reach_m,
-        map_state=map_state,
-        mover_radius=mover_radius,
-        max_cost=speed_left,
-        blocked_actors=blocked_actors,
-        passable_actors=passable_actors,
+    return path_to_attack_range(
+        attacker_id,
+        target_id,
+        range_grids,
+        combat_state,
+        map_state,
+        combatant_map,
+        characters,
+        monsters,
     )
-
-    if path is not None and len(path) > 0:
-        end = path[-1]
-        # 計算實際歐幾里得路徑成本
-        cost = 0.0
-        prev = start
-        for wp in path:
-            cost += math.sqrt((wp.x - prev.x) ** 2 + (wp.y - prev.y) ** 2)
-            prev = wp
-        return (end.x, end.y, cost, path)
-    return None
 
 
 # ---------------------------------------------------------------------------
@@ -469,18 +376,7 @@ async def player_move(
         return
 
     # 嘗試 A* 尋路（處理障礙物繞行）
-    blocked_actors: list[Actor] = []
-    passable_actors: list[Actor] = []
-    friendly_ids = build_friendly_ids(character, characters, monsters)
-    for a in map_state.actors:
-        if a.combatant_id == actor.combatant_id:
-            continue
-        if not a.is_alive or not a.is_blocking:
-            continue
-        if a.combatant_id in friendly_ids:
-            passable_actors.append(a)
-        else:
-            blocked_actors.append(a)
+    lists = build_actor_lists(actor, character, map_state, characters, monsters)
 
     path = find_path_to_range(
         start=Position(x=actor.x, y=actor.y),
@@ -489,8 +385,8 @@ async def player_move(
         map_state=map_state,
         mover_radius=mover_radius,
         max_cost=remaining,
-        blocked_actors=blocked_actors,
-        passable_actors=passable_actors,
+        blocked_actors=lists.blocked,
+        passable_actors=lists.passable,
     )
 
     if path is None:

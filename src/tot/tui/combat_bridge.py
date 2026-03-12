@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from uuid import UUID
 
+from tot.gremlins.bone_engine.movement import build_friendly_ids as build_friendly_ids
 from tot.gremlins.bone_engine.spells import get_spell_by_name
 from tot.models import (
     Ability,
@@ -146,17 +147,6 @@ def find_target(
 def pos_to_grid(x: float, y: float, grid_size: float) -> tuple[int, int]:
     """公尺座標轉 grid 座標（顯示用）。"""
     return Position(x=x, y=y).to_grid(grid_size)
-
-
-def build_friendly_ids(
-    mover: Character | Monster,
-    characters: list[Character],
-    monsters: list[Monster],
-) -> set[UUID]:
-    """建立友方 ID 集合（Character → 所有 character；Monster → 所有 monster）。"""
-    if isinstance(mover, Character):
-        return {c.id for c in characters}
-    return {m.id for m in monsters}
 
 
 def is_npc_turn(combatant: Character | Monster | None) -> bool:

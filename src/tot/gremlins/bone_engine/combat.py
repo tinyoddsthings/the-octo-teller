@@ -18,16 +18,20 @@ from tot.gremlins.bone_engine.conditions import (
     exhaustion_penalty,
 )
 from tot.gremlins.bone_engine.dice import DiceResult, RollType, roll, roll_d20
+from tot.gremlins.bone_engine.spatial import grid_distance
 from tot.models import (
     Ability,
     ActiveCondition,
+    Actor,
     Character,
     CombatState,
     Condition,
     CoverType,
     DamageType,
     InitiativeEntry,
+    MapState,
     Monster,
+    Position,
     Size,
     TurnState,
     Weapon,
@@ -1256,6 +1260,122 @@ def check_opportunity_attack(
         attack_result=attack,
         damage_result=dmg,
     )
+
+
+# ---------------------------------------------------------------------------
+# 借機攻擊（逐步移動查詢）
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class StepOAResult:
+    """逐步移動時的借機攻擊結果（純計算，不含傷害施加）。"""
+
+    attacker: Character | Monster
+    weapon: Weapon
+    oa_result: OpportunityAttackResult
+
+
+def get_reach_m(combatant: Character | Monster, grid_size_m: float) -> float:
+    """取得戰鬥者的觸及距離（公尺）。
+
+    集中 reach 提取邏輯，避免在多處重複。
+    """
+    reach_grids = 1
+    if isinstance(combatant, Character) and combatant.weapons:
+        reach_grids = combatant.weapons[0].range_normal
+    elif isinstance(combatant, Monster) and combatant.actions:
+        reach_grids = combatant.actions[0].reach
+    return reach_grids * grid_size_m
+
+
+def _find_actor_in_map(combatant_id: UUID, map_state: MapState) -> Actor | None:
+    """以 combatant_id 查詢 Actor（bone_engine 內部用）。"""
+    for a in map_state.actors:
+        if a.combatant_id == combatant_id:
+            return a
+    return None
+
+
+def check_opportunity_attacks_on_step(
+    mover: Character | Monster,
+    old_x: float,
+    old_y: float,
+    new_x: float,
+    new_y: float,
+    combat_state: CombatState,
+    map_state: MapState,
+    combatant_map: dict[UUID, Character | Monster],
+    characters: list[Character],
+    monsters: list[Monster],
+    *,
+    rng: random.Random | None = None,
+) -> list[StepOAResult]:
+    """檢查移動一步時觸發的所有借機攻擊（純計算）。
+
+    回傳 list[StepOAResult]，不印 log、不扣血。
+    caller 負責迭代結果 → apply_damage + log。
+    """
+    if mover.has_condition(Condition.DISENGAGING):
+        return []
+
+    gs = map_state.manifest.grid_size_m
+    results: list[StepOAResult] = []
+
+    for entry in combat_state.initiative_order:
+        enemy = combatant_map.get(entry.combatant_id)
+        if not enemy or not enemy.is_alive or enemy.id == mover.id:
+            continue
+        # 同陣營不觸發
+        if isinstance(mover, Character) and isinstance(enemy, Character):
+            continue
+        if isinstance(mover, Monster) and isinstance(enemy, Monster):
+            continue
+
+        enemy_actor = _find_actor_in_map(enemy.id, map_state)
+        if not enemy_actor:
+            continue
+
+        reach_m = get_reach_m(enemy, gs)
+        enemy_pos = Position(x=enemy_actor.x, y=enemy_actor.y)
+
+        old_dist = grid_distance(Position(x=old_x, y=old_y), enemy_pos, gs)
+        if old_dist > reach_m:
+            continue
+        new_dist = grid_distance(Position(x=new_x, y=new_y), enemy_pos, gs)
+        if new_dist <= reach_m:
+            continue
+
+        # 建立武器（Monster 用 actions[0] 轉為 Weapon）
+        weapon: Weapon | None = None
+        if isinstance(enemy, Character) and enemy.weapons:
+            weapon = enemy.weapons[0]
+        elif isinstance(enemy, Monster) and enemy.actions:
+            act = enemy.actions[0]
+            weapon = Weapon(
+                name=act.name,
+                damage_dice=act.damage_dice,
+                damage_type=act.damage_type,
+                properties=[],
+            )
+
+        if not weapon:
+            continue
+
+        oa = check_opportunity_attack(
+            attacker=enemy,
+            target=mover,
+            entry=entry,
+            weapon=weapon,
+            target_ac=mover.ac,
+            rng=rng,
+        )
+        if not oa.triggered:
+            continue
+
+        results.append(StepOAResult(attacker=enemy, weapon=weapon, oa_result=oa))
+
+    return results
 
 
 # ---------------------------------------------------------------------------
