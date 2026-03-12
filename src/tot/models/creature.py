@@ -112,30 +112,43 @@ class Item(BaseModel):
     requires_attunement: bool = False
 
 
-class Character(BaseModel):
-    """玩家角色或 NPC 隊友。"""
+class Combatant(BaseModel):
+    """Character 和 Monster 的共同基類，提煉共有欄位與行為。"""
 
     id: UUID = Field(default_factory=uuid4)
     name: str
+    size: Size = Size.MEDIUM
+    ac: int = 10
+    speed: int = 9  # 公尺（30ft ≈ 9m）
+    hp_max: int = 10
+    hp_current: int = 10
+    proficiency_bonus: int = 2
+    ability_scores: AbilityScores = Field(default_factory=AbilityScores)
+    damage_resistances: list[DamageType] = Field(default_factory=list)
+    damage_immunities: list[DamageType] = Field(default_factory=list)
+    conditions: list[ActiveCondition] = Field(default_factory=list)
+
+    def ability_modifier(self, ability: Ability) -> int:
+        return self.ability_scores.modifier(ability)
+
+    def has_condition(self, condition: Condition) -> bool:
+        return any(c.condition == condition for c in self.conditions)
+
+
+class Character(Combatant):
+    """玩家角色或 NPC 隊友。"""
+
     species: str = ""  # 2024 PHB 用「species」而非「race」
     char_class: str = ""
     subclass: str = ""
     level: int = Field(default=1, ge=1, le=20)
     background: str = ""
 
-    ability_scores: AbilityScores = Field(default_factory=AbilityScores)
-    proficiency_bonus: int = 2  # 由等級推導，但儲存方便使用
-    size: Size = Size.MEDIUM
-
-    hp_max: int = 10
-    hp_current: int = 10
     hp_temp: int = 0
     hit_dice_total: int = 1
     hit_dice_remaining: int = 1
     hit_die_size: int = 8  # d6/d8/d10/d12
 
-    ac: int = 10
-    speed: int = 9  # 公尺（30ft ≈ 9m）
     initiative_bonus: int = 0
 
     skill_proficiencies: list[Skill] = Field(default_factory=list)
@@ -152,10 +165,6 @@ class Character(BaseModel):
     weapons: list[Weapon] = Field(default_factory=list)
     inventory: list[Item] = Field(default_factory=list)
 
-    damage_resistances: list[DamageType] = Field(default_factory=list)
-    damage_immunities: list[DamageType] = Field(default_factory=list)
-
-    conditions: list[ActiveCondition] = Field(default_factory=list)
     death_saves: DeathSaves = Field(default_factory=DeathSaves)
     exhaustion_level: int = Field(default=0, ge=0, le=6)
     heroic_inspiration: bool = False
@@ -163,9 +172,6 @@ class Character(BaseModel):
     is_ai_controlled: bool = False
 
     xp: int = 0
-
-    def ability_modifier(self, ability: Ability) -> int:
-        return self.ability_scores.modifier(ability)
 
     def skill_bonus(self, skill: Skill) -> int:
         ability = SKILL_ABILITY_MAP[skill]
@@ -197,9 +203,6 @@ class Character(BaseModel):
     def is_conscious(self) -> bool:
         return self.hp_current > 0
 
-    def has_condition(self, condition: Condition) -> bool:
-        return any(c.condition == condition for c in self.conditions)
-
 
 class MonsterAction(BaseModel):
     name: str
@@ -212,36 +215,20 @@ class MonsterAction(BaseModel):
     save_ability: Ability | None = None
 
 
-class Monster(BaseModel):
+class Monster(Combatant):
     """怪物資料區塊。"""
 
-    id: UUID = Field(default_factory=uuid4)
-    name: str
-    size: Size = Size.MEDIUM
     creature_type: CreatureType = CreatureType.HUMANOID
     alignment: str = ""
 
-    ac: int = 10
-    hp_max: int = 10
-    hp_current: int = 10
-    speed: int = 9
-
-    ability_scores: AbilityScores = Field(default_factory=AbilityScores)
     challenge_rating: float = 0
     xp_reward: int = 0
-    proficiency_bonus: int = 2
 
-    damage_resistances: list[DamageType] = Field(default_factory=list)
-    damage_immunities: list[DamageType] = Field(default_factory=list)
     condition_immunities: list[Condition] = Field(default_factory=list)
 
     actions: list[MonsterAction] = Field(default_factory=list)
-    conditions: list[ActiveCondition] = Field(default_factory=list)
 
     label: str = ""  # 戰鬥中的顯示標籤（例如「哥布林 A」）
-
-    def ability_modifier(self, ability: Ability) -> int:
-        return self.ability_scores.modifier(ability)
 
     @computed_field
     @property
@@ -270,4 +257,4 @@ class Monster(BaseModel):
     def has_condition(self, condition: Condition) -> bool:
         if condition in self.condition_immunities:
             return False
-        return any(c.condition == condition for c in self.conditions)
+        return super().has_condition(condition)

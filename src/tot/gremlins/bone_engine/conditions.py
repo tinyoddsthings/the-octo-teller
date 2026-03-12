@@ -6,10 +6,7 @@
 
 from __future__ import annotations
 
-from tot.models import ActiveCondition, Character, Condition, Monster
-
-# 生物型別別名
-Combatant = Character | Monster
+from tot.models import ActiveCondition, Character, Combatant, Condition, Monster
 
 # ---------------------------------------------------------------------------
 # 狀態分類常數

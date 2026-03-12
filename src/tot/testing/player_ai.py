@@ -17,10 +17,9 @@ from tot.gremlins.bone_engine.spatial import (
 )
 from tot.models import (
     Actor,
-    Character,
+    Combatant,
     CombatState,
     MapState,
-    Monster,
     Position,
     Spell,
 )
@@ -52,9 +51,6 @@ class Action:
 # ---------------------------------------------------------------------------
 # PlayerStrategy Protocol
 # ---------------------------------------------------------------------------
-
-# 型別別名：Character 或 Monster
-Combatant = Character | Monster
 
 
 class PlayerStrategy(Protocol):

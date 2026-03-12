@@ -30,6 +30,7 @@ from tot.models import (
     Ability,
     ActiveCondition,
     Character,
+    Combatant,
     Condition,
     DamageType,
     Monster,
@@ -37,9 +38,6 @@ from tot.models import (
     SpellAttackType,
     SpellEffectType,
 )
-
-# 生物型別別名
-Combatant = Character | Monster
 
 # ---------------------------------------------------------------------------
 # 法術資料庫
