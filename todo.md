@@ -89,6 +89,22 @@
 ### 2-J/2-T: 已併入 ④ TUI 渲染 + 介面整合
 > 詳見上方 ④ 階段
 
+### 2-M: 資料模型重構（models-refactor）
+> 📄 設計文件：[`docs/data_model.md`](docs/data_model.md)
+> 目的：`models.py`（898 行）拆分為多檔案架構，提煉共基類，消除重複邏輯
+- [x] Phase A: models.py 拆分為 models/ package（純搬移，`__init__.py` 全量 re-export）
+- [x] Phase B: Combatant 基類 — 提煉 Character/Monster 共有 11 欄位 + ability_modifier/has_condition；型別別名統一
+- [ ] Phase C: Query Methods 集中
+  - [ ] C-1: MapState 新增 get_actor / get_actor_position / alive_actors methods
+  - [ ] C-2: CombatState 新增 current_entry method
+  - [ ] C-3: 移除 6 處重複 lookup（movement.py、spatial.py、combat.py、combat_logger.py、combat_runner.py；combat_bridge.py 保留 wrapper）
+  - [ ] C-4: 攻擊加值集中 — 4 處合併為 combat.calc_weapon_attack_bonus()
+- [ ] Phase D: Spell 子模型 + 死欄位清理
+  - [ ] D-1: 新增 SpellComponents / SpellAoe / SpellUpcast 子模型
+  - [ ] D-2: 刪除 3 個死欄位（upcast_duration_map / upcast_aoe_bonus / upcast_no_concentration_at）
+  - [ ] D-3: 遷移呼叫點（aoe.py 7 行、spells.py 15 行、app.py 6 行）+ JSON 相容
+- [ ] Phase E: LLM Context Helpers（⏸ 延後至 Phase 4 前）
+
 ### ① 基礎物理引擎 + 幾何系統
 > 📄 設計文件：[`docs/bone-engine-v2-design.md`](docs/bone-engine-v2-design.md) §4~§5
 
