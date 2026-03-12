@@ -23,6 +23,7 @@ db = [
 ]
 tui = [
     "textual>=0.50",
+    "drawille>=0.2.0",
 ]
 dev = [
     "pytest>=8.3",

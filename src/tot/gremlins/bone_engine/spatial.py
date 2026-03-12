@@ -13,6 +13,10 @@ import math
 import re
 from uuid import UUID
 
+from tot.gremlins.bone_engine.geometry import (
+    circle_aabb_overlap,
+    extract_static_obstacles,
+)
 from tot.models import (
     SIZE_ORDER,
     SIZE_RADIUS_M,
@@ -397,24 +401,47 @@ def find_nearest_valid_position(
 # ---------------------------------------------------------------------------
 
 
+def is_position_clear(
+    pos: Position,
+    radius: float,
+    map_state: MapState,
+) -> bool:
+    """檢查圓形碰撞體在 pos 是否與靜態障礙物重疊。
+
+    不檢查 Actor（由 can_end_move_at / can_traverse 另外處理）。
+    """
+    m = map_state.manifest
+    gs = m.grid_size_m
+
+    # 地圖邊界
+    if pos.x - radius < 0 or pos.x + radius > m.width * gs:
+        return False
+    if pos.y - radius < 0 or pos.y + radius > m.height * gs:
+        return False
+
+    # 靜態障礙物
+    obstacles = extract_static_obstacles(map_state)
+    return all(not circle_aabb_overlap(pos.x, pos.y, radius, ob) for ob in obstacles)
+
+
 def move_entity(
     actor: Actor,
-    dx: int,
-    dy: int,
+    tx: float,
+    ty: float,
     map_state: MapState,
     speed_remaining: float,
     *,
     allies: set[str] | None = None,
     mover_size: Size = Size.MEDIUM,
 ) -> MoveResult:
-    """嘗試移動 Actor 一格（網格位移），完整 D&D 5e 移動規則。
+    """嘗試移動 Actor 到目標公尺座標，完整 D&D 5e 移動規則。
 
-    dx/dy 為網格方向（-1/0/1），內部將公尺座標映射到目標網格中心。
+    tx/ty 為目標公尺座標（連續空間），成本 = 歐幾里得距離。
     回傳 MoveResult（成功、剩餘速度、事件列表）。
     移動成功時直接修改 actor.x/y。
 
     規則：
-    - 地形阻擋 → 不可移動
+    - 靜態障礙阻擋 → 不可移動
     - 敵對 Actor 佔據 → 不可穿越（除非體型差 ≥ 2）
     - 非敵對 Actor 佔據 → 可穿越（困難地形 ×2 消耗）
     - 不可在任何生物空間內結束移動（敵友皆然）
@@ -423,57 +450,48 @@ def move_entity(
     gs = map_state.manifest.grid_size_m
     allies = allies or set()
     events: list[MoveEvent] = []
+    mover_radius = SIZE_RADIUS_M.get(mover_size, 0.75)
 
-    cur_gx, cur_gy = _to_grid(actor.x, actor.y, gs)
-    new_gx = cur_gx + dx
-    new_gy = cur_gy + dy
+    target_pos = Position(x=tx, y=ty)
 
-    # 邊界 + 地形 + Prop 阻擋（暫時排除自己）
+    # 暫時排除自己的阻擋
     old_blocking = actor.is_blocking
     actor.is_blocking = False
 
-    # 檢查地形/Prop 可通行（不含 Actor 阻擋）
-    m = map_state.manifest
-    if new_gx < 0 or new_gx >= m.width or new_gy < 0 or new_gy >= m.height:
+    # 1. 靜態障礙物碰撞
+    if not is_position_clear(target_pos, mover_radius, map_state):
         actor.is_blocking = old_blocking
         return MoveResult(success=False, speed_remaining=speed_remaining)
 
-    if map_state.terrain and map_state.terrain[new_gy][new_gx].is_blocking:
-        actor.is_blocking = old_blocking
-        return MoveResult(success=False, speed_remaining=speed_remaining)
-
-    for p in [*m.props, *map_state.props]:
-        pgx, pgy = _to_grid(p.x, p.y, gs)
-        if pgx == new_gx and pgy == new_gy and p.is_blocking:
-            actor.is_blocking = old_blocking
-            return MoveResult(success=False, speed_remaining=speed_remaining)
-
-    # 檢查目標格上的 Actor —— 穿越規則
-    cost = gs
+    # 2. Actor 穿越規則
     difficult_from_creature = False
     for other in map_state.actors:
         if other.id == actor.id or not other.is_alive or not other.is_blocking:
             continue
-        ogx, ogy = _to_grid(other.x, other.y, gs)
-        if ogx != new_gx or ogy != new_gy:
-            continue
-
-        is_hostile = other.id not in allies
-        if not can_traverse(mover_size, Size.MEDIUM, is_hostile):
-            actor.is_blocking = old_blocking
-            return MoveResult(success=False, speed_remaining=speed_remaining)
-        if not is_hostile:
-            difficult_from_creature = True
+        other_r = SIZE_RADIUS_M.get(Size.MEDIUM, 0.75)
+        center_dist = math.sqrt((other.x - tx) ** 2 + (other.y - ty) ** 2)
+        if center_dist < mover_radius + other_r:
+            is_hostile = other.id not in allies
+            if not can_traverse(mover_size, Size.MEDIUM, is_hostile):
+                actor.is_blocking = old_blocking
+                return MoveResult(success=False, speed_remaining=speed_remaining)
+            if not is_hostile:
+                difficult_from_creature = True
 
     actor.is_blocking = old_blocking
 
-    # 困難地形消耗
-    if (
+    # 3. 成本計算
+    cost = math.sqrt((tx - actor.x) ** 2 + (ty - actor.y) ** 2)
+
+    # 困難地形
+    tgt_gx, tgt_gy = _to_grid(tx, ty, gs)
+    terrain_difficult = (
         map_state.terrain
-        and 0 <= new_gy < len(map_state.terrain)
-        and 0 <= new_gx < len(map_state.terrain[new_gy])
-        and map_state.terrain[new_gy][new_gx].is_difficult
-    ):
+        and 0 <= tgt_gy < len(map_state.terrain)
+        and 0 <= tgt_gx < len(map_state.terrain[tgt_gy])
+        and map_state.terrain[tgt_gy][tgt_gx].is_difficult
+    )
+    if terrain_difficult:
         cost *= 2
     elif difficult_from_creature:
         cost *= 2
@@ -484,17 +502,17 @@ def move_entity(
             )
         )
 
-    if speed_remaining < cost:
+    if speed_remaining < cost - 0.01:  # 容差 1cm
         return MoveResult(success=False, speed_remaining=speed_remaining)
 
-    # 記錄舊位置（OA 判定用）
+    # 4. 記錄舊位置（OA 判定用）
     old_x, old_y = actor.x, actor.y
 
-    # 執行移動
-    actor.x = new_gx * gs + gs / 2
-    actor.y = new_gy * gs + gs / 2
+    # 5. 執行移動
+    actor.x = round(tx, 2)
+    actor.y = round(ty, 2)
 
-    # OA 偵測：離開敵對生物觸及範圍
+    # 6. OA 偵測：離開敵對生物觸及範圍
     melee_range = 1.5  # Medium 觸及範圍
     for other in map_state.actors:
         if other.id == actor.id or not other.is_alive:
@@ -640,7 +658,11 @@ def _is_passable_for_bfs(
     mover_id: UUID,
     friendly_ids: set[UUID],
 ) -> bool:
-    """BFS 用可通行判定（網格座標）。友方 actor 視為可穿越（D&D 5e 規則）。"""
+    """BFS 用可通行判定（網格座標）。
+
+    .. deprecated:: 由 pathfinding.py 的 Visibility Graph + A* 取代。
+       保留供 combat_runner.py 過渡期使用。
+    """
     m = map_state.manifest
     gs = m.grid_size_m
     if x < 0 or x >= m.width or y < 0 or y >= m.height:
@@ -675,12 +697,10 @@ def bfs_path_to_range(
     mover_id: UUID,
     friendly_ids: set[UUID],
 ) -> list[Position] | None:
-    """BFS 尋路（網格上），找到 Chebyshev 距離 target ≤ reach_grids 的可通行格。
+    """BFS 尋路（網格上）。
 
-    接受公尺座標 Position，內部轉為網格座標做 BFS，
-    回傳路徑為公尺座標（格子中心）。
-    友方 actor 視為可穿越但不可停留（D&D 5e 規則）。
-    回傳路徑 list[Position]（不含起點），或 None。
+    .. deprecated:: 由 pathfinding.py 的 find_path_to_range 取代。
+       保留供 combat_runner.py 過渡期使用。
     """
     from collections import deque
 
@@ -688,11 +708,9 @@ def bfs_path_to_range(
     sgx, sgy = _to_grid(start.x, start.y, gs)
     tgx, tgy = _to_grid(target.x, target.y, gs)
 
-    # 起點已在範圍內
     if max(abs(sgx - tgx), abs(sgy - tgy)) <= reach_grids:
         return []
 
-    # 不可停留的格子：友方佔據的格（穿越可以，停留不行）
     friendly_occupied: set[tuple[int, int]] = set()
     for a in map_state.actors:
         if (
@@ -703,7 +721,7 @@ def bfs_path_to_range(
         ):
             friendly_occupied.add(_to_grid(a.x, a.y, gs))
 
-    queue: deque[tuple[int, int, int]] = deque()  # (gx, gy, depth)
+    queue: deque[tuple[int, int, int]] = deque()
     visited: dict[tuple[int, int], tuple[int, int] | None] = {(sgx, sgy): None}
     queue.append((sgx, sgy, 0))
 
@@ -723,10 +741,8 @@ def bfs_path_to_range(
 
             visited[(nx, ny)] = (cx, cy)
 
-            # 可以停留？（不能停在友方佔據格）
             can_stop = (nx, ny) not in friendly_occupied
             if can_stop and max(abs(nx - tgx), abs(ny - tgy)) <= reach_grids:
-                # 回溯路徑（轉為公尺座標）
                 path: list[Position] = []
                 cur: tuple[int, int] | None = (nx, ny)
                 while cur is not None and cur != (sgx, sgy):

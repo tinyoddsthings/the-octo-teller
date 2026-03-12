@@ -117,6 +117,42 @@
 - [ ] Step 4: 法術佔位詢問 — 同遠程流程（射程足夠但在近戰觸及範圍內時詢問是否先調整佔位）
 - [ ] Step 5: 整合測試 — 更新 HeadlessCombatRunner 策略以驗證新流程
 
+### 2-T: TUI 架構重構 — 規則邏輯下沉 bone_engine
+> 目標：tui/ 只負責渲染與 UI 回調，所有確定性規則邏輯移入 bone_engine/
+>
+> 現況問題：tui/actions.py 和 tui/npc_ai.py 混雜了路徑規劃、OA 計算、
+> AI 決策等純規則邏輯，導致邏輯無法在非 TUI 情境（Telegram Bot、headless test）重用。
+>
+> 目標架構：
+>   玩家輸入 → tui/ 薄層（格式化 log + 呼叫 refresh）
+>              ↓ 呼叫
+>   bone_engine/ 純確定性計算（無 log、無 UI 依賴）
+
+- [ ] Step 1: 新建 `bone_engine/movement.py`
+  - `build_actor_lists(actor, mover, map_state, characters, monsters, exclude_id)` → (blocked, passable)
+  - `move_toward_target(actor, target_pos, reach_m, map_state, mover_radius, speed_left, blocked, passable)` → `(path, final_dist)`
+  - `path_to_attack_range(actor, target_id, reach_grids, map_state, mover_radius, speed_left, blocked, passable)` → `(path, end_pos) | None`
+- [ ] Step 2: `bone_engine/combat.py` 加純 OA 查詢
+  - `check_opportunity_attacks_on_step(mover, old_pos, new_pos, enemies, combat_state, map_state)` → `list[OAResult]`（純計算，無 log 無 UI）
+- [ ] Step 3: 重構 `tui/actions.py` 為薄層
+  - `check_oa_for_step()` → 呼叫 bone_engine OA 查詢 + 格式化 log + apply_damage
+  - `simulate_move_to_range()` → 呼叫 `movement.path_to_attack_range()`，自己不算路徑
+  - `step_move_to()` → 呼叫 `movement.move_toward_target()`，自己只寫 log
+  - `execute_attack()` 保持現狀（已是薄層）
+- [ ] Step 4: 重構 `tui/npc_ai.py` 為薄層
+  - 刪除 `_build_actor_lists()`（已移入 movement.py）
+  - `greedy_move_toward()` → 呼叫 `movement.move_toward_target()`，自己只寫 log
+  - AI 決策函式（`_ai_melee_turn` 等）保留在此作為 orchestrator，邏輯不含計算
+- [ ] Step 5: 單元測試 — `test_movement.py`（測 build_actor_lists / move_toward_target / OA 查詢）
+
+### 2-K: TUI 大改 — Drawille 點字渲染 + 模組化拆分
+> 用 Unicode Braille 2×4 次像素取代 ASCII，實現高解析度棋盤格、平滑 AoE 圓形、精確座標定位
+- [x] Phase T-1: 模組化拆分（app.py 2068L → 7 模組：combat_bridge/log_manager/actions/npc_ai/input_handler/app/styles.tcss）
+- [x] Phase T-2: BrailleMapCanvas Widget（drawille 渲染：格線/地形/牆壁/角色標記 + Rich 彩色標籤）
+- [x] Phase T-3: StatsPanel Widget（先攻序 + HP 血條 + 行動經濟 + 狀態異常）
+- [x] Phase T-4: AoE 覆蓋渲染（球/錐/方/線四種形狀預覽 + 稀疏填充 + 射線法判定）
+- [x] Phase T-5: 收尾（canvas.py 單元測試 16 項 + todo.md 更新）
+
 ### 2-E: Phase 1 已完成模組的測試補齊
 - [x] conftest.py — 共用 fixtures（std_fighter/wizard/cleric + goblin/skeleton/ogre + rng42）
 - [x] test_dice.py — 表達式解析/擲骰/優劣勢/kh/kl/便利函式（39 tests）

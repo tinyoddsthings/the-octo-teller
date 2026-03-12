@@ -25,6 +25,7 @@ from tot.gremlins.bone_engine.spatial import (
     grid_distance,
     has_hostile_within_melee,
     has_line_of_sight,
+    is_position_clear,
     move_entity,
     parse_spell_range_meters,
     validate_spell_range,
@@ -359,26 +360,34 @@ class TestCover:
 
 
 class TestMoveEntity:
-    """移動（網格位移 + 公尺座標儲存 + D&D 5e 規則）。"""
+    """移動（連續座標 + 歐幾里得成本 + D&D 5e 規則）。"""
 
     def test_basic_move(self, empty_map: MapState):
+        """移動到相鄰格心。"""
         actor = _make_actor("m", 2, 2)
         empty_map.actors = [actor]
-        result = move_entity(actor, 1, 0, empty_map, 9.0)
+        # 從 (2,2) 格心移到 (3,2) 格心
+        tgt = Position.from_grid(3, 2, 1.5)
+        result = move_entity(actor, tgt.x, tgt.y, empty_map, 9.0)
         assert result.success is True
         assert actor.grid_pos(1.5) == (3, 2)
         assert result.speed_remaining == pytest.approx(7.5)
 
     def test_blocked_move(self, map_with_wall: MapState):
+        """牆壁阻擋移動。"""
         actor = _make_actor("m", 1, 2)
         map_with_wall.actors = [actor]
-        result = move_entity(actor, 1, 0, map_with_wall, 9.0)
+        # 牆在 (2,2)
+        tgt = Position.from_grid(2, 2, 1.5)
+        result = move_entity(actor, tgt.x, tgt.y, map_with_wall, 9.0)
         assert result.success is False
 
     def test_no_speed(self, empty_map: MapState):
+        """速度不足。"""
         actor = _make_actor("m", 2, 2)
         empty_map.actors = [actor]
-        result = move_entity(actor, 1, 0, empty_map, 0.5)
+        tgt = Position.from_grid(3, 2, 1.5)
+        result = move_entity(actor, tgt.x, tgt.y, empty_map, 0.5)
         assert result.success is False
 
     def test_oa_event(self, empty_map: MapState):
@@ -387,7 +396,8 @@ class TestMoveEntity:
         enemy = _make_actor("mob", 3, 2)
         empty_map.actors = [mover, enemy]
         # 向左移動 (2,2)→(1,2)，離開 enemy 的 1.5m 觸及範圍
-        result = move_entity(mover, -1, 0, empty_map, 9.0)
+        tgt = Position.from_grid(1, 2, 1.5)
+        result = move_entity(mover, tgt.x, tgt.y, empty_map, 9.0)
         assert result.success is True
         oa_events = [e for e in result.events if e.event_type == "opportunity_attack"]
         assert len(oa_events) == 1
@@ -398,7 +408,8 @@ class TestMoveEntity:
         mover = _make_actor("pc", 2, 2, combatant_type="character")
         enemy = _make_actor("mob", 3, 2)
         empty_map.actors = [mover, enemy]
-        result = move_entity(mover, 1, 0, empty_map, 9.0)
+        tgt = Position.from_grid(3, 2, 1.5)
+        result = move_entity(mover, tgt.x, tgt.y, empty_map, 9.0)
         assert result.success is False
 
     def test_traverse_friendly_difficult(self, empty_map: MapState):
@@ -406,10 +417,11 @@ class TestMoveEntity:
         mover = _make_actor("pc1", 2, 2, combatant_type="character")
         ally = _make_actor("pc2", 3, 2, combatant_type="character")
         empty_map.actors = [mover, ally]
+        tgt = Position.from_grid(3, 2, 1.5)
         result = move_entity(
             mover,
-            1,
-            0,
+            tgt.x,
+            tgt.y,
             empty_map,
             9.0,
             allies={mover.id, ally.id},
@@ -417,6 +429,45 @@ class TestMoveEntity:
         assert result.success is True
         # 困難地形：消耗 3.0m 而非 1.5m
         assert result.speed_remaining == pytest.approx(6.0)
+
+    def test_continuous_coordinate_move(self, empty_map: MapState):
+        """可移動到非格心的連續座標。"""
+        actor = _make_actor("m", 2, 2)
+        empty_map.actors = [actor]
+        # 移到 (4.0, 3.5) — 不在任何格心上
+        result = move_entity(actor, 4.0, 3.5, empty_map, 9.0)
+        assert result.success is True
+        assert actor.x == pytest.approx(4.0)
+        assert actor.y == pytest.approx(3.5)
+
+    def test_euclidean_cost(self, empty_map: MapState):
+        """對角移動成本 = 歐幾里得距離（非 Chebyshev）。"""
+        actor = _make_actor("m", 2, 2)
+        empty_map.actors = [actor]
+        tgt = Position.from_grid(3, 3, 1.5)
+        result = move_entity(actor, tgt.x, tgt.y, empty_map, 9.0)
+        assert result.success is True
+        # 對角 1 格 = sqrt(2) * 1.5 ≈ 2.12m
+        expected_cost = 1.5 * math.sqrt(2)
+        assert result.speed_remaining == pytest.approx(9.0 - expected_cost, abs=0.05)
+
+
+class TestIsPositionClear:
+    """is_position_clear 靜態障礙碰撞。"""
+
+    def test_clear_position(self, empty_map: MapState):
+        pos = Position.from_grid(2, 2, 1.5)
+        assert is_position_clear(pos, 0.75, empty_map) is True
+
+    def test_blocked_by_wall(self, map_with_wall: MapState):
+        """牆壁阻擋。"""
+        pos = Position.from_grid(2, 2, 1.5)  # 牆在 (2,2)
+        assert is_position_clear(pos, 0.75, map_with_wall) is False
+
+    def test_out_of_bounds(self, empty_map: MapState):
+        """超出地圖邊界。"""
+        pos = Position(x=-0.5, y=3.0)
+        assert is_position_clear(pos, 0.75, empty_map) is False
 
 
 class TestBFS:
