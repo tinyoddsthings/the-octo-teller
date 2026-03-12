@@ -144,11 +144,6 @@ def find_target(
     return None
 
 
-def pos_to_grid(x: float, y: float, grid_size: float) -> tuple[int, int]:
-    """公尺座標轉 grid 座標（顯示用）。"""
-    return Position(x=x, y=y).to_grid(grid_size)
-
-
 def is_npc_turn(combatant: Character | Monster | None) -> bool:
     """判斷是否為 NPC（怪物或 AI 角色）回合。"""
     if isinstance(combatant, Monster):

@@ -590,15 +590,6 @@ class Position(BaseModel):
         """四捨五入到小數第二位（cm 精度）。"""
         return round(float(v), 2)
 
-    def to_grid(self, grid_size: float = 1.5) -> tuple[int, int]:
-        """轉換到最近的網格 cell 座標。"""
-        return (int(math.floor(self.x / grid_size)), int(math.floor(self.y / grid_size)))
-
-    @classmethod
-    def from_grid(cls, gx: int, gy: int, grid_size: float = 1.5) -> Position:
-        """從網格座標轉為公尺座標（格子中心）。"""
-        return cls(x=gx * grid_size + grid_size / 2, y=gy * grid_size + grid_size / 2)
-
     def distance_to(self, other: Position) -> float:
         """Euclidean 距離（公尺）。"""
         return math.sqrt((self.x - other.x) ** 2 + (self.y - other.y) ** 2)
@@ -621,10 +612,6 @@ class Entity(BaseModel):
     @classmethod
     def _round_to_cm(cls, v: float | int) -> float:
         return round(float(v), 2)
-
-    def grid_pos(self, grid_size: float = 1.5) -> tuple[int, int]:
-        """取得所在網格座標。"""
-        return (int(math.floor(self.x / grid_size)), int(math.floor(self.y / grid_size)))
 
 
 class Actor(Entity):
@@ -659,7 +646,7 @@ class Prop(Entity):
 
 
 class Wall(BaseModel):
-    """牆壁障礙物（AABB 矩形，取代 TerrainTile 的 grid-based 地形）。"""
+    """牆壁障礙物（AABB 矩形）。"""
 
     x: float  # min-x（公尺）
     y: float  # min-y（公尺）
@@ -667,15 +654,6 @@ class Wall(BaseModel):
     height: float  # 高（公尺）
     name: str = "wall"
     symbol: str = "#"
-
-
-class TerrainTile(BaseModel):
-    """地形格。"""
-
-    symbol: str = " "
-    is_blocking: bool = False
-    name: str = "floor"
-    is_difficult: bool = False  # 困難地形（移動加倍消耗）
 
 
 # ---------------------------------------------------------------------------
@@ -713,7 +691,6 @@ class MapManifest(BaseModel):
     name: str
     width: float  # 地圖寬度（公尺）
     height: float  # 地圖高度（公尺）
-    grid_size_m: float = 1.5  # 過渡期保留，後續 commit 移除
     walls: list[Wall] = Field(default_factory=list)
     props: list[Prop] = Field(default_factory=list)
     zones: list[Zone] = Field(default_factory=list)
@@ -725,8 +702,7 @@ class MapState(BaseModel):
     """戰鬥中的即時地圖狀態。"""
 
     manifest: MapManifest
-    terrain: list[list[TerrainTile]] = Field(default_factory=list)  # [y][x]，y=0 為最底列
-    walls: list[Wall] = Field(default_factory=list)  # 牆壁 AABB 清單（過渡期與 terrain 並存）
+    walls: list[Wall] = Field(default_factory=list)
     actors: list[Actor] = Field(default_factory=list)
     props: list[Prop] = Field(default_factory=list)  # 執行期動態追加的物件
 

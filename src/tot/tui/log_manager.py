@@ -5,7 +5,6 @@
 
 from __future__ import annotations
 
-import math
 import re
 from datetime import datetime
 from pathlib import Path
@@ -108,7 +107,6 @@ class LogManager:
         combatant_map: dict[UUID, Character | Monster],
     ) -> None:
         """記錄所有角色的 HP、AC、位置、狀態效果到 log 檔。"""
-        gs = map_state.manifest.grid_size_m
         lines = ["\n【狀態面板】"]
         all_combatants: list[Character | Monster] = [*characters, *monsters]
         for combatant in all_combatants:
@@ -120,9 +118,7 @@ class LogManager:
 
             actor = get_actor(combatant.id, map_state)
             if actor:
-                gx = int(math.floor(actor.x / gs))
-                gy = int(math.floor(actor.y / gs))
-                pos_str = f"  位置: ({gx},{gy})"
+                pos_str = f"  位置: ({actor.x:.1f},{actor.y:.1f})"
             conds = [c.condition.value for c in combatant.conditions]
             cond_str = f"  [{', '.join(conds)}]" if conds else ""
             alive_str = "  [倒下]" if not combatant.is_alive else ""

@@ -48,7 +48,6 @@ from tot.tui.combat_bridge import (
     get_actor,
     get_attack_bonus,
     get_damage_modifier,
-    pos_to_grid,
     zh_dmg,
 )
 
@@ -82,7 +81,6 @@ def step_move_to(
     """
     import math
 
-    gs = map_state.manifest.grid_size_m
     start_x, start_y = actor.x, actor.y
 
     # 建立移動路徑點
@@ -113,17 +111,15 @@ def step_move_to(
             monsters,
             log,
         ):
-            gx, gy = pos_to_grid(actor.x, actor.y, gs)
             log.log(
-                f"[cyan]🚶 {display_name(mover)} 移動到 ({gx}, {gy})"
+                f"[cyan]🚶 {display_name(mover)} 移動到 ({actor.x:.1f}, {actor.y:.1f})"
                 f"（剩餘 {combat_state.turn_state.movement_remaining:.1f}m）[/]"
             )
             return True
 
-    gx, gy = pos_to_grid(actor.x, actor.y, gs)
     if actor.x != start_x or actor.y != start_y:
         log.log(
-            f"[cyan]🚶 {display_name(mover)} 移動到 ({gx}, {gy})"
+            f"[cyan]🚶 {display_name(mover)} 移動到 ({actor.x:.1f}, {actor.y:.1f})"
             f"（剩餘 {combat_state.turn_state.movement_remaining:.1f}m）[/]"
         )
     return False
@@ -334,7 +330,6 @@ async def player_move(
         log.log("[red]找不到角色位置。[/]")
         return
 
-    gs = map_state.manifest.grid_size_m
     remaining = combat_state.turn_state.movement_remaining
     mover_size = getattr(character, "size", Size.MEDIUM)
     mover_radius = SIZE_RADIUS_M.get(mover_size, 0.75)
@@ -363,14 +358,13 @@ async def player_move(
     can_stop = can_end_move_at(target_pos, mover_size, map_state, mover_id=actor.id)
     actor.is_blocking = old_blocking
 
-    tgt_gx, tgt_gy = target_pos.to_grid(gs)
     if not clear:
-        log.log(f"[red]目標位置 ({tgt_gx}, {tgt_gy}) 不可通行！[/]")
+        log.log(f"[red]目標位置 ({x:.1f}, {y:.1f}) 不可通行！[/]")
         show_action_choices_fn()
         return
 
     if not can_stop:
-        log.log(f"[red]不可在目標位置 ({tgt_gx}, {tgt_gy}) 停留（有其他生物）！[/]")
+        log.log(f"[red]不可在目標位置 ({x:.1f}, {y:.1f}) 停留（有其他生物）！[/]")
         show_action_choices_fn()
         return
 
@@ -389,7 +383,7 @@ async def player_move(
     )
 
     if path is None:
-        log.log(f"[red]無法到達目標位置 ({tgt_gx}, {tgt_gy})！[/]")
+        log.log(f"[red]無法到達目標位置 ({x:.1f}, {y:.1f})！[/]")
         show_action_choices_fn()
         return
 

@@ -62,7 +62,6 @@ def _make_map(actors: list[Actor], grid_w: int = 10, grid_h: int = 10) -> MapSta
             name="test",
             width=grid_w * GS,
             height=grid_h * GS,
-            grid_size_m=GS,
         ),
         actors=actors,
     )

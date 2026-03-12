@@ -22,7 +22,7 @@ from tot.models import (
     MapManifest,
     MapState,
     Position,
-    TerrainTile,
+    Wall,
 )
 
 # ---------------------------------------------------------------------------
@@ -32,23 +32,17 @@ from tot.models import (
 
 @pytest.fixture
 def empty_map() -> MapState:
-    """10×10 空白地圖（grid_size=1.5m）。"""
-    manifest = MapManifest(name="test", width=15.0, height=15.0, grid_size_m=1.5)
-    terrain = [[TerrainTile() for _ in range(10)] for _ in range(10)]
-    return MapState(manifest=manifest, terrain=terrain)
+    """10×10 空白地圖（15m × 15m）。"""
+    manifest = MapManifest(name="test", width=15.0, height=15.0)
+    return MapState(manifest=manifest)
 
 
 @pytest.fixture
 def map_with_wall() -> MapState:
-    """10×10 地圖，在 x=3 列（grid col 3-7）有一面牆。
-    牆壁在 (4, 3)~(4, 7)（grid y=3~7, x=4）形成垂直屏障。
-    """
-    manifest = MapManifest(name="wall_test", width=15.0, height=15.0, grid_size_m=1.5)
-    terrain = [[TerrainTile() for _ in range(10)] for _ in range(10)]
-    # 在 grid x=5 建一排牆（y=2~7）
-    for gy in range(2, 8):
-        terrain[gy][5] = TerrainTile(is_blocking=True, name="wall")
-    return MapState(manifest=manifest, terrain=terrain)
+    """10×10 地圖，x=7.5m 處有一面垂直牆（y=3.0~12.0m）。"""
+    wall = Wall(x=7.5, y=3.0, width=1.5, height=9.0, name="wall")
+    manifest = MapManifest(name="wall_test", width=15.0, height=15.0, walls=[wall])
+    return MapState(manifest=manifest, walls=[wall])
 
 
 def _make_actor(
@@ -83,8 +77,8 @@ class TestStraightPath:
 
     def test_already_in_range(self, empty_map: MapState):
         """起點已在 reach 範圍內 → 空路徑。"""
-        start = Position.from_grid(2, 2, 1.5)
-        target = Position.from_grid(3, 2, 1.5)
+        start = Position(x=3.75, y=3.75)
+        target = Position(x=5.25, y=3.75)
         path = find_path_to_range(
             start,
             target,
@@ -99,8 +93,8 @@ class TestStraightPath:
 
     def test_straight_line(self, empty_map: MapState):
         """直線可達 → 回傳路徑。"""
-        start = Position.from_grid(1, 5, 1.5)
-        target = Position.from_grid(8, 5, 1.5)
+        start = Position(x=2.25, y=8.25)
+        target = Position(x=12.75, y=8.25)
         path = find_path_to_range(
             start,
             target,
@@ -120,8 +114,8 @@ class TestStraightPath:
 
     def test_straight_line_cost(self, empty_map: MapState):
         """路徑成本 = 歐幾里得距離。"""
-        start = Position.from_grid(0, 5, 1.5)
-        target = Position.from_grid(5, 5, 1.5)
+        start = Position(x=0.75, y=8.25)
+        target = Position(x=8.25, y=8.25)
         path = find_path_to_range(
             start,
             target,
@@ -153,8 +147,8 @@ class TestObstacleAvoidance:
 
     def test_around_wall(self, map_with_wall: MapState):
         """牆壁阻擋直線 → 繞行。"""
-        start = Position.from_grid(3, 5, 1.5)
-        target = Position.from_grid(7, 5, 1.5)
+        start = Position(x=5.25, y=8.25)
+        target = Position(x=11.25, y=8.25)
         path = find_path_to_range(
             start,
             target,
@@ -174,8 +168,8 @@ class TestObstacleAvoidance:
 
     def test_blocked_by_actors(self, empty_map: MapState):
         """敵方 Actor 阻擋 → 繞行。"""
-        start = Position.from_grid(2, 5, 1.5)
-        target = Position.from_grid(8, 5, 1.5)
+        start = Position(x=3.75, y=8.25)
+        target = Position(x=12.75, y=8.25)
         # 在中間放一個敵方 Actor
         blocker = _make_actor("blocker", 5, 5)
         path = find_path_to_range(
@@ -202,18 +196,18 @@ class TestUnreachable:
 
     def test_walled_off(self):
         """目標被牆壁完全包圍 → None。"""
-        manifest = MapManifest(name="box", width=15.0, height=15.0, grid_size_m=1.5)
-        terrain = [[TerrainTile() for _ in range(10)] for _ in range(10)]
-        # 在 target 周圍建牆（grid 4,4 ~ 6,6 全是牆，只留 5,5 空）
+        # 在 grid (5,5)=Position(8.25,8.25) 周圍建牆（gx=4~6, gy=3~7, 除 (5,5) 外）
+        walls = []
         for gy in range(3, 8):
             for gx in range(4, 7):
                 if gx == 5 and gy == 5:
                     continue  # 留空
-                terrain[gy][gx] = TerrainTile(is_blocking=True, name="wall")
-        ms = MapState(manifest=manifest, terrain=terrain)
+                walls.append(Wall(x=gx * 1.5, y=gy * 1.5, width=1.5, height=1.5))
+        manifest = MapManifest(name="box", width=15.0, height=15.0, walls=walls)
+        ms = MapState(manifest=manifest, walls=walls)
 
-        start = Position.from_grid(1, 5, 1.5)
-        target = Position.from_grid(5, 5, 1.5)
+        start = Position(x=2.25, y=8.25)
+        target = Position(x=8.25, y=8.25)
         path = find_path_to_range(
             start,
             target,
@@ -237,8 +231,8 @@ class TestCostLimit:
 
     def test_cost_limit(self, empty_map: MapState):
         """成本不足以到達 → None。"""
-        start = Position.from_grid(0, 5, 1.5)
-        target = Position.from_grid(9, 5, 1.5)
+        start = Position(x=0.75, y=8.25)
+        target = Position(x=14.25, y=8.25)
         # 距離 ≈ 13.5m，限制 3m
         path = find_path_to_range(
             start,
@@ -263,8 +257,8 @@ class TestReachTermination:
 
     def test_stops_at_reach(self, empty_map: MapState):
         """不需走到目標正上方。"""
-        start = Position.from_grid(0, 5, 1.5)
-        target = Position.from_grid(8, 5, 1.5)
+        start = Position(x=0.75, y=8.25)
+        target = Position(x=12.75, y=8.25)
         path = find_path_to_range(
             start,
             target,
@@ -306,16 +300,15 @@ class TestBoundaryCollision:
 
     def test_boundary_path(self):
         """起點在膨脹障礙物邊界上 → 應能找到繞行路徑，而非 None。"""
-        manifest = MapManifest(name="tutorial", width=15.0, height=15.0, grid_size_m=1.5)
-        terrain = [[TerrainTile() for _ in range(10)] for _ in range(10)]
-        # Pillar 1 在格 (3, 3)
-        terrain[3][3] = TerrainTile(is_blocking=True, name="pillar")
-        ms = MapState(manifest=manifest, terrain=terrain)
+        # Pillar 1 在格 (3, 3) → AABB (4.5, 4.5, 6.0, 6.0)
+        pillar = Wall(x=4.5, y=4.5, width=1.5, height=1.5, name="pillar")
+        manifest = MapManifest(name="tutorial", width=15.0, height=15.0, walls=[pillar])
+        ms = MapState(manifest=manifest, walls=[pillar])
 
         # 格 (4, 2) = (6.75, 3.75)，恰好在膨脹邊界角落
-        start = Position.from_grid(4, 2, 1.5)
+        start = Position(x=6.75, y=3.75)
         # 格 (4, 5) = (6.75, 8.25)
-        target = Position.from_grid(4, 5, 1.5)
+        target = Position(x=6.75, y=8.25)
 
         path = find_path_to_range(
             start,
@@ -340,8 +333,8 @@ class TestFurthestAlongPath:
 
     def test_partial_path(self, empty_map: MapState):
         """移動預算不足 → 截斷路徑。"""
-        start = Position.from_grid(0, 5, 1.5)
-        target = Position.from_grid(9, 5, 1.5)
+        start = Position(x=0.75, y=8.25)
+        target = Position(x=14.25, y=8.25)
         path = find_furthest_along_path(
             start,
             target,

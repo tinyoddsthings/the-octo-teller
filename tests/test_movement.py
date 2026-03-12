@@ -38,8 +38,8 @@ from tot.models import (
     MapState,
     Monster,
     MonsterAction,
-    TerrainTile,
     TurnState,
+    Wall,
     Weapon,
 )
 
@@ -53,9 +53,8 @@ GS = 1.5  # 標準 grid_size
 
 def _make_map(grid_w: int = 10, grid_h: int = 10) -> MapState:
     """空白地圖（width/height 為公尺）。"""
-    manifest = MapManifest(name="test", width=grid_w * GS, height=grid_h * GS, grid_size_m=GS)
-    terrain = [[TerrainTile() for _ in range(grid_w)] for _ in range(grid_h)]
-    return MapState(manifest=manifest, terrain=terrain)
+    manifest = MapManifest(name="test", width=grid_w * GS, height=grid_h * GS)
+    return MapState(manifest=manifest)
 
 
 def _grid_center(gx: int, gy: int) -> tuple[float, float]:
@@ -313,9 +312,9 @@ class TestMoveTowardTarget:
         pc = _make_character("PC")
         mon = _make_monster("Goblin")
         map_state = _make_map()
-        # 在 grid x=5 建一排牆（y=2~7）
-        for gy in range(2, 8):
-            map_state.terrain[gy][5] = TerrainTile(is_blocking=True, name="wall")
+        # 在 x=7.5m 建一排牆（y=3.0~12.0m），對應 grid x=5, y=2~7
+        wall = Wall(x=7.5, y=3.0, width=1.5, height=9.0, name="wall")
+        map_state.walls = [wall]
         pc_actor = _make_actor(pc.id, 3, 5, name="PC")
         mon_actor = _make_actor(mon.id, 7, 5, combatant_type="monster", name="Goblin")
         map_state.actors = [pc_actor, mon_actor]
@@ -371,9 +370,9 @@ class TestMoveTowardTarget:
         pc = _make_character("PC")
         mon = _make_monster("Goblin")
         map_state = _make_map()
-        # 完全封閉
-        for gy in range(0, 10):
-            map_state.terrain[gy][5] = TerrainTile(is_blocking=True, name="wall")
+        # 完全封閉：x=7.5m 全高牆
+        wall = Wall(x=7.5, y=0.0, width=1.5, height=15.0, name="wall")
+        map_state.walls = [wall]
         pc_actor = _make_actor(pc.id, 3, 5, name="PC")
         mon_actor = _make_actor(mon.id, 7, 5, combatant_type="monster", name="Goblin")
         map_state.actors = [pc_actor, mon_actor]

@@ -15,7 +15,7 @@
 - [x] 骰子系統 (dice.py) — d4~d100、advantage/disadvantage、modifier
 - [x] 角色建立流程 (character.py) — 12 職業/屬性/技能
 - [x] 戰鬥引擎 (combat.py) — 先攻、回合制、攻擊/傷害/死亡豁免/武器專精
-- [x] 戰鬥地圖系統 — 格子座標、拓樸區域、ASCII 渲染、戰爭迷霧
+- [x] 戰鬥地圖系統 — 連續座標（公尺）、拓樸區域、ASCII 渲染、戰爭迷霧
 - [x] Pointcrawl 探索系統 — 三層拓樸（地城/城鎮/世界）
 - [x] 佈陣階段 (deployment.py) — 遭遇判定 + 佈陣 + 渲染
 
@@ -45,8 +45,9 @@
 - [ ] Step 6: 範圍法術 — 已併入 ③ 實體+規則（統一用 BoundingShape）
 - [x] Step 7: 單元測試 — test_spells.py（57 tests）
 
-### 2-S: 空間系統重構（Smart Targeting + 浮點座標 + 碰撞） ✅
-> 已在 Phase 1 + 2-H/2-K 期間完成核心功能（浮點座標、碰撞、AoE 渲染）
+### 2-S: 空間系統重構（連續空間 + Wall AABB + 碰撞） ✅
+> Grid 系統已全面移除：TerrainTile/grid_size_m/to_grid/from_grid/grid_distance/terrain[y][x] 全數刪除
+> 改為純連續空間（公尺 float）+ Wall AABB 障礙物清單
 > 剩餘項目已併入 ①~④ 各階段
 
 ### 2-F: 破門與噪音系統

@@ -104,7 +104,6 @@ class RandomStrategy:
         movement_left = combat_state.turn_state.movement_remaining
 
         actor_pos = Position(x=actor_entity.x, y=actor_entity.y)
-        gs = map_state.manifest.grid_size_m
 
         # 找近戰範圍內的敵人
         melee_targets: list[Combatant] = []
@@ -119,7 +118,7 @@ class RandomStrategy:
             return Action(type=ActionType.ATTACK, target_id=target.id)
 
         # 如果還有移動距離 → 移動靠近隨機敵人
-        if movement_left >= gs:
+        if movement_left >= 1.5:
             target = self._rng.choice(enemies)
             target_pos = get_actor_position(target.id, map_state)
             if target_pos:
@@ -157,7 +156,6 @@ class GreedyMeleeStrategy:
 
         action_used = combat_state.turn_state.action_used
         movement_left = combat_state.turn_state.movement_remaining
-        gs = map_state.manifest.grid_size_m
         actor_pos = Position(x=actor_entity.x, y=actor_entity.y)
 
         # 找最近的敵人
@@ -184,7 +182,7 @@ class GreedyMeleeStrategy:
             return Action(type=ActionType.ATTACK, target_id=nearest_enemy.id)
 
         # 不在範圍 → 移動靠近
-        if movement_left >= gs:
+        if movement_left >= 1.5:
             return Action(type=ActionType.MOVE, target_id=nearest_enemy.id, position=nearest_pos)
 
         return Action(type=ActionType.END_TURN)

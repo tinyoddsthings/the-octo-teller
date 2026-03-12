@@ -27,7 +27,7 @@ from tot.gremlins.bone_engine.combat import (
 )
 from tot.gremlins.bone_engine.conditions import can_take_action, tick_conditions_end_of_turn
 from tot.gremlins.bone_engine.spells import can_cast
-from tot.models import Character, CombatState, Condition, MapState, Monster, Position, Spell
+from tot.models import Character, CombatState, Condition, MapState, Monster, Spell
 from tot.tui.actions import (
     execute_attack,
     player_attack,
@@ -44,7 +44,6 @@ from tot.tui.combat_bridge import (
     get_actor,
     is_in_enemy_reach,
     is_npc_turn,
-    pos_to_grid,
 )
 from tot.tui.input_handler import InputHandler, MenuPhase
 from tot.tui.log_manager import LogManager
@@ -208,25 +207,14 @@ class CombatTUI(App):
 
         # 3. move_input phase
         if ih.phase == MenuPhase.MOVE_INPUT:
-            gs = self.map_state.manifest.grid_size_m if self.map_state else 1.5
             if cmd_lower in DIRECTION_MAP:
                 dgx, dgy = DIRECTION_MAP[cmd_lower]
                 actor = get_actor(current.id, self.map_state)
                 if actor:
-                    cur_gx, cur_gy = pos_to_grid(actor.x, actor.y, gs)
-                    tgt = Position.from_grid(cur_gx + dgx, cur_gy + dgy, gs)
-                    await self._do_player_move(current, tgt.x, tgt.y)
+                    await self._do_player_move(current, actor.x + dgx * 1.5, actor.y + dgy * 1.5)
                 return
             parts = cmd.split()
             if len(parts) == 2:
-                try:
-                    gx, gy = int(parts[0]), int(parts[1])
-                    tgt = Position.from_grid(gx, gy, gs)
-                    await self._do_player_move(current, tgt.x, tgt.y)
-                    return
-                except ValueError:
-                    pass
-                # 浮點數 = 公尺座標直接指定
                 try:
                     mx, my = float(parts[0]), float(parts[1])
                     await self._do_player_move(current, mx, my)
@@ -236,9 +224,7 @@ class CombatTUI(App):
             if cmd == "0":
                 ih.show_action_choices(current, self.combat_state, self._log)
                 return
-            self._log.log(
-                "[red]請用：x y（格座標）或 x.x y.y（公尺），方向（n/s/e/w），或 0 返回。[/]"
-            )
+            self._log.log("[red]請用：x.x y.y（公尺座標），方向（n/s/e/w），或 0 返回。[/]")
             return
 
         # 4. 快捷動作指令
@@ -288,22 +274,24 @@ class CombatTUI(App):
             return True
         if cmd.startswith("move "):
             arg = cmd[5:].strip()
-            gs = self.map_state.manifest.grid_size_m if self.map_state else 1.5
             if arg.lower() in DIRECTION_MAP:
                 dgx, dgy = DIRECTION_MAP[arg.lower()]
                 actor = get_actor(current.id, self.map_state)
                 if actor:
-                    cur_gx, cur_gy = pos_to_grid(actor.x, actor.y, gs)
-                    tgt = Position.from_grid(cur_gx + dgx, cur_gy + dgy, gs)
-                    await self._do_player_move(current, tgt.x, tgt.y)
+                    await self._do_player_move(current, actor.x + dgx * 1.5, actor.y + dgy * 1.5)
                 return True
             parts = arg.split()
-            if len(parts) == 2 and parts[0].isdigit() and parts[1].isdigit():
-                tgt = Position.from_grid(int(parts[0]), int(parts[1]), gs)
-                await self._do_player_move(current, tgt.x, tgt.y)
+            if len(parts) == 2:
+                try:
+                    mx, my = float(parts[0]), float(parts[1])
+                    await self._do_player_move(current, mx, my)
+                except ValueError:
+                    self._log.log(
+                        "[red]格式錯誤，請用：move x.x y.y 或 move 方向（n/s/e/w/ne/nw/se/sw）[/]"
+                    )
             else:
                 self._log.log(
-                    "[red]格式錯誤，請用：move x y 或 move 方向（n/s/e/w/ne/nw/se/sw）[/]"
+                    "[red]格式錯誤，請用：move x.x y.y 或 move 方向（n/s/e/w/ne/nw/se/sw）[/]"
                 )
             return True
         if cmd == "dodge":

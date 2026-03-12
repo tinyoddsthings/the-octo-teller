@@ -19,7 +19,6 @@ from tot.gremlins.bone_engine.spatial import (
     can_traverse,
     check_collision,
     determine_cover,
-    determine_cover_from_grid,
     distance,
     find_nearest_valid_position,
     has_hostile_within_melee,
@@ -41,7 +40,6 @@ from tot.models import (
     Size,
     Spell,
     SpellSchool,
-    TerrainTile,
     Wall,
     Zone,
 )
@@ -56,9 +54,8 @@ GS = 1.5
 @pytest.fixture
 def empty_map() -> MapState:
     """5×5 空白地圖（7.5m × 7.5m）。"""
-    manifest = MapManifest(name="test", width=7.5, height=7.5, grid_size_m=GS)
-    terrain = [[TerrainTile() for _ in range(5)] for _ in range(5)]
-    return MapState(manifest=manifest, terrain=terrain)
+    manifest = MapManifest(name="test", width=7.5, height=7.5)
+    return MapState(manifest=manifest)
 
 
 @pytest.fixture
@@ -68,11 +65,9 @@ def map_with_wall() -> MapState:
         name="wall_test",
         width=7.5,
         height=7.5,
-        grid_size_m=GS,
         props=[Prop(id="wall1", x=3.75, y=3.75, symbol="🧱", is_blocking=True, prop_type="wall")],
     )
-    terrain = [[TerrainTile() for _ in range(5)] for _ in range(5)]
-    return MapState(manifest=manifest, terrain=terrain)
+    return MapState(manifest=manifest)
 
 
 def _make_actor(
@@ -121,22 +116,6 @@ class TestPositionFloat:
         assert p.x == 1.11
         assert p.y == 3.0
 
-    def test_to_grid(self):
-        """公尺座標 → 網格座標。"""
-        p = Position(x=3.75, y=5.25)  # 格 (2,3) 中心
-        assert p.to_grid(1.5) == (2, 3)
-
-    def test_to_grid_edge(self):
-        """格子邊界上的座標。"""
-        p = Position(x=3.0, y=3.0)  # (3.0/1.5)=2.0 → grid (2, 2)
-        assert p.to_grid(1.5) == (2, 2)
-
-    def test_from_grid(self):
-        """網格座標 → 公尺座標（格子中心）。"""
-        p = Position.from_grid(2, 3, 1.5)
-        assert p.x == 3.75
-        assert p.y == 5.25
-
     def test_distance_to(self):
         """Euclidean 距離計算。"""
         a = Position(x=0, y=0)
@@ -146,13 +125,6 @@ class TestPositionFloat:
     def test_distance_to_same(self):
         p = Position(x=1.5, y=1.5)
         assert p.distance_to(p) == 0.0
-
-    def test_from_grid_roundtrip(self):
-        """from_grid → to_grid 往返一致。"""
-        for gx in range(5):
-            for gy in range(5):
-                p = Position.from_grid(gx, gy, 1.5)
-                assert p.to_grid(1.5) == (gx, gy)
 
 
 # ===========================================================================
@@ -174,8 +146,8 @@ class TestDistance:
 
     def test_diagonal_grid(self):
         """對角線 1 格 ≈ 2.12m（不再是 Chebyshev 的 1.5m）。"""
-        a = Position.from_grid(0, 0, 1.5)
-        b = Position.from_grid(1, 1, 1.5)
+        a = Position(x=0.75, y=0.75)
+        b = Position(x=2.25, y=2.25)
         assert distance(a, b) == pytest.approx(1.5 * math.sqrt(2))
 
 
@@ -188,7 +160,7 @@ class TestActorsInRadius:
         a3 = _make_actor("a3", 4, 4)
         empty_map.actors = [a1, a2, a3]
 
-        center = Position.from_grid(2, 2, 1.5)
+        center = Position(x=3.75, y=3.75)
         result = actors_in_radius(center, 2.0, empty_map)
         ids = {a.id for a in result}
         assert "a1" in ids  # 自己（距離 0）
@@ -198,13 +170,13 @@ class TestActorsInRadius:
     def test_exclude_dead(self, empty_map: MapState):
         a_dead = _make_actor("dead", 2, 2, alive=False)
         empty_map.actors = [a_dead]
-        center = Position.from_grid(2, 2, 1.5)
+        center = Position(x=3.75, y=3.75)
         assert actors_in_radius(center, 5.0, empty_map) == []
 
     def test_include_dead(self, empty_map: MapState):
         a_dead = _make_actor("dead", 2, 2, alive=False)
         empty_map.actors = [a_dead]
-        center = Position.from_grid(2, 2, 1.5)
+        center = Position(x=3.75, y=3.75)
         assert len(actors_in_radius(center, 5.0, empty_map, alive_only=False)) == 1
 
 
@@ -253,13 +225,13 @@ class TestCheckCollision:
     """碰撞偵測。"""
 
     def test_no_collision_empty(self, empty_map: MapState):
-        pos = Position.from_grid(2, 2, 1.5)
+        pos = Position(x=3.75, y=3.75)
         assert check_collision(pos, Size.MEDIUM, empty_map) is None
 
     def test_collision_same_cell(self, empty_map: MapState):
         a = _make_actor("a1", 2, 2)
         empty_map.actors = [a]
-        pos = Position.from_grid(2, 2, 1.5)
+        pos = Position(x=3.75, y=3.75)
         result = check_collision(pos, Size.MEDIUM, empty_map)
         assert result is not None
         assert result.id == "a1"
@@ -267,13 +239,13 @@ class TestCheckCollision:
     def test_exclude_self(self, empty_map: MapState):
         a = _make_actor("a1", 2, 2)
         empty_map.actors = [a]
-        pos = Position.from_grid(2, 2, 1.5)
+        pos = Position(x=3.75, y=3.75)
         assert check_collision(pos, Size.MEDIUM, empty_map, exclude_id="a1") is None
 
     def test_no_collision_far(self, empty_map: MapState):
         a = _make_actor("a1", 0, 0)
         empty_map.actors = [a]
-        pos = Position.from_grid(4, 4, 1.5)
+        pos = Position(x=6.75, y=6.75)
         assert check_collision(pos, Size.MEDIUM, empty_map) is None
 
 
@@ -281,20 +253,20 @@ class TestCanEndMoveAt:
     """停留判定。"""
 
     def test_empty_ok(self, empty_map: MapState):
-        pos = Position.from_grid(2, 2, 1.5)
+        pos = Position(x=3.75, y=3.75)
         assert can_end_move_at(pos, Size.MEDIUM, empty_map) is True
 
     def test_occupied_blocked(self, empty_map: MapState):
         """不可在任何生物空間內結束移動（含友方）。"""
         a = _make_actor("a1", 2, 2)
         empty_map.actors = [a]
-        pos = Position.from_grid(2, 2, 1.5)
+        pos = Position(x=3.75, y=3.75)
         assert can_end_move_at(pos, Size.MEDIUM, empty_map) is False
 
     def test_self_excluded(self, empty_map: MapState):
         a = _make_actor("a1", 2, 2)
         empty_map.actors = [a]
-        pos = Position.from_grid(2, 2, 1.5)
+        pos = Position(x=3.75, y=3.75)
         assert can_end_move_at(pos, Size.MEDIUM, empty_map, mover_id="a1") is True
 
 
@@ -302,14 +274,14 @@ class TestFindNearestValid:
     """找到最近有效位置。"""
 
     def test_already_valid(self, empty_map: MapState):
-        pos = Position.from_grid(2, 2, 1.5)
+        pos = Position(x=3.75, y=3.75)
         result = find_nearest_valid_position(pos, Size.MEDIUM, empty_map)
         assert result.x == pos.x and result.y == pos.y
 
     def test_find_adjacent(self, empty_map: MapState):
         blocker = _make_actor("b", 2, 2)
         empty_map.actors = [blocker]
-        pos = Position.from_grid(2, 2, 1.5)
+        pos = Position(x=3.75, y=3.75)
         result = find_nearest_valid_position(pos, Size.MEDIUM, empty_map, exclude_id="me")
         # 應找到不同位置
         d = math.sqrt((result.x - pos.x) ** 2 + (result.y - pos.y) ** 2)
@@ -326,13 +298,13 @@ class TestLineOfSight:
     """視線判定（Ray-AABB）。"""
 
     def test_clear_los(self, empty_map: MapState):
-        a = Position.from_grid(0, 0, 1.5)
-        b = Position.from_grid(4, 4, 1.5)
+        a = Position(x=0.75, y=0.75)
+        b = Position(x=6.75, y=6.75)
         assert has_line_of_sight(a, b, empty_map) is True
 
     def test_blocked_by_wall(self, map_with_wall: MapState):
-        a = Position.from_grid(0, 0, 1.5)
-        b = Position.from_grid(4, 4, 1.5)
+        a = Position(x=0.75, y=0.75)
+        b = Position(x=6.75, y=6.75)
         # prop at (3.75, 3.75) 的 AABB (3.0, 3.0, 4.5, 4.5) 擋住對角線
         assert has_line_of_sight(a, b, map_with_wall) is False
 
@@ -342,7 +314,6 @@ class TestLineOfSight:
             name="wall_test",
             width=15.0,
             height=15.0,
-            grid_size_m=GS,
             walls=[Wall(x=4.5, y=4.5, width=1.5, height=1.5, name="wall")],
         )
         ms = MapState(manifest=manifest, walls=[Wall(x=4.5, y=4.5, width=1.5, height=1.5)])
@@ -355,21 +326,15 @@ class TestCover:
     """掩蔽判定。"""
 
     def test_no_cover(self, empty_map: MapState):
-        a = Position.from_grid(0, 0, 1.5)
-        b = Position.from_grid(3, 0, 1.5)
+        a = Position(x=0.75, y=0.75)
+        b = Position(x=5.25, y=0.75)
         assert determine_cover(a, b, empty_map) == CoverType.NONE
 
     def test_half_cover(self, map_with_wall: MapState):
-        a = Position.from_grid(1, 2, 1.5)
-        b = Position.from_grid(3, 2, 1.5)
+        a = Position(x=2.25, y=3.75)
+        b = Position(x=5.25, y=3.75)
         result = determine_cover(a, b, map_with_wall)
         assert result in (CoverType.HALF, CoverType.THREE_QUARTERS)
-
-    def test_alias(self, empty_map: MapState):
-        """determine_cover_from_grid 是 determine_cover 的別名。"""
-        a = Position.from_grid(0, 0, 1.5)
-        b = Position.from_grid(3, 0, 1.5)
-        assert determine_cover_from_grid(a, b, empty_map) == CoverType.NONE
 
 
 class TestMoveEntity:
@@ -379,28 +344,26 @@ class TestMoveEntity:
         """移動到相鄰格心。"""
         actor = _make_actor("m", 2, 2)
         empty_map.actors = [actor]
-        # 從 (2,2) 格心移到 (3,2) 格心
-        tgt = Position.from_grid(3, 2, 1.5)
-        result = move_entity(actor, tgt.x, tgt.y, empty_map, 9.0)
+        # 從 (2,2) 格心移到 (3,2) 格心（5.25m, 3.75m）
+        result = move_entity(actor, 5.25, 3.75, empty_map, 9.0)
         assert result.success is True
-        assert actor.grid_pos(1.5) == (3, 2)
+        assert actor.x == pytest.approx(5.25)
+        assert actor.y == pytest.approx(3.75)
         assert result.speed_remaining == pytest.approx(7.5)
 
     def test_blocked_move(self, map_with_wall: MapState):
         """牆壁阻擋移動。"""
         actor = _make_actor("m", 1, 2)
         map_with_wall.actors = [actor]
-        # 牆在 (2,2)
-        tgt = Position.from_grid(2, 2, 1.5)
-        result = move_entity(actor, tgt.x, tgt.y, map_with_wall, 9.0)
+        # 牆 prop 在 (3.75, 3.75)
+        result = move_entity(actor, 3.75, 3.75, map_with_wall, 9.0)
         assert result.success is False
 
     def test_no_speed(self, empty_map: MapState):
         """速度不足。"""
         actor = _make_actor("m", 2, 2)
         empty_map.actors = [actor]
-        tgt = Position.from_grid(3, 2, 1.5)
-        result = move_entity(actor, tgt.x, tgt.y, empty_map, 0.5)
+        result = move_entity(actor, 5.25, 3.75, empty_map, 0.5)
         assert result.success is False
 
     def test_oa_event(self, empty_map: MapState):
@@ -408,9 +371,8 @@ class TestMoveEntity:
         mover = _make_actor("pc", 2, 2, combatant_type="character")
         enemy = _make_actor("mob", 3, 2)
         empty_map.actors = [mover, enemy]
-        # 向左移動 (2,2)→(1,2)，離開 enemy 的 1.5m 觸及範圍
-        tgt = Position.from_grid(1, 2, 1.5)
-        result = move_entity(mover, tgt.x, tgt.y, empty_map, 9.0)
+        # 向左移動 (3.75,3.75)→(2.25,3.75)，離開 enemy 的 1.5m 觸及範圍
+        result = move_entity(mover, 2.25, 3.75, empty_map, 9.0)
         assert result.success is True
         oa_events = [e for e in result.events if e.event_type == "opportunity_attack"]
         assert len(oa_events) == 1
@@ -421,8 +383,7 @@ class TestMoveEntity:
         mover = _make_actor("pc", 2, 2, combatant_type="character")
         enemy = _make_actor("mob", 3, 2)
         empty_map.actors = [mover, enemy]
-        tgt = Position.from_grid(3, 2, 1.5)
-        result = move_entity(mover, tgt.x, tgt.y, empty_map, 9.0)
+        result = move_entity(mover, 5.25, 3.75, empty_map, 9.0)
         assert result.success is False
 
     def test_traverse_friendly_difficult(self, empty_map: MapState):
@@ -430,7 +391,7 @@ class TestMoveEntity:
         mover = _make_actor("pc1", 2, 2, combatant_type="character")
         ally = _make_actor("pc2", 3, 2, combatant_type="character")
         empty_map.actors = [mover, ally]
-        tgt = Position.from_grid(3, 2, 1.5)
+        tgt = Position(x=5.25, y=3.75)
         result = move_entity(
             mover,
             tgt.x,
@@ -457,8 +418,7 @@ class TestMoveEntity:
         """對角移動成本 = 歐幾里得距離（非 Chebyshev）。"""
         actor = _make_actor("m", 2, 2)
         empty_map.actors = [actor]
-        tgt = Position.from_grid(3, 3, 1.5)
-        result = move_entity(actor, tgt.x, tgt.y, empty_map, 9.0)
+        result = move_entity(actor, 5.25, 5.25, empty_map, 9.0)
         assert result.success is True
         # 對角 1 格 = sqrt(2) * 1.5 ≈ 2.12m
         expected_cost = 1.5 * math.sqrt(2)
@@ -469,12 +429,12 @@ class TestIsPositionClear:
     """is_position_clear 靜態障礙碰撞。"""
 
     def test_clear_position(self, empty_map: MapState):
-        pos = Position.from_grid(2, 2, 1.5)
+        pos = Position(x=3.75, y=3.75)
         assert is_position_clear(pos, 0.75, empty_map) is True
 
     def test_blocked_by_wall(self, map_with_wall: MapState):
         """牆壁阻擋。"""
-        pos = Position.from_grid(2, 2, 1.5)  # 牆在 (2,2)
+        pos = Position(x=3.75, y=3.75)  # prop 在 (3.75, 3.75)
         assert is_position_clear(pos, 0.75, map_with_wall) is False
 
     def test_out_of_bounds(self, empty_map: MapState):

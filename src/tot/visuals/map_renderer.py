@@ -4,7 +4,7 @@ Z-index 圖層堆疊、座標軸標籤、視野裁切、戰爭迷霧。
 座標系為左下原點，渲染時從 y=height-1 往下印到 y=0。
 
 內部保留 display grid（每格 1.5m = 5ft），用於 ASCII 字元顯示，
-但不依賴 terrain[y][x] 陣列——牆壁從 Wall AABB 推算。
+牆壁從 Wall AABB 推算。
 
 Z-index 圖層（低到高）：
    0  地形（空白地板）

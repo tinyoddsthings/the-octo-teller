@@ -53,7 +53,7 @@ class StatusSnapshot:
     hp_current: int
     hp_max: int
     ac: int
-    position: tuple[int, int] | None = None  # grid 座標
+    position: tuple[float, float] | None = None  # 公尺座標
     conditions: list[str] = field(default_factory=list)
     is_alive: bool = True
 
@@ -161,12 +161,11 @@ class CombatLogger:
         map_state: MapState,
     ) -> None:
         """記錄所有戰鬥者的狀態。"""
-        gs = map_state.manifest.grid_size_m
         snapshots: list[StatusSnapshot] = []
 
         for char in characters:
             actor = _find_actor(char.id, map_state)
-            grid = _actor_grid_pos(actor, gs) if actor else None
+            pos = (actor.x, actor.y) if actor else None
             snapshots.append(
                 StatusSnapshot(
                     combatant_id=char.id,
@@ -174,7 +173,7 @@ class CombatLogger:
                     hp_current=char.hp_current,
                     hp_max=char.hp_max,
                     ac=char.ac,
-                    position=grid,
+                    position=pos,
                     conditions=[c.condition.value for c in char.conditions],
                     is_alive=char.is_alive,
                 )
@@ -182,7 +181,7 @@ class CombatLogger:
 
         for mon in monsters:
             actor = _find_actor(mon.id, map_state)
-            grid = _actor_grid_pos(actor, gs) if actor else None
+            pos = (actor.x, actor.y) if actor else None
             snapshots.append(
                 StatusSnapshot(
                     combatant_id=mon.id,
@@ -190,7 +189,7 @@ class CombatLogger:
                     hp_current=mon.hp_current,
                     hp_max=mon.hp_max,
                     ac=mon.ac,
-                    position=grid,
+                    position=pos,
                     conditions=[c.condition.value for c in mon.conditions],
                     is_alive=mon.is_alive,
                 )
@@ -227,7 +226,11 @@ class CombatLogger:
                 if status_snaps:
                     lines.append("\n【狀態面板】")
                     for s in status_snaps:
-                        pos_str = f"  位置: {s.position}" if s.position else ""
+                        pos_str = (
+                            f"  位置: ({s.position[0]:.1f},{s.position[1]:.1f})"
+                            if s.position
+                            else ""
+                        )
                         cond_str = f"  [{', '.join(s.conditions)}]" if s.conditions else ""
                         alive_str = "  [倒下]" if not s.is_alive else ""
                         lines.append(
@@ -252,9 +255,3 @@ def _find_actor(combatant_id: UUID, map_state: MapState) -> Actor | None:
         if a.combatant_id == combatant_id:
             return a
     return None
-
-
-def _actor_grid_pos(actor: Actor, grid_size: float) -> tuple[int, int]:
-    import math
-
-    return (int(math.floor(actor.x / grid_size)), int(math.floor(actor.y / grid_size)))

@@ -22,7 +22,7 @@ from tot.models import (
     MapManifest,
     MapState,
     Prop,
-    TerrainTile,
+    Wall,
 )
 
 # ===========================================================================
@@ -152,25 +152,24 @@ class TestExtractStaticObstacles:
 
     def test_empty_map(self):
         """空白地圖 → 無障礙物。"""
-        manifest = MapManifest(name="test", width=7.5, height=7.5, grid_size_m=1.5)
-        terrain = [[TerrainTile() for _ in range(5)] for _ in range(5)]
-        ms = MapState(manifest=manifest, terrain=terrain)
+        manifest = MapManifest(name="test", width=7.5, height=7.5)
+        ms = MapState(manifest=manifest)
         assert extract_static_obstacles(ms) == []
 
-    def test_blocking_terrain(self):
-        """阻擋地形 → 產生 AABB。"""
-        manifest = MapManifest(name="test", width=7.5, height=7.5, grid_size_m=1.5)
-        terrain = [[TerrainTile() for _ in range(5)] for _ in range(5)]
-        terrain[2][3] = TerrainTile(is_blocking=True, name="wall")
-        ms = MapState(manifest=manifest, terrain=terrain)
+    def test_blocking_wall(self):
+        """Wall AABB → 產生障礙物。"""
+        w = Wall(x=4.5, y=3.0, width=1.5, height=1.5, name="wall")
+        manifest = MapManifest(name="test", width=7.5, height=7.5, walls=[w])
+        ms = MapState(manifest=manifest, walls=[w])
         obs = extract_static_obstacles(ms)
+        # manifest.walls + map_state.walls 各一，去重後 = 1
         assert len(obs) == 1
-        assert obs[0].min_x == pytest.approx(3 * 1.5)
-        assert obs[0].min_y == pytest.approx(2 * 1.5)
+        assert obs[0].min_x == pytest.approx(4.5)
+        assert obs[0].min_y == pytest.approx(3.0)
 
     def test_blocking_prop(self):
-        """阻擋 Prop → 產生 AABB。"""
-        wall = Prop(
+        """阻擋 Prop → 產生 AABB（以 prop 位置為中心的 1.5m × 1.5m）。"""
+        prop = Prop(
             id="w1",
             x=3.75,
             y=3.75,
@@ -178,37 +177,17 @@ class TestExtractStaticObstacles:
             is_blocking=True,
             prop_type="wall",
         )
-        manifest = MapManifest(
-            name="test",
-            width=7.5,
-            height=7.5,
-            grid_size_m=1.5,
-            props=[wall],
-        )
-        terrain = [[TerrainTile() for _ in range(5)] for _ in range(5)]
-        ms = MapState(manifest=manifest, terrain=terrain)
+        manifest = MapManifest(name="test", width=7.5, height=7.5, props=[prop])
+        ms = MapState(manifest=manifest)
         obs = extract_static_obstacles(ms)
         assert len(obs) == 1
+        assert obs[0].min_x == pytest.approx(3.0)
+        assert obs[0].min_y == pytest.approx(3.0)
 
     def test_deduplication(self):
-        """同一格的 terrain + prop 不重複。"""
-        wall = Prop(
-            id="w1",
-            x=4.5,
-            y=3.0,
-            symbol="🧱",
-            is_blocking=True,
-            prop_type="wall",
-        )
-        manifest = MapManifest(
-            name="test",
-            width=7.5,
-            height=7.5,
-            grid_size_m=1.5,
-            props=[wall],
-        )
-        terrain = [[TerrainTile() for _ in range(5)] for _ in range(5)]
-        terrain[2][3] = TerrainTile(is_blocking=True, name="wall")
-        ms = MapState(manifest=manifest, terrain=terrain)
+        """manifest.walls 和 map_state.walls 相同位置 → 去重後只有一個。"""
+        w = Wall(x=3.0, y=3.0, width=1.5, height=1.5, name="wall")
+        manifest = MapManifest(name="test", width=7.5, height=7.5, walls=[w])
+        ms = MapState(manifest=manifest, walls=[w])
         obs = extract_static_obstacles(ms)
         assert len(obs) == 1  # 去重後只有一個

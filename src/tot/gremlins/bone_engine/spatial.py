@@ -441,18 +441,12 @@ def determine_cover(
     return CoverType.NONE
 
 
-# 過渡期別名
-determine_cover_from_grid = determine_cover
-
-
 # ---------------------------------------------------------------------------
 # 區域查詢
 # ---------------------------------------------------------------------------
 
 
-def zone_for_position(
-    x: float | int, y: float | int, zones: list[Zone], grid_size: float = 1.5
-) -> Zone | None:
+def zone_for_position(x: float | int, y: float | int, zones: list[Zone]) -> Zone | None:
     """座標 → 所屬區域。Zone 邊界為公尺座標，直接比較。"""
     fx, fy = float(x), float(y)
     for z in zones:
