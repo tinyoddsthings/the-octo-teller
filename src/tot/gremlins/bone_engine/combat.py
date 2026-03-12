@@ -22,8 +22,8 @@ from tot.gremlins.bone_engine.spatial import distance
 from tot.models import (
     Ability,
     ActiveCondition,
-    Actor,
     Character,
+    Combatant,
     CombatState,
     Condition,
     CoverType,
@@ -31,11 +31,11 @@ from tot.models import (
     InitiativeEntry,
     MapState,
     Monster,
+    MonsterAction,
     Position,
     Size,
     TurnState,
     Weapon,
-    WeaponMastery,
     WeaponProperty,
 )
 
@@ -59,7 +59,7 @@ def _size_index(size: Size) -> int:
     return _SIZE_ORDER[size]
 
 
-def _get_size(combatant: Character | Monster) -> Size:
+def _get_size(combatant: Combatant) -> Size:
     """統一取得戰鬥者的體型。"""
     return combatant.size
 
@@ -69,13 +69,50 @@ def can_grapple_size(attacker_size: Size, target_size: Size) -> bool:
     return _size_index(target_size) <= _size_index(attacker_size) + 1
 
 
-def grapple_save_dc(attacker: Character | Monster) -> int:
+def grapple_save_dc(attacker: Combatant) -> int:
     """計算擒抱/推撞/Topple 的豁免 DC。
 
     DC = 8 + 力量修正 + 熟練加值。
     """
     str_mod = attacker.ability_scores.modifier(Ability.STR)
     return 8 + str_mod + attacker.proficiency_bonus
+
+
+# ---------------------------------------------------------------------------
+# 武器攻擊加值 / 傷害修正（集中 API）
+# ---------------------------------------------------------------------------
+
+
+def _weapon_ability_mod(combatant: Character | Monster, weapon: Weapon | MonsterAction) -> int:
+    """取得武器對應的屬性修正值（內部共用）。"""
+    if isinstance(weapon, MonsterAction):
+        return combatant.ability_scores.modifier(Ability.DEX)
+    if weapon.is_finesse:
+        str_mod = combatant.ability_scores.modifier(Ability.STR)
+        dex_mod = combatant.ability_scores.modifier(Ability.DEX)
+        return max(str_mod, dex_mod)
+    if weapon.is_ranged:
+        return combatant.ability_scores.modifier(Ability.DEX)
+    return combatant.ability_scores.modifier(Ability.STR)
+
+
+def calc_weapon_attack_bonus(combatant: Character | Monster, weapon: Weapon | MonsterAction) -> int:
+    """計算武器攻擊加值。
+
+    MonsterAction 直接回傳其 attack_bonus；
+    Weapon 則依 Finesse/Ranged 規則選擇屬性修正 + 熟練加值。
+    """
+    if isinstance(weapon, MonsterAction):
+        return weapon.attack_bonus or 0
+    return _weapon_ability_mod(combatant, weapon) + combatant.proficiency_bonus
+
+
+def calc_damage_modifier(combatant: Character | Monster, weapon: Weapon | MonsterAction) -> int:
+    """計算武器傷害修正值。
+
+    依 Finesse/Ranged 規則選擇屬性修正。
+    """
+    return _weapon_ability_mod(combatant, weapon)
 
 
 # ---------------------------------------------------------------------------
@@ -1071,109 +1108,6 @@ def attempt_shove(
 
 
 # ---------------------------------------------------------------------------
-# 武器專精 (Weapon Mastery)
-# ---------------------------------------------------------------------------
-
-
-@dataclass
-class MasteryEffect:
-    """武器專精觸發結果。"""
-
-    mastery: WeaponMastery
-    extra_damage: int = 0  # Graze / Cleave 的額外傷害
-    push_distance: float = 0.0  # Push 的推移距離
-    knockdown: bool = False  # Topple 的擊倒
-    next_attack_advantage: bool = False  # Vex 的下次攻擊優勢
-    target_attack_disadvantage: bool = False  # Sap 的目標攻擊劣勢
-    speed_reduction: float = 0.0  # Slow 的減速
-    save_result: SaveResult | None = None  # Topple 的豁免結果
-    triggered: bool = True  # 是否實際觸發
-
-
-def resolve_weapon_mastery(
-    mastery: WeaponMastery,
-    attacker: Character | Monster,
-    target: Character | Monster,
-    attack_result: AttackResult,
-    damage_result: DamageResult,
-    state: CombatState,
-    rng: random.Random | None = None,
-) -> MasteryEffect:
-    """解算武器專精效果（命中後觸發，每回合一次）。
-
-    Graze 例外：未命中也觸發。
-    """
-    # 每回合只能觸發一次武器專精
-    if state.turn_state.mastery_used:
-        return MasteryEffect(mastery=mastery, triggered=False)
-
-    # Graze：未命中 → 造成屬性修正值傷害
-    if mastery == WeaponMastery.GRAZE:
-        if not attack_result.is_hit:
-            str_mod = attacker.ability_scores.modifier(Ability.STR)
-            extra = max(0, str_mod)
-            state.turn_state.mastery_used = True
-            return MasteryEffect(mastery=mastery, extra_damage=extra)
-        # 命中時 Graze 不額外觸發
-        return MasteryEffect(mastery=mastery, triggered=False)
-
-    # 以下效果都需要命中
-    if not attack_result.is_hit:
-        return MasteryEffect(mastery=mastery, triggered=False)
-
-    state.turn_state.mastery_used = True
-
-    if mastery == WeaponMastery.PUSH:
-        return MasteryEffect(mastery=mastery, push_distance=3.0)
-
-    if mastery == WeaponMastery.TOPPLE:
-        dc = grapple_save_dc(attacker)
-        con_bonus = target.ability_scores.modifier(Ability.CON)
-        if isinstance(target, Character) and Ability.CON in target.saving_throw_proficiencies:
-            con_bonus += target.proficiency_bonus
-        save = resolve_saving_throw(
-            con_bonus,
-            dc,
-            Ability.CON,
-            conditions=target.conditions,
-            rng=rng,
-        )
-        knockdown = not save.success
-        if knockdown:
-            target.conditions.append(
-                ActiveCondition(
-                    condition=Condition.PRONE,
-                    source=f"{mastery} mastery",
-                )
-            )
-        return MasteryEffect(
-            mastery=mastery,
-            knockdown=knockdown,
-            save_result=save,
-        )
-
-    if mastery == WeaponMastery.CLEAVE:
-        # 額外傷害 = 屬性修正值（對相鄰另一目標，由上層施加）
-        str_mod = attacker.ability_scores.modifier(Ability.STR)
-        return MasteryEffect(mastery=mastery, extra_damage=max(0, str_mod))
-
-    if mastery == WeaponMastery.VEX:
-        return MasteryEffect(mastery=mastery, next_attack_advantage=True)
-
-    if mastery == WeaponMastery.SAP:
-        return MasteryEffect(mastery=mastery, target_attack_disadvantage=True)
-
-    if mastery == WeaponMastery.SLOW:
-        return MasteryEffect(mastery=mastery, speed_reduction=3.0)
-
-    if mastery == WeaponMastery.NICK:
-        # Nick：額外附贈動作攻擊（由上層處理）
-        return MasteryEffect(mastery=mastery)
-
-    return MasteryEffect(mastery=mastery, triggered=False)
-
-
-# ---------------------------------------------------------------------------
 # 借機攻擊
 # ---------------------------------------------------------------------------
 
@@ -1232,15 +1166,8 @@ def check_opportunity_attack(
     # 消耗反應
     entry.reaction_used = True
 
-    # 計算攻擊加值
-    if weapon.is_finesse:
-        str_mod = attacker.ability_scores.modifier(Ability.STR)
-        dex_mod = attacker.ability_scores.modifier(Ability.DEX)
-        ability_mod = max(str_mod, dex_mod)
-    else:
-        ability_mod = attacker.ability_scores.modifier(Ability.STR)
-
-    attack_bonus = ability_mod + attacker.proficiency_bonus
+    attack_bonus = calc_weapon_attack_bonus(attacker, weapon)
+    ability_mod = _weapon_ability_mod(attacker, weapon)
 
     attack = resolve_attack(attack_bonus, target_ac, rng=rng)
 
@@ -1288,14 +1215,6 @@ def get_reach_m(combatant: Character | Monster) -> float:
     return 1.5
 
 
-def _find_actor_in_map(combatant_id: UUID, map_state: MapState) -> Actor | None:
-    """以 combatant_id 查詢 Actor（bone_engine 內部用）。"""
-    for a in map_state.actors:
-        if a.combatant_id == combatant_id:
-            return a
-    return None
-
-
 def check_opportunity_attacks_on_step(
     mover: Character | Monster,
     old_x: float,
@@ -1304,7 +1223,7 @@ def check_opportunity_attacks_on_step(
     new_y: float,
     combat_state: CombatState,
     map_state: MapState,
-    combatant_map: dict[UUID, Character | Monster],
+    combatant_map: dict[UUID, Combatant],
     characters: list[Character],
     monsters: list[Monster],
     *,
@@ -1330,7 +1249,7 @@ def check_opportunity_attacks_on_step(
         if isinstance(mover, Monster) and isinstance(enemy, Monster):
             continue
 
-        enemy_actor = _find_actor_in_map(enemy.id, map_state)
+        enemy_actor = map_state.get_actor(enemy.id)
         if not enemy_actor:
             continue
 
@@ -1413,13 +1332,8 @@ def offhand_attack(
         return None
 
     # 副手攻擊骰仍包含屬性修正 + 熟練加值，只有傷害不加屬性修正
-    if offhand_weapon.is_finesse:
-        str_mod = attacker.ability_scores.modifier(Ability.STR)
-        dex_mod = attacker.ability_scores.modifier(Ability.DEX)
-        ability_mod = max(str_mod, dex_mod)
-    else:
-        ability_mod = attacker.ability_scores.modifier(Ability.STR)
-    attack_bonus = ability_mod + attacker.proficiency_bonus
+    # 副手攻擊骰仍包含屬性修正 + 熟練加值
+    attack_bonus = calc_weapon_attack_bonus(attacker, offhand_weapon)
 
     attack = resolve_attack(
         attack_bonus=attack_bonus,

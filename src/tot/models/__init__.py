@@ -77,7 +77,7 @@ from tot.models.map import (
     Zone,
     ZoneConnection,
 )
-from tot.models.spell import Spell
+from tot.models.spell import Spell, SpellAoe, SpellComponents, SpellUpcast
 
 __all__ = [
     # enums
@@ -113,6 +113,9 @@ __all__ = [
     "Weapon",
     # spell
     "Spell",
+    "SpellAoe",
+    "SpellComponents",
+    "SpellUpcast",
     # map
     "Actor",
     "Entity",

@@ -8,12 +8,17 @@ from __future__ import annotations
 
 from uuid import UUID
 
+from tot.gremlins.bone_engine.combat import (
+    calc_damage_modifier,
+    calc_weapon_attack_bonus,
+)
 from tot.gremlins.bone_engine.movement import build_friendly_ids as build_friendly_ids
-from tot.gremlins.bone_engine.spells import get_spell_by_name
+from tot.gremlins.bone_engine.spells import DAMAGE_TYPE_ZH, get_spell_by_name
 from tot.models import (
     Ability,
     Actor,
     Character,
+    Combatant,
     DamageType,
     Monster,
     MonsterAction,
@@ -22,24 +27,8 @@ from tot.models import (
 )
 
 # ---------------------------------------------------------------------------
-# 傷害類型中文化
+# 傷害類型中文化（字典來自 bone_engine/spells.py）
 # ---------------------------------------------------------------------------
-
-DAMAGE_TYPE_ZH: dict[str, str] = {
-    "Acid": "強酸",
-    "Bludgeoning": "鈍擊",
-    "Cold": "寒冷",
-    "Fire": "火焰",
-    "Force": "力場",
-    "Lightning": "閃電",
-    "Necrotic": "黯蝕",
-    "Piercing": "穿刺",
-    "Poison": "毒素",
-    "Psychic": "心靈",
-    "Radiant": "光輝",
-    "Slashing": "揮砍",
-    "Thunder": "雷鳴",
-}
 
 
 def zh_dmg(dmg_type: DamageType) -> str:
@@ -84,31 +73,13 @@ DIRECTION_MAP: dict[str, tuple[int, int]] = {
 
 
 def get_attack_bonus(combatant: Character | Monster, weapon: Weapon | MonsterAction) -> int:
-    """計算攻擊加值。"""
-    if isinstance(weapon, MonsterAction):
-        return weapon.attack_bonus or 0
-    if weapon.is_finesse:
-        str_mod = combatant.ability_scores.modifier(Ability.STR)
-        dex_mod = combatant.ability_scores.modifier(Ability.DEX)
-        ability_mod = max(str_mod, dex_mod)
-    elif weapon.is_ranged:
-        ability_mod = combatant.ability_scores.modifier(Ability.DEX)
-    else:
-        ability_mod = combatant.ability_scores.modifier(Ability.STR)
-    return ability_mod + combatant.proficiency_bonus
+    """計算攻擊加值。委派到 bone_engine.combat。"""
+    return calc_weapon_attack_bonus(combatant, weapon)
 
 
 def get_damage_modifier(combatant: Character | Monster, weapon: Weapon | MonsterAction) -> int:
-    """計算傷害修正值。"""
-    if isinstance(weapon, MonsterAction):
-        return combatant.ability_scores.modifier(Ability.DEX)
-    if weapon.is_finesse:
-        str_mod = combatant.ability_scores.modifier(Ability.STR)
-        dex_mod = combatant.ability_scores.modifier(Ability.DEX)
-        return max(str_mod, dex_mod)
-    if weapon.is_ranged:
-        return combatant.ability_scores.modifier(Ability.DEX)
-    return combatant.ability_scores.modifier(Ability.STR)
+    """計算傷害修正值。委派到 bone_engine.combat。"""
+    return calc_damage_modifier(combatant, weapon)
 
 
 # ---------------------------------------------------------------------------
@@ -154,7 +125,7 @@ def is_npc_turn(combatant: Character | Monster | None) -> bool:
 def is_in_enemy_reach(
     combatant: Character | Monster,
     map_state,
-    combatant_map: dict[UUID, Character | Monster],
+    combatant_map: dict[UUID, Combatant],
 ) -> bool:
     """檢查角色是否在任何敵方的觸及範圍內。"""
     from tot.gremlins.bone_engine.spatial import distance
@@ -186,13 +157,13 @@ def is_in_enemy_reach(
 
 
 def get_actor(combatant_id: UUID, map_state) -> Actor | None:
-    """以 UUID 查詢 Actor。"""
+    """以 UUID 查詢 Actor。
+
+    保留 wrapper：TUI 層 map_state 可能為 None。
+    """
     if not map_state:
         return None
-    for a in map_state.actors:
-        if a.combatant_id == combatant_id:
-            return a
-    return None
+    return map_state.get_actor(combatant_id)
 
 
 # ---------------------------------------------------------------------------
@@ -264,7 +235,7 @@ def format_conditions(
 
 def format_initiative(
     combat_state,
-    combatant_map: dict[UUID, Character | Monster],
+    combatant_map: dict[UUID, Combatant],
 ) -> str:
     """完整先攻順序。"""
     if not combat_state:

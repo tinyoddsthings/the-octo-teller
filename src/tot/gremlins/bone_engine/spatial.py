@@ -60,7 +60,7 @@ def actors_in_radius(
     for a in map_state.actors:
         if alive_only and not a.is_alive:
             continue
-        d = math.sqrt((a.x - center.x) ** 2 + (a.y - center.y) ** 2)
+        d = center.distance_to(Position(x=a.x, y=a.y))
         if d <= radius_m:
             result.append(a)
     return result
@@ -128,11 +128,11 @@ def is_valid_position(x: float, y: float, map_state: MapState) -> bool:
 
 
 def get_actor_position(combatant_id: UUID, map_state: MapState) -> Position | None:
-    """以 UUID 查詢戰鬥者位置（公尺座標）。找不到回傳 None。"""
-    for a in map_state.actors:
-        if a.combatant_id == combatant_id:
-            return Position(x=a.x, y=a.y)
-    return None
+    """以 UUID 查詢戰鬥者位置（公尺座標）。找不到回傳 None。
+
+    委派到 MapState.get_actor_position()，保留此函式供外部 caller 使用。
+    """
+    return map_state.get_actor_position(combatant_id)
 
 
 def has_hostile_within_melee(
@@ -154,7 +154,7 @@ def has_hostile_within_melee(
             continue
         if other.combatant_id in allies:
             continue
-        dist = math.sqrt((other.x - actor.x) ** 2 + (other.y - actor.y) ** 2)
+        dist = distance(Position(x=other.x, y=other.y), Position(x=actor.x, y=actor.y))
         if dist <= melee_range_m:
             return True
     return False
@@ -188,7 +188,7 @@ def check_collision(
         if exclude_id and a.id == exclude_id:
             continue
         other_r = SIZE_RADIUS_M.get(Size.MEDIUM, 0.75)  # Actor 無 size，預設 Medium
-        center_dist = math.sqrt((a.x - pos.x) ** 2 + (a.y - pos.y) ** 2)
+        center_dist = pos.distance_to(Position(x=a.x, y=a.y))
         if center_dist < my_r + other_r:
             return a
     return None
@@ -226,7 +226,7 @@ def can_end_move_at(
         if mover_id and a.id == mover_id:
             continue
         other_r = SIZE_RADIUS_M.get(Size.MEDIUM, 0.75)
-        center_dist = math.sqrt((a.x - pos.x) ** 2 + (a.y - pos.y) ** 2)
+        center_dist = pos.distance_to(Position(x=a.x, y=a.y))
         if center_dist < my_r + other_r:
             return False
     return True
@@ -340,7 +340,7 @@ def move_entity(
         if other.id == actor.id or not other.is_alive or not other.is_blocking:
             continue
         other_r = SIZE_RADIUS_M.get(Size.MEDIUM, 0.75)
-        center_dist = math.sqrt((other.x - tx) ** 2 + (other.y - ty) ** 2)
+        center_dist = target_pos.distance_to(Position(x=other.x, y=other.y))
         if center_dist < mover_radius + other_r:
             is_hostile = other.id not in allies
             if not can_traverse(mover_size, Size.MEDIUM, is_hostile):
@@ -352,7 +352,7 @@ def move_entity(
     actor.is_blocking = old_blocking
 
     # 3. 成本計算
-    cost = math.sqrt((tx - actor.x) ** 2 + (ty - actor.y) ** 2)
+    cost = target_pos.distance_to(Position(x=actor.x, y=actor.y))
 
     # 穿越友軍困難地形
     if difficult_from_creature:
@@ -381,8 +381,9 @@ def move_entity(
             continue
         if other.id in allies:
             continue
-        old_dist = math.sqrt((other.x - old_x) ** 2 + (other.y - old_y) ** 2)
-        new_dist = math.sqrt((other.x - actor.x) ** 2 + (other.y - actor.y) ** 2)
+        other_pos = Position(x=other.x, y=other.y)
+        old_dist = other_pos.distance_to(Position(x=old_x, y=old_y))
+        new_dist = other_pos.distance_to(Position(x=actor.x, y=actor.y))
         if old_dist <= melee_range and new_dist > melee_range:
             events.append(
                 MoveEvent(

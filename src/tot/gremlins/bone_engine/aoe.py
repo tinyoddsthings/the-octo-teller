@@ -165,10 +165,10 @@ def get_actors_in_aoe(
     alive_only: bool = True,
 ) -> list[Actor]:
     """取得 AoE 範圍內的所有 Actor。"""
-    if spell.aoe_shape is None:
+    if spell.aoe.shape is None:
         return []
 
-    shape = spell.aoe_shape
+    shape = spell.aoe.shape
     actors = map_state.actors
     if alive_only:
         actors = [a for a in actors if a.is_alive]
@@ -176,29 +176,29 @@ def get_actors_in_aoe(
     hit: list[Actor] = []
 
     if shape == AoeShape.SPHERE:
-        radius_m = ft_to_m(spell.aoe_radius_ft)
+        radius_m = ft_to_m(spell.aoe.radius_ft)
         for a in actors:
             pos = Position(x=a.x, y=a.y)
             if _in_sphere(pos, center, radius_m):
                 hit.append(a)
 
     elif shape == AoeShape.CONE:
-        length_m = ft_to_m(spell.aoe_length_ft)
+        length_m = ft_to_m(spell.aoe.length_ft)
         for a in actors:
             pos = Position(x=a.x, y=a.y)
             if _in_cone(pos, caster_pos, center, length_m):
                 hit.append(a)
 
     elif shape == AoeShape.CUBE:
-        side_m = ft_to_m(spell.aoe_width_ft)
+        side_m = ft_to_m(spell.aoe.width_ft)
         for a in actors:
             pos = Position(x=a.x, y=a.y)
             if _in_cube(pos, caster_pos, center, side_m):
                 hit.append(a)
 
     elif shape == AoeShape.LINE:
-        length_m = ft_to_m(spell.aoe_length_ft)
-        width_m = ft_to_m(spell.aoe_width_ft) if spell.aoe_width_ft else ft_to_m(5)
+        length_m = ft_to_m(spell.aoe.length_ft)
+        width_m = ft_to_m(spell.aoe.width_ft) if spell.aoe.width_ft else ft_to_m(5)
         for a in actors:
             pos = Position(x=a.x, y=a.y)
             if _in_line(pos, caster_pos, center, length_m, width_m):

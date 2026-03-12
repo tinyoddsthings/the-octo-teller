@@ -13,6 +13,8 @@ from uuid import UUID
 from tot.gremlins.bone_engine.combat import (
     advance_turn,
     apply_damage,
+    calc_damage_modifier,
+    calc_weapon_attack_bonus,
     check_opportunity_attack,
     resolve_attack,
     roll_damage,
@@ -28,9 +30,8 @@ from tot.gremlins.bone_engine.spatial import (
     get_actor_position,
 )
 from tot.models import (
-    Ability,
-    Actor,
     Character,
+    Combatant,
     CombatState,
     Condition,
     MapState,
@@ -47,45 +48,10 @@ from tot.testing.player_ai import Action, ActionType, PlayerStrategy
 # ---------------------------------------------------------------------------
 
 
-def _get_attack_bonus(combatant: Character | Monster, weapon: Weapon | MonsterAction) -> int:
-    """計算攻擊加值。"""
-    if isinstance(weapon, MonsterAction):
-        return weapon.attack_bonus or 0
-    if weapon.is_finesse:
-        str_mod = combatant.ability_scores.modifier(Ability.STR)
-        dex_mod = combatant.ability_scores.modifier(Ability.DEX)
-        ability_mod = max(str_mod, dex_mod)
-    elif weapon.is_ranged:
-        ability_mod = combatant.ability_scores.modifier(Ability.DEX)
-    else:
-        ability_mod = combatant.ability_scores.modifier(Ability.STR)
-    return ability_mod + combatant.proficiency_bonus
-
-
-def _get_damage_modifier(combatant: Character | Monster, weapon: Weapon | MonsterAction) -> int:
-    """計算傷害修正值。"""
-    if isinstance(weapon, MonsterAction):
-        return combatant.ability_scores.modifier(Ability.DEX)
-    if weapon.is_finesse:
-        str_mod = combatant.ability_scores.modifier(Ability.STR)
-        dex_mod = combatant.ability_scores.modifier(Ability.DEX)
-        return max(str_mod, dex_mod)
-    if weapon.is_ranged:
-        return combatant.ability_scores.modifier(Ability.DEX)
-    return combatant.ability_scores.modifier(Ability.STR)
-
-
 def _display_name(combatant: Character | Monster) -> str:
     if isinstance(combatant, Monster):
         return combatant.label or combatant.name
     return combatant.name
-
-
-def _get_actor(combatant_id: UUID, map_state: MapState) -> Actor | None:
-    for a in map_state.actors:
-        if a.combatant_id == combatant_id:
-            return a
-    return None
 
 
 def _get_weapon(combatant: Character | Monster) -> Weapon | MonsterAction | None:
@@ -134,7 +100,7 @@ class HeadlessCombatRunner:
         self.rng = rng
 
         # 查找表
-        self._combatant_map: dict[UUID, Character | Monster] = {}
+        self._combatant_map: dict[UUID, Combatant] = {}
         for c in characters:
             self._combatant_map[c.id] = c
         for m in monsters:
@@ -228,7 +194,7 @@ class HeadlessCombatRunner:
         # 決策迴圈：一個回合可能包含移動 + 動作
         max_decisions = 20  # 防止無限迴圈
         for _ in range(max_decisions):
-            actor_entity = _get_actor(combatant.id, self.map_state)
+            actor_entity = self.map_state.get_actor(combatant.id)
             if not actor_entity:
                 break
 
@@ -323,7 +289,7 @@ class HeadlessCombatRunner:
         # 消耗動作
         use_action(self.combat_state)
 
-        atk_bonus = _get_attack_bonus(attacker, weapon)
+        atk_bonus = calc_weapon_attack_bonus(attacker, weapon)
         attack_result = resolve_attack(atk_bonus, target.ac, rng=self.rng)
 
         if not attack_result.is_hit:
@@ -340,7 +306,7 @@ class HeadlessCombatRunner:
             return
 
         # 命中 → 傷害
-        dmg_mod = _get_damage_modifier(attacker, weapon)
+        dmg_mod = calc_damage_modifier(attacker, weapon)
         dmg_result = roll_damage(
             weapon.damage_dice,
             weapon.damage_type,
@@ -384,7 +350,7 @@ class HeadlessCombatRunner:
         """執行移動——使用 A* 尋路靠近目標。"""
         import math
 
-        actor = _get_actor(combatant.id, self.map_state)
+        actor = self.map_state.get_actor(combatant.id)
         if not actor:
             return
 
@@ -479,7 +445,7 @@ class HeadlessCombatRunner:
             if isinstance(mover, Monster) and isinstance(enemy, Monster):
                 continue
 
-            enemy_actor = _get_actor(enemy.id, self.map_state)
+            enemy_actor = self.map_state.get_actor(enemy.id)
             if not enemy_actor:
                 continue
 

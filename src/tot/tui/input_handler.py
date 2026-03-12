@@ -13,6 +13,7 @@ from tot.gremlins.bone_engine.spatial import distance, get_actor_position
 from tot.gremlins.bone_engine.spells import get_spell_by_name
 from tot.models import (
     Character,
+    Combatant,
     CombatState,
     MapState,
     Monster,
@@ -233,7 +234,7 @@ class InputHandler:
         characters: list[Character],
         monsters: list[Monster],
         combat_state: CombatState | None,
-        combatant_map: dict[UUID, Character | Monster],
+        combatant_map: dict[UUID, Combatant],
         log: LogManager,
         refresh_map_fn,
     ) -> bool:

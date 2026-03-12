@@ -130,3 +130,21 @@ class MapState(BaseModel):
     walls: list[Wall] = Field(default_factory=list)
     actors: list[Actor] = Field(default_factory=list)
     props: list[Prop] = Field(default_factory=list)  # 執行期動態追加的物件
+
+    def get_actor(self, combatant_id: UUID) -> Actor | None:
+        """以 combatant_id 查詢 Actor。"""
+        for a in self.actors:
+            if a.combatant_id == combatant_id:
+                return a
+        return None
+
+    def get_actor_position(self, combatant_id: UUID) -> Position | None:
+        """以 combatant_id 查詢戰鬥者位置（公尺座標）。"""
+        for a in self.actors:
+            if a.combatant_id == combatant_id:
+                return Position(x=a.x, y=a.y)
+        return None
+
+    def alive_actors(self) -> list[Actor]:
+        """回傳所有存活的 Actor。"""
+        return [a for a in self.actors if a.is_alive]

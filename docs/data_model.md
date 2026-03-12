@@ -11,8 +11,9 @@
 |-------|------|------|--------|
 | A | models.py 拆分為 models/ package | ✅ 完成 | `4f4fad1` |
 | B | Combatant 基類 + 型別別名統一 | ✅ 完成 | `37fa126` |
-| C | Query Methods 集中 + 重複消除 | 📋 規劃中 | — |
-| D | Spell 子模型 + 死欄位清理 | 📋 規劃中 | — |
+| C | Query Methods 集中 + 重複消除 | ✅ 完成 | — |
+| C+ | Combatant 型別傳播 + 死程式碼移除 | ✅ 完成 | — |
+| D | Spell 子模型 + 死欄位清理 | ✅ 完成 | — |
 | E | LLM Context Helpers | ⏸ 延後至 Phase 4 前 | — |
 
 ---
@@ -70,90 +71,40 @@ Combatant(BaseModel)
 
 ---
 
-## Phase C：Query Methods 集中（規劃中）
+## Phase C：Query Methods 集中 + 重複消除 ✅
 
-### 目標
+### 完成內容
 
-消除散落在 6+ 個檔案的重複 lookup 函式和 4 處攻擊加值計算。
-
-### C-1：MapState 新增 query methods
-
-在 `models/map.py` 的 `MapState` 新增：
-
-```python
-class MapState(BaseModel):
-    def get_actor(self, combatant_id: UUID) -> Actor | None:
-        return next((a for a in self.actors if a.combatant_id == combatant_id), None)
-
-    def get_actor_position(self, combatant_id: UUID) -> Position | None:
-        a = self.get_actor(combatant_id)
-        return Position(x=a.x, y=a.y) if a else None
-
-    def alive_actors(self) -> list[Actor]:
-        return [a for a in self.actors if a.is_alive]
-```
-
-### C-2：CombatState 新增 query method
-
-```python
-class CombatState(BaseModel):
-    def current_entry(self) -> InitiativeEntry | None:
-        if not self.initiative_order:
-            return None
-        return self.initiative_order[self.current_turn_index]
-```
-
-### C-3：移除重複 lookup（6 處）
-
-| 檔案 | 原函式 | 替換為 |
-|------|--------|--------|
-| `bone_engine/movement.py:44` | `_find_actor()` | `map_state.get_actor()` |
-| `bone_engine/spatial.py:130` | `get_actor_position()` | `map_state.get_actor_position()` |
-| `bone_engine/combat.py:1291` | `_find_actor_in_map()` | `map_state.get_actor()` |
-| `testing/combat_logger.py:253` | `_find_actor()` | `map_state.get_actor()` |
-| `testing/combat_runner.py:84` | `_get_actor()` | `map_state.get_actor()` |
-| `tui/combat_bridge.py:188` | `get_actor()` | 保留為 wrapper（TUI 有 19 個 caller，interface 不破壞） |
-
-**Caller 統計**（影響範圍評估）：
-
-| 函式 | Callers | 遷移難度 |
-|------|---------|---------|
-| `get_actor_position()` | 25 | 中 |
-| `get_actor()` (TUI) | 19 | 高（保留 wrapper） |
-| `_find_actor()` 系列 | 5 | 低 |
-
-### C-4：攻擊加值集中（4 處 → 1 處）
-
-在 `bone_engine/combat.py` 新增：
-
-```python
-def calc_weapon_attack_bonus(attacker: Combatant, weapon: Weapon | MonsterAction) -> int:
-    """統一的攻擊加值計算。"""
-    ...
-```
-
-移除/替換：
-
-| 檔案 | 原函式 | 處理 |
-|------|--------|------|
-| `tui/combat_bridge.py:86` | `get_attack_bonus()` | 改為呼叫 `combat.calc_weapon_attack_bonus()` |
-| `testing/combat_runner.py:50` | `_get_attack_bonus()` | 同上 |
-| `bone_engine/combat.py:1243` | inline（玩家近戰） | 改為呼叫自身 |
-| `bone_engine/combat.py:1422` | inline（武器法術） | 改為呼叫自身 |
+- **C-1**：`MapState` 新增 `get_actor()` / `get_actor_position()` / `alive_actors()` query methods
+- **C-2**：`CombatState` 新增 `current_entry()` query method
+- **C-3**：移除 6 處重複 actor lookup（`_find_actor()` / `_find_actor_in_map()` / `_get_actor()` 等），`combat_bridge.get_actor()` 保留為 thin wrapper
+- **C-4**：攻擊加值集中 — 4 處 inline/重複計算合併為 `combat.calc_weapon_attack_bonus()` / `calc_damage_modifier()`
+- **C-5**：13 處 inline `math.sqrt(...)` 改用 `distance()` / `Position.distance_to()`
+- **C-6**：`DAMAGE_TYPE_ZH` 字典去重 — `spells.py` 為 canonical，`combat_bridge.py` import（遵守 bone_engine→tui 架構方向）
 
 ---
 
-## Phase D：Spell 子模型 + 清理（規劃中）
+## Phase C+：Combatant 型別傳播 + 清理 ✅
 
-### 目標
+### 完成內容
 
-將 Spell 的 flat 欄位群組為子模型，提升可讀性；同時清除已確認的死欄位。
+- **C+-1**：`_get_size()` / `grapple_save_dc()` / `move_toward_target()` 參數改 `Combatant`
+- **C+-1**：`_get_save_bonus()` 移除冗餘 isinstance 分支，直接 `target.ability_scores.modifier(ability)`
+- **C+-2**：全 TUI 層 `dict[UUID, Character | Monster]` → `dict[UUID, Combatant]`（app.py / actions.py / combat_bridge.py / canvas.py / log_manager.py / npc_ai.py / stats_panel.py / input_handler.py / combat_runner.py / test_movement.py）
+- **C+-3**：刪除死程式碼 — `start_concentration()` / `is_concentrating()`（被 `cast_spell()` inline 取代）+ `resolve_weapon_mastery()` 98 行（整個 codebase 從未呼叫）
 
-### 遷移策略：單一 commit
+---
 
-原計畫分 D1（additive）和 D2（移除 flat），但 audit 顯示遷移量只有 ~28 行跨 3 個檔案，合併為一個 commit。
+## Phase D：Spell 子模型 + 死欄位清理 ✅
 
-### D-1：新增子模型 + 直接替換
+### 完成內容
+
+- **D-1**：新增 3 個子模型 `SpellComponents` / `SpellAoe` / `SpellUpcast`，`__init__.py` re-export
+- **D-2**：刪除 3 個死欄位（`upcast_duration_map` / `upcast_aoe_bonus` / `upcast_no_concentration_at`）+ 移除 `cast_spell()` 中對應的死路 guard
+- **D-3**：遷移 ~28 處呼叫點（`aoe.py` / `spells.py` / `app.py` / `test_spells.py`）
+- **D-4**：`Spell` 加 `@model_validator(mode='before')` 支援 flat→nested JSON 相容，`spells.json` 無需修改
+
+### Spell 子模型結構
 
 ```python
 class SpellComponents(BaseModel):
@@ -161,42 +112,17 @@ class SpellComponents(BaseModel):
     material_description: str = ""
     material_cost_gp: float = 0.0
     material_consumed: bool = False
-    requires_arcane_focus: bool = False
 
 class SpellAoe(BaseModel):
     shape: AoeShape | None = None
     radius_ft: int = 0
     length_ft: int = 0
     width_ft: int = 0
-    # ⚠ 原計畫有 height_ft，但現有 model 和 JSON 都沒有此欄位，暫不加入
 
 class SpellUpcast(BaseModel):
     dice: str = ""
     additional_targets: int = 0
 ```
-
-### D-2：刪除死欄位
-
-Audit 確認以下欄位在 JSON（141 筆法術）和 code 中均未使用：
-
-| 欄位 | code 存取次數 | JSON 使用 | 處理 |
-|------|-------------|-----------|------|
-| `upcast_duration_map` | 0 | 0 | **刪除** |
-| `upcast_aoe_bonus` | 0 | 0 | **刪除** |
-| `upcast_no_concentration_at` | 1（但 JSON 無資料，等於死路） | 0 | **刪除** |
-
-### D-3：呼叫點遷移
-
-| 檔案 | 行數 | 遷移模式 |
-|------|------|---------|
-| `aoe.py` | 7 行 | `spell.aoe_shape` → `spell.aoe.shape`；`spell.aoe_radius_ft` → `spell.aoe.radius_ft` 等 |
-| `spells.py` | 15 行 | `spell.components` → `spell.components.required`；`spell.material_*` → `spell.components.material_*`；`spell.upcast_*` → `spell.upcast.*` |
-| `app.py` | 6 行 | 同 aoe.py 模式 |
-
-### D-4：JSON 相容
-
-`spells.json` 使用 flat 結構。需在 `Spell` 上加 `@model_validator(mode='before')`，
-將 flat JSON key 映射到 nested sub-model，或直接重寫 JSON 為 nested 結構。
 
 ---
 

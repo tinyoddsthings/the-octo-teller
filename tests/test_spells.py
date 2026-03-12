@@ -13,10 +13,8 @@ from tot.gremlins.bone_engine.spells import (
     cast_spell,
     get_max_targets,
     get_spell_by_name,
-    is_concentrating,
     list_spells,
     load_spell_db,
-    start_concentration,
 )
 from tot.models import (
     AbilityScores,
@@ -361,9 +359,9 @@ class TestConcentration:
 
     def test_concentration_spell_sets_field(self, wizard, goblin, seeded_rng):
         spell = get_spell_by_name("睡眠術")
-        assert not is_concentrating(wizard)
+        assert not wizard.concentration_spell is not None
         cast_spell(wizard, spell, goblin, rng=seeded_rng)
-        assert is_concentrating(wizard)
+        assert wizard.concentration_spell is not None
         assert wizard.concentration_spell == "睡眠術"
 
     def test_new_concentration_breaks_old(self, wizard, goblin, seeded_rng):
@@ -386,15 +384,6 @@ class TestConcentration:
 
         mm = get_spell_by_name("魔法飛彈")
         cast_spell(wizard, mm, goblin, rng=seeded_rng)
-        assert wizard.concentration_spell == "睡眠術"
-
-    def test_start_concentration_api(self, wizard):
-        old = start_concentration(wizard, "祝福術")
-        assert old is None
-        assert wizard.concentration_spell == "祝福術"
-
-        old = start_concentration(wizard, "睡眠術")
-        assert old == "祝福術"
         assert wizard.concentration_spell == "睡眠術"
 
 
@@ -463,9 +452,9 @@ class TestComponents:
         """確認 JSON 載入後法術有 components。"""
         db = load_spell_db()
         fire_bolt = db["火焰箭"]
-        assert fire_bolt.components == ["V", "S"]
+        assert fire_bolt.components.required == ["V", "S"]
         bless = db["祝福術"]
-        assert "M" in bless.components
+        assert "M" in bless.components.required
 
     def test_silenced_blocks_verbal(self, wizard, goblin):
         """被沉默 → V 法術不可施放。"""
@@ -524,47 +513,6 @@ class TestComponents:
 
 class TestUpcastAdvanced:
     """進階升環機制。"""
-
-    def test_upcast_no_concentration(self, wizard, goblin, seeded_rng):
-        """達到指定環數後不觸發專注。"""
-        # 建立一個有 upcast_no_concentration_at 的測試法術
-        spell = Spell(
-            name="測試專注法術",
-            level=1,
-            school="Enchantment",
-            concentration=True,
-            effect_type="buff",
-            components=["V", "S"],
-            upcast_no_concentration_at=3,
-        )
-        wizard.spells_known.append("測試專注法術")
-        wizard.spell_slots.max_slots[3] = 2
-        wizard.spell_slots.current_slots[3] = 2
-
-        # 用 3 環施放 → 不需專注
-        result = cast_spell(wizard, spell, slot_level=3, rng=seeded_rng)
-        assert result.success
-        assert not result.concentration_started
-        assert wizard.concentration_spell is None
-
-    def test_upcast_below_threshold_still_concentrates(self, wizard, goblin, seeded_rng):
-        """低於閾值仍需專注。"""
-        spell = Spell(
-            name="測試專注法術2",
-            level=1,
-            school="Enchantment",
-            concentration=True,
-            effect_type="buff",
-            components=["V", "S"],
-            upcast_no_concentration_at=3,
-        )
-        wizard.spells_known.append("測試專注法術2")
-
-        # 用 1 環施放 → 仍需專注
-        result = cast_spell(wizard, spell, slot_level=1, rng=seeded_rng)
-        assert result.success
-        assert result.concentration_started
-        assert wizard.concentration_spell == "測試專注法術2"
 
     def test_get_max_targets_base(self):
         """無升環時回傳基本目標數。"""
@@ -693,7 +641,7 @@ class TestHighLevelSpells:
     def test_misty_step_v_only(self, wizard, seeded_rng):
         """迷蹤步只需 V，被沉默時不可用。"""
         spell = get_spell_by_name("迷蹤步")
-        assert spell.components == ["V"]
+        assert spell.components.required == ["V"]
 
         # 正常施放 OK
         result = cast_spell(wizard, spell, slot_level=2, rng=seeded_rng)
@@ -710,7 +658,7 @@ class TestHighLevelSpells:
     def test_counterspell_s_only_immune_to_silence(self, wizard, seeded_rng):
         """反制法術只需 S，被沉默時仍可施放。"""
         spell = get_spell_by_name("反制法術")
-        assert spell.components == ["S"]
+        assert spell.components.required == ["S"]
 
         from tot.gremlins.bone_engine.conditions import apply_condition
 

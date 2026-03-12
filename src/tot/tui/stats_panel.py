@@ -10,7 +10,7 @@ from uuid import UUID
 
 from textual.widgets import Static
 
-from tot.models import Character, CombatState, MapState, Monster
+from tot.models import Character, Combatant, CombatState, MapState, Monster
 from tot.tui.combat_bridge import display_name, get_actor
 
 
@@ -20,7 +20,7 @@ class StatsPanel(Static):
     def update_state(
         self,
         combat_state: CombatState | None,
-        combatant_map: dict[UUID, Character | Monster],
+        combatant_map: dict[UUID, Combatant],
         map_state: MapState | None,
     ) -> None:
         """根據戰鬥狀態重新渲染面板內容。"""
@@ -47,7 +47,7 @@ class StatsPanel(Static):
         entry,
         combatant: Character | Monster,
         combat_state: CombatState,
-        combatant_map: dict[UUID, Character | Monster],
+        combatant_map: dict[UUID, Combatant],
         map_state: MapState | None,
     ) -> str:
         """格式化單一先攻條目。"""

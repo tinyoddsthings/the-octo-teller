@@ -64,3 +64,11 @@ class CombatState(BaseModel):
     is_active: bool = False
     turn_state: TurnState = Field(default_factory=TurnState)
     map_state: MapState | None = None  # 有地圖時啟用空間系統
+
+    def current_entry(self) -> InitiativeEntry | None:
+        """取得當前回合的先攻條目。"""
+        if not self.initiative_order:
+            return None
+        if self.current_turn_index >= len(self.initiative_order):
+            return None
+        return self.initiative_order[self.current_turn_index]

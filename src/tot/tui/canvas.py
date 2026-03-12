@@ -21,7 +21,7 @@ from rich.text import Text
 from textual.reactive import reactive
 from textual.widget import Widget
 
-from tot.models import Actor, Character, MapState, Monster
+from tot.models import Actor, Character, Combatant, MapState, Monster
 
 # ---------------------------------------------------------------------------
 # AoE 覆蓋資料
@@ -111,7 +111,7 @@ class BrailleMapCanvas(Widget):
 
     # Textual reactive：變更時觸發 render
     map_state: reactive[MapState | None] = reactive(None)
-    combatant_map: reactive[dict[UUID, Character | Monster]] = reactive(dict)
+    combatant_map: reactive[dict[UUID, Combatant]] = reactive(dict)
     aoe_overlay: reactive[AoeOverlay | None] = reactive(None)
 
     DEFAULT_CSS = """
@@ -282,7 +282,7 @@ class BrailleMapCanvas(Widget):
         actor: Actor,
         scale: float,
         canvas_h: int,
-        combatant_map: dict[UUID, Character | Monster],
+        combatant_map: dict[UUID, Combatant],
     ) -> None:
         """在 drawille 上畫角色的幾何形狀。"""
         cx, cy = self._meter_to_px(actor.x, actor.y, scale, canvas_h)
@@ -556,7 +556,7 @@ class BrailleMapCanvas(Widget):
         scale: float,
         canvas_h: int,
         widget_w: int,
-        combatant_map: dict[UUID, Character | Monster],
+        combatant_map: dict[UUID, Combatant],
         x_offset: int = 0,
     ) -> list[tuple[int, int, str, str]]:
         """計算角色彩色標籤的字元位置。
@@ -776,7 +776,7 @@ class BrailleMapCanvas(Widget):
 
 def render_braille_map(
     map_state: MapState,
-    combatant_map: dict[UUID, Character | Monster],
+    combatant_map: dict[UUID, Combatant],
     w: int = 40,
     h: int = 12,
 ) -> str:

@@ -6,7 +6,6 @@
 
 from __future__ import annotations
 
-import math
 from dataclasses import dataclass
 from uuid import UUID
 
@@ -16,6 +15,7 @@ from tot.models import (
     SIZE_RADIUS_M,
     Actor,
     Character,
+    Combatant,
     CombatState,
     MapState,
     Monster,
@@ -34,19 +34,6 @@ class ActorLists:
 
     blocked: list[Actor]
     passable: list[Actor]
-
-
-# ---------------------------------------------------------------------------
-# Actor 查詢（bone_engine 內部用，不依賴 tui）
-# ---------------------------------------------------------------------------
-
-
-def _find_actor(combatant_id: UUID, map_state: MapState) -> Actor | None:
-    """以 combatant_id 查詢 Actor。"""
-    for a in map_state.actors:
-        if a.combatant_id == combatant_id:
-            return a
-    return None
 
 
 # ---------------------------------------------------------------------------
@@ -107,7 +94,7 @@ def move_toward_target(
     actor: Actor,
     target_id: UUID,
     reach_m: float,
-    mover: Character | Monster | None,
+    mover: Combatant | None,
     combat_state: CombatState,
     map_state: MapState,
     characters: list[Character],
@@ -178,7 +165,7 @@ def move_toward_target(
     cost = 0.0
     prev = cur_pos
     for wp in path:
-        cost += math.sqrt((wp.x - prev.x) ** 2 + (wp.y - prev.y) ** 2)
+        cost += prev.distance_to(wp)
         prev = wp
 
     return (path, cost)
@@ -190,7 +177,7 @@ def path_to_attack_range(
     reach_m: float,
     combat_state: CombatState,
     map_state: MapState,
-    combatant_map: dict[UUID, Character | Monster],
+    combatant_map: dict[UUID, Combatant],
     characters: list[Character],
     monsters: list[Monster],
 ) -> tuple[float, float, float, list[Position]] | None:
@@ -199,7 +186,7 @@ def path_to_attack_range(
     回傳 (x_m, y_m, 移動消耗, 路徑) 或 None。
     路徑用於 step_move_to 直接沿路徑點移動。
     """
-    actor = _find_actor(attacker_id, map_state)
+    actor = map_state.get_actor(attacker_id)
     tgt_pos = get_actor_position(target_id, map_state)
     if not actor or not tgt_pos:
         return None
@@ -241,7 +228,7 @@ def path_to_attack_range(
         cost = 0.0
         prev = start
         for wp in path:
-            cost += math.sqrt((wp.x - prev.x) ** 2 + (wp.y - prev.y) ** 2)
+            cost += prev.distance_to(wp)
             prev = wp
         return (end.x, end.y, cost, path)
     return None

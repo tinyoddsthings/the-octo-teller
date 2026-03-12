@@ -12,7 +12,7 @@ from uuid import UUID
 
 from textual.widgets import RichLog
 
-from tot.models import Character, CombatState, MapState, Monster
+from tot.models import Character, Combatant, CombatState, MapState, Monster
 from tot.tui.canvas import render_braille_map
 from tot.tui.combat_bridge import display_name
 
@@ -59,7 +59,7 @@ class LogManager:
     def log_initiative(
         self,
         combat_state: CombatState,
-        combatant_map: dict[UUID, Character | Monster],
+        combatant_map: dict[UUID, Combatant],
     ) -> None:
         """記錄先攻擲骰結果。"""
         self.log("[dim]先攻擲骰結果：[/]")
@@ -74,7 +74,7 @@ class LogManager:
         map_state: MapState,
         characters: list[Character],
         monsters: list[Monster],
-        combatant_map: dict[UUID, Character | Monster],
+        combatant_map: dict[UUID, Combatant],
     ) -> None:
         """每輪開始時記錄地圖快照 + 狀態面板到 log 檔案。
 
@@ -91,7 +91,7 @@ class LogManager:
     def _log_map_snapshot(
         self,
         map_state: MapState,
-        combatant_map: dict[UUID, Character | Monster],
+        combatant_map: dict[UUID, Combatant],
     ) -> None:
         """用 drawille 產生 braille 地圖，寫入 log 檔。"""
         rendered = render_braille_map(map_state, combatant_map, w=40, h=12)
@@ -104,7 +104,7 @@ class LogManager:
         map_state: MapState,
         characters: list[Character],
         monsters: list[Monster],
-        combatant_map: dict[UUID, Character | Monster],
+        combatant_map: dict[UUID, Combatant],
     ) -> None:
         """記錄所有角色的 HP、AC、位置、狀態效果到 log 檔。"""
         lines = ["\n【狀態面板】"]

@@ -11,7 +11,6 @@ from pathlib import Path
 from uuid import UUID
 
 from tot.models import (
-    Actor,
     Character,
     MapState,
     Monster,
@@ -164,7 +163,7 @@ class CombatLogger:
         snapshots: list[StatusSnapshot] = []
 
         for char in characters:
-            actor = _find_actor(char.id, map_state)
+            actor = map_state.get_actor(char.id)
             pos = (actor.x, actor.y) if actor else None
             snapshots.append(
                 StatusSnapshot(
@@ -180,7 +179,7 @@ class CombatLogger:
             )
 
         for mon in monsters:
-            actor = _find_actor(mon.id, map_state)
+            actor = map_state.get_actor(mon.id)
             pos = (actor.x, actor.y) if actor else None
             snapshots.append(
                 StatusSnapshot(
@@ -243,15 +242,3 @@ class CombatLogger:
                 lines.append(f"  {entry.message}")
 
         path.write_text("\n".join(lines), encoding="utf-8")
-
-
-# ---------------------------------------------------------------------------
-# 輔助函式
-# ---------------------------------------------------------------------------
-
-
-def _find_actor(combatant_id: UUID, map_state: MapState) -> Actor | None:
-    for a in map_state.actors:
-        if a.combatant_id == combatant_id:
-            return a
-    return None

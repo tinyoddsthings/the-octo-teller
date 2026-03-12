@@ -27,7 +27,7 @@ from tot.gremlins.bone_engine.combat import (
 )
 from tot.gremlins.bone_engine.conditions import can_take_action, tick_conditions_end_of_turn
 from tot.gremlins.bone_engine.spells import can_cast
-from tot.models import Character, CombatState, Condition, MapState, Monster, Spell
+from tot.models import Character, Combatant, CombatState, Condition, MapState, Monster, Spell
 from tot.tui.actions import (
     execute_attack,
     player_attack,
@@ -63,7 +63,7 @@ class CombatTUI(App):
         self.monsters: list[Monster] = []
         self.map_state: MapState | None = None
         self.combat_state: CombatState | None = None
-        self._combatant_map: dict[UUID, Character | Monster] = {}
+        self._combatant_map: dict[UUID, Combatant] = {}
         self._input_locked: bool = False
         self._input_handler = InputHandler()
         # log_manager 在 compose 後初始化
@@ -117,7 +117,7 @@ class CombatTUI(App):
 
     def _set_aoe_overlay(self, spell: Spell, target: Character | Monster) -> None:
         """依法術 AoE 參數設定地圖覆蓋預覽。"""
-        if not spell.aoe_shape or not self.map_state:
+        if not spell.aoe.shape or not self.map_state:
             return
         caster = self._current_combatant()
         if not caster:
@@ -129,14 +129,14 @@ class CombatTUI(App):
 
         ft_to_m = 1.5 / 5.0
         overlay = AoeOverlay(
-            shape=spell.aoe_shape.value,
+            shape=spell.aoe.shape.value,
             center_x=target_actor.x,
             center_y=target_actor.y,
             caster_x=caster_actor.x,
             caster_y=caster_actor.y,
-            radius_m=spell.aoe_radius_ft * ft_to_m,
-            length_m=spell.aoe_length_ft * ft_to_m,
-            width_m=(spell.aoe_width_ft or 5) * ft_to_m,
+            radius_m=spell.aoe.radius_ft * ft_to_m,
+            length_m=spell.aoe.length_ft * ft_to_m,
+            width_m=(spell.aoe.width_ft or 5) * ft_to_m,
         )
         self.query_one("#map-panel", BrailleMapCanvas).aoe_overlay = overlay
 
@@ -409,7 +409,7 @@ class CombatTUI(App):
         if not spell:
             return
         # AoE 預覽
-        if spell.aoe_shape:
+        if spell.aoe.shape:
             self._set_aoe_overlay(spell, target)
         await self._do_player_cast(current, spell, target=target)
 

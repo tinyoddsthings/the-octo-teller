@@ -30,6 +30,7 @@ from tot.models import (
     ActiveCondition,
     Actor,
     Character,
+    Combatant,
     CombatState,
     Condition,
     DamageType,
@@ -406,7 +407,7 @@ class TestPathToAttackRange:
         mon_actor = _make_actor(mon.id, 7, 5, combatant_type="monster", name="Goblin")
         map_state.actors = [pc_actor, mon_actor]
         cs = _make_combat_state([pc], [mon], speed=30.0)
-        combatant_map: dict[UUID, Character | Monster] = {pc.id: pc, mon.id: mon}
+        combatant_map: dict[UUID, Combatant] = {pc.id: pc, mon.id: mon}
 
         result = path_to_attack_range(
             pc.id,
@@ -433,7 +434,7 @@ class TestPathToAttackRange:
         mon_actor = _make_actor(mon.id, 8, 5, combatant_type="monster", name="Goblin")
         map_state.actors = [pc_actor, mon_actor]
         cs = _make_combat_state([pc], [mon], speed=1.0)
-        combatant_map: dict[UUID, Character | Monster] = {pc.id: pc, mon.id: mon}
+        combatant_map: dict[UUID, Combatant] = {pc.id: pc, mon.id: mon}
 
         result = path_to_attack_range(
             pc.id,
@@ -483,7 +484,7 @@ class TestGetReachM:
 class TestCheckOAOnStep:
     def _setup_oa_scenario(
         self,
-    ) -> tuple[Character, Monster, MapState, CombatState, dict[UUID, Character | Monster]]:
+    ) -> tuple[Character, Monster, MapState, CombatState, dict[UUID, Combatant]]:
         """建立 OA 測試場景：PC 在 (3,5)，Goblin 在 (4,5)，相鄰。"""
         pc = _make_character("PC")
         mon = _make_monster("Goblin")
@@ -492,7 +493,7 @@ class TestCheckOAOnStep:
         mon_actor = _make_actor(mon.id, 4, 5, combatant_type="monster", name="Goblin")
         map_state.actors = [pc_actor, mon_actor]
         cs = _make_combat_state([pc], [mon])
-        combatant_map: dict[UUID, Character | Monster] = {pc.id: pc, mon.id: mon}
+        combatant_map: dict[UUID, Combatant] = {pc.id: pc, mon.id: mon}
         return pc, mon, map_state, cs, combatant_map
 
     def test_disengaging_no_oa(self):
@@ -572,7 +573,7 @@ class TestCheckOAOnStep:
         pc2_actor = _make_actor(pc2.id, 4, 5, name="PC2")
         map_state.actors = [pc1_actor, pc2_actor]
         cs = _make_combat_state([pc1, pc2], [])
-        cmap: dict[UUID, Character | Monster] = {pc1.id: pc1, pc2.id: pc2}
+        cmap: dict[UUID, Combatant] = {pc1.id: pc1, pc2.id: pc2}
 
         old_x, old_y = _grid_center(3, 5)
         new_x, new_y = _grid_center(2, 5)
