@@ -1,6 +1,6 @@
 """Braille 點字地圖渲染 Widget。
 
-用 drawille Canvas 繪製高解析度棋盤格、地形、角色標記，
+用 drawille Canvas 繪製高解析度刻度線、牆壁、角色標記，
 再用 Rich markup 疊加彩色標籤。每個 Unicode Braille 字元 = 2×4 dots。
 
 座標轉換流程：
@@ -161,77 +161,73 @@ class BrailleMapCanvas(Widget):
 
     # ----- 繪製方法 -----
 
-    def _draw_grid(
+    def _draw_scale_lines(
         self,
         canvas: Canvas,
-        gs: float,
-        grid_w: int,
-        grid_h: int,
+        world_w: float,
+        world_h: float,
         scale: float,
         canvas_h: int,
+        interval: float = 1.5,
     ) -> None:
-        """繪製棋盤格線（虛線風格：每隔 2 dots 畫 1 dot）。"""
-        world_w = grid_w * gs
-        world_h = grid_h * gs
-
+        """繪製公尺刻度線（虛線風格：每隔 2 dots 畫 1 dot）。"""
         # 垂直線
-        for gx in range(grid_w + 1):
-            mx = gx * gs
+        mx = 0.0
+        while mx <= world_w + 1e-9:
             for step in range(int(world_h * scale)):
                 if step % 3 == 0:  # 虛線
                     my = step / scale
                     px, py = self._meter_to_px(mx, my, scale, canvas_h)
                     if px >= 0 and py >= 0:
                         canvas.set(px, py)
+            mx += interval
 
         # 水平線
-        for gy in range(grid_h + 1):
-            my = gy * gs
+        my = 0.0
+        while my <= world_h + 1e-9:
             for step in range(int(world_w * scale)):
                 if step % 3 == 0:
-                    mx = step / scale
-                    px, py = self._meter_to_px(mx, my, scale, canvas_h)
+                    mx_s = step / scale
+                    px, py = self._meter_to_px(mx_s, my, scale, canvas_h)
                     if px >= 0 and py >= 0:
                         canvas.set(px, py)
+            my += interval
 
-    def _draw_terrain(
+    def _draw_props(
         self,
         canvas: Canvas,
         ms: MapState,
-        gs: float,
         scale: float,
         canvas_h: int,
     ) -> None:
-        """繪製地形——blocking prop 填滿格，非 blocking 畫外框。"""
+        """繪製 Props——blocking 填滿、非 blocking 畫外框（公尺座標）。"""
         all_props = [*ms.manifest.props, *ms.props]
         for prop in all_props:
             if prop.hidden:
                 continue
-            # snap 到格子中心
-            gx = int(math.floor(prop.x / gs))
-            gy = int(math.floor(prop.y / gs))
+            # prop 佔據以其座標為中心的 1.5×1.5m 區域
+            half = 0.75
+            x0 = prop.x - half
+            y0 = prop.y - half
+            x1 = prop.x + half
+            y1 = prop.y + half
 
             if prop.is_blocking:
-                # 填滿整格
-                self._fill_cell(canvas, gx, gy, gs, scale, canvas_h)
+                self._fill_rect(canvas, x0, y0, x1, y1, scale, canvas_h)
             else:
-                # 非 blocking prop：畫外框
-                self._outline_cell(canvas, gx, gy, gs, scale, canvas_h)
+                self._outline_rect(canvas, x0, y0, x1, y1, scale, canvas_h)
 
-    def _fill_cell(
+    def _fill_rect(
         self,
         canvas: Canvas,
-        gx: int,
-        gy: int,
-        gs: float,
+        x0: float,
+        y0: float,
+        x1: float,
+        y1: float,
         scale: float,
         canvas_h: int,
     ) -> None:
-        """填滿一個格子（像素密集填充）。"""
-        x0 = gx * gs
-        y0 = gy * gs
-        x1 = (gx + 1) * gs
-        y1 = (gy + 1) * gs
+        """填滿矩形區域（公尺座標，像素密集填充）。"""
         px0, _ = self._meter_to_px(x0, y0, scale, canvas_h)
         px1, _ = self._meter_to_px(x1, y1, scale, canvas_h)
         _, py0 = self._meter_to_px(x0, y1, scale, canvas_h)  # Y 翻轉
@@ -241,25 +237,23 @@ class BrailleMapCanvas(Widget):
                 if px >= 0 and py >= 0:
                     canvas.set(px, py)
 
-    def _outline_cell(
+    def _outline_rect(
         self,
         canvas: Canvas,
-        gx: int,
-        gy: int,
-        gs: float,
+        x0: float,
+        y0: float,
+        x1: float,
+        y1: float,
         scale: float,
         canvas_h: int,
     ) -> None:
-        """畫一個格子的外框。"""
-        x0 = gx * gs
-        y0 = gy * gs
-        x1 = (gx + 1) * gs
-        y1 = (gy + 1) * gs
+        """畫矩形外框（公尺座標）。"""
         corners = [(x0, y0), (x1, y0), (x1, y1), (x0, y1)]
         for i in range(4):
             ax, ay = corners[i]
             bx, by = corners[(i + 1) % 4]
-            steps = max(2, int(gs * scale))
+            seg_len = math.sqrt((bx - ax) ** 2 + (by - ay) ** 2)
+            steps = max(2, int(seg_len * scale))
             for s in range(steps + 1):
                 t = s / steps
                 mx = ax + (bx - ax) * t
@@ -272,21 +266,15 @@ class BrailleMapCanvas(Widget):
         self,
         canvas: Canvas,
         ms: MapState,
-        gs: float,
-        grid_w: int,
-        grid_h: int,
         scale: float,
         canvas_h: int,
     ) -> None:
-        """繪製地形牆壁（terrain tiles 中 is_blocking 的格子）。"""
-        if not ms.terrain:
-            return
-        for gy in range(grid_h):
-            for gx in range(grid_w):
-                if gy < len(ms.terrain) and gx < len(ms.terrain[gy]):
-                    tile = ms.terrain[gy][gx]
-                    if tile.is_blocking:
-                        self._fill_cell(canvas, gx, gy, gs, scale, canvas_h)
+        """繪製牆壁（Wall AABB 填滿）。"""
+        all_walls = [*ms.manifest.walls, *ms.walls]
+        for wall in all_walls:
+            self._fill_rect(
+                canvas, wall.x, wall.y, wall.x + wall.width, wall.y + wall.height, scale, canvas_h
+            )
 
     def _draw_actor_shape(
         self,
@@ -630,14 +618,13 @@ class BrailleMapCanvas(Widget):
         if w <= 0 or h <= 0:
             return Text("")
 
-        gs = ms.manifest.grid_size_m
-        grid_w = ms.manifest.width
-        grid_h = ms.manifest.height
-        world_w = grid_w * gs
-        world_h = grid_h * gs
+        world_w = ms.manifest.width
+        world_h = ms.manifest.height
+        interval = 1.5  # 刻度線間距（公尺）
 
         # 座標軸 margin
-        y_margin = len(str(grid_h - 1)) + 1  # Y 標籤寬度 + 空格
+        max_label = f"{world_h:.0f}"
+        y_margin = len(max_label) + 1  # Y 標籤寬度 + 空格
         x_margin = 1  # 底部 X 軸一行
 
         # 繪圖區扣除座標軸空間
@@ -650,14 +637,14 @@ class BrailleMapCanvas(Widget):
         # 重建 canvas
         canvas = Canvas()
 
-        # 1. 格線
-        self._draw_grid(canvas, gs, grid_w, grid_h, scale, canvas_h)
+        # 1. 刻度線
+        self._draw_scale_lines(canvas, world_w, world_h, scale, canvas_h, interval)
 
-        # 2. 牆壁（terrain）
-        self._draw_walls(canvas, ms, gs, grid_w, grid_h, scale, canvas_h)
+        # 2. 牆壁（Wall AABBs）
+        self._draw_walls(canvas, ms, scale, canvas_h)
 
         # 3. Props（blocking=填滿，non-blocking=外框）
-        self._draw_terrain(canvas, ms, gs, scale, canvas_h)
+        self._draw_props(canvas, ms, scale, canvas_h)
 
         # 4. 角色形狀
         cmap = self.combatant_map
@@ -681,33 +668,30 @@ class BrailleMapCanvas(Widget):
             if len(frame_lines[i]) > draw_w:
                 frame_lines[i] = frame_lines[i][:draw_w]
 
-        # 7. Y 軸標籤
-        y_label_width = y_margin - 1  # 數字部分寬度
+        # 7. Y 軸標籤（公尺）
+        y_label_width = y_margin - 1
 
         # 8. 建構 Rich.Text + 疊加彩色標籤 + Y 軸標籤
         labels = self._compute_labels(ms, scale, canvas_h, w, cmap, x_offset=y_margin)
 
         result = Text()
         for row_idx in range(min(len(frame_lines), draw_h)):
-            # Y 軸標籤：計算此 char row 對應的 grid Y
-            # braille row_idx 對應的 pixel Y 中心 = row_idx * 4 + 2
+            # Y 軸標籤：計算此 char row 對應的公尺 Y
             pixel_y_center = row_idx * 4 + 2
             meter_y = (canvas_h - 1 - pixel_y_center) / scale
-            grid_y = int(meter_y / gs)
 
-            # 只在格線位置顯示 Y 標籤（對齊虛線邊界）
-            line_meter_y = grid_y * gs
-            _, line_pixel_y = self._meter_to_px(0, line_meter_y, scale, canvas_h)
+            # 對齊到最近的刻度線
+            snapped_y = round(meter_y / interval) * interval
+            _, line_pixel_y = self._meter_to_px(0, snapped_y, scale, canvas_h)
             line_char_row = line_pixel_y // 4
 
-            if row_idx == line_char_row and 0 <= grid_y < grid_h:
-                y_label = str(grid_y).rjust(y_label_width) + " "
+            if row_idx == line_char_row and 0 <= snapped_y <= world_h:
+                y_label = f"{snapped_y:.0f}".rjust(y_label_width) + " "
             else:
                 y_label = " " * y_margin
 
             line = frame_lines[row_idx]
             padded = y_label + line.ljust(draw_w)
-            # 確保總寬不超過 w
             if len(padded) > w:
                 padded = padded[:w]
 
@@ -724,21 +708,19 @@ class BrailleMapCanvas(Widget):
                 result.append(line_text)
                 result.append("\n")
 
-        # 9. X 軸標籤行
+        # 9. X 軸標籤行（公尺）
         x_axis = " " * y_margin
-        for gx in range(grid_w):
-            line_meter_x = gx * gs
-            line_px_x = int(line_meter_x * scale)
+        mx = 0.0
+        while mx <= world_w + 1e-9:
+            line_px_x = int(mx * scale)
             line_char_col = line_px_x // 2
-            label = str(gx)
-            # 放置 X 標籤，對齊格線
+            label = f"{mx:.0f}"
             pos = line_char_col - len(label) // 2
-            # 擴展 x_axis 到需要的長度
             while len(x_axis) < y_margin + pos + len(label):
                 x_axis += " "
             if pos >= 0:
                 x_axis = x_axis[: y_margin + pos] + label + x_axis[y_margin + pos + len(label) :]
-        # 裁切到 widget 寬度
+            mx += interval
         x_axis = x_axis[:w].rstrip()
         result.append(x_axis + "\n", style="dim")
 
@@ -805,14 +787,13 @@ def render_braille_map(
     """
     renderer = BrailleMapCanvas()
 
-    gs = map_state.manifest.grid_size_m
-    grid_w = map_state.manifest.width
-    grid_h = map_state.manifest.height
-    world_w = grid_w * gs
-    world_h = grid_h * gs
+    world_w = map_state.manifest.width
+    world_h = map_state.manifest.height
+    interval = 1.5
 
     # 座標軸 margin
-    y_margin = len(str(grid_h - 1)) + 1
+    max_label = f"{world_h:.0f}"
+    y_margin = len(max_label) + 1
     x_margin = 1
 
     draw_w = max(1, w - y_margin)
@@ -823,14 +804,14 @@ def render_braille_map(
 
     canvas = Canvas()
 
-    # 格線
-    renderer._draw_grid(canvas, gs, grid_w, grid_h, scale, canvas_h)
+    # 刻度線
+    renderer._draw_scale_lines(canvas, world_w, world_h, scale, canvas_h, interval)
 
     # 牆壁
-    renderer._draw_walls(canvas, map_state, gs, grid_w, grid_h, scale, canvas_h)
+    renderer._draw_walls(canvas, map_state, scale, canvas_h)
 
     # Props
-    renderer._draw_terrain(canvas, map_state, gs, scale, canvas_h)
+    renderer._draw_props(canvas, map_state, scale, canvas_h)
 
     # 角色形狀
     for actor in map_state.actors:
@@ -855,17 +836,16 @@ def render_braille_map(
 
     result_lines: list[str] = []
     for row_idx in range(min(len(frame_lines), draw_h)):
-        # Y 軸標籤
+        # Y 軸標籤（公尺）
         pixel_y_center = row_idx * 4 + 2
         meter_y = (canvas_h - 1 - pixel_y_center) / scale
-        grid_y = int(meter_y / gs)
 
-        line_meter_y = grid_y * gs
-        _, line_pixel_y = renderer._meter_to_px(0, line_meter_y, scale, canvas_h)
+        snapped_y = round(meter_y / interval) * interval
+        _, line_pixel_y = renderer._meter_to_px(0, snapped_y, scale, canvas_h)
         line_char_row = line_pixel_y // 4
 
-        if row_idx == line_char_row and 0 <= grid_y < grid_h:
-            y_label = str(grid_y).rjust(y_label_width) + " "
+        if row_idx == line_char_row and 0 <= snapped_y <= world_h:
+            y_label = f"{snapped_y:.0f}".rjust(y_label_width) + " "
         else:
             y_label = " " * y_margin
 
@@ -890,18 +870,19 @@ def render_braille_map(
 
         result_lines.append("".join(chars).rstrip())
 
-    # X 軸標籤行
+    # X 軸標籤行（公尺）
     x_axis = " " * y_margin
-    for gx in range(grid_w):
-        line_meter_x = gx * gs
-        line_px_x = int(line_meter_x * scale)
+    mx = 0.0
+    while mx <= world_w + 1e-9:
+        line_px_x = int(mx * scale)
         line_char_col = line_px_x // 2
-        label = str(gx)
+        label = f"{mx:.0f}"
         pos = line_char_col - len(label) // 2
         while len(x_axis) < y_margin + pos + len(label):
             x_axis += " "
         if pos >= 0:
             x_axis = x_axis[: y_margin + pos] + label + x_axis[y_margin + pos + len(label) :]
+        mx += interval
     result_lines.append(x_axis[:w].rstrip())
 
     return "\n".join(result_lines)
