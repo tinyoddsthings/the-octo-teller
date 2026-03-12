@@ -35,6 +35,9 @@ src/tot/visuals/assets/**/*.jpg
 # Combat logs
 logs/
 
+# MCP logs
+mcp_*.log
+
 # Database
 *.db
 *.sqlite3
