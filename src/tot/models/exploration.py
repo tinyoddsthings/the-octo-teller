@@ -56,6 +56,9 @@ class ExplorationNode(BaseModel):
     # 與戰鬥地圖的銜接
     combat_map: str | None = None  # MapManifest JSON 檔名（遭遇戰鬥時載入）
 
+    # 子地圖連結（世界→地城/城鎮，地城→子區域）
+    sub_map: str | None = None  # ExplorationMap JSON 檔名（進入此節點時載入子地圖）
+
     # 狀態
     is_discovered: bool = True  # 玩家是否已知此節點
     is_visited: bool = False  # 玩家是否已到過

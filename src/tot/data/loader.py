@@ -15,6 +15,26 @@ from tot.models import ExplorationMap, MapManifest, MapState, Position
 # 預設地圖資料夾
 _MAPS_DIR = Path(__file__).parent / "maps"
 
+# 名稱→路徑快取（遞迴搜索子資料夾）
+_name_cache: dict[str, Path] = {}
+
+
+def _resolve_map_path(name: str) -> Path:
+    """依名稱在 maps/ 子資料夾中遞迴查找 JSON 檔案。"""
+    if name in _name_cache:
+        return _name_cache[name]
+
+    # 重建快取
+    if not _name_cache:
+        for p in _MAPS_DIR.rglob("*.json"):
+            _name_cache[p.stem] = p
+
+    if name in _name_cache:
+        return _name_cache[name]
+
+    msg = f"找不到地圖：{name}（在 {_MAPS_DIR} 及其子資料夾中）"
+    raise FileNotFoundError(msg)
+
 
 def load_map_manifest(
     path: str | Path | None = None,
@@ -31,7 +51,7 @@ def load_map_manifest(
         if name is None:
             msg = "必須指定 path 或 name 其中之一"
             raise ValueError(msg)
-        path = _MAPS_DIR / f"{name}.json"
+        path = _resolve_map_path(name)
 
     path = Path(path)
     raw: dict[str, Any] = json.loads(path.read_text(encoding="utf-8"))
@@ -75,7 +95,7 @@ def load_exploration_map(
         if name is None:
             msg = "必須指定 path 或 name 其中之一"
             raise ValueError(msg)
-        path = _MAPS_DIR / f"{name}.json"
+        path = _resolve_map_path(name)
 
     path = Path(path)
     raw: dict[str, Any] = json.loads(path.read_text(encoding="utf-8"))

@@ -11,10 +11,10 @@
     {"x": 13.5, "y": 1.5, "width": 1.5, "height": 9.0, "name": "東牆"}
   ],
   "props": [
-    {"id": "door_south", "x": 8.25, "y": 0.75, "symbol": "🚪", "is_blocking": false, "name": "南側木門", "prop_type": "door"},
-    {"id": "door_north", "x": 8.25, "y": 11.25, "symbol": "🚪", "is_blocking": false, "name": "北側木門", "prop_type": "door"},
-    {"id": "pillar_1", "x": 5.25, "y": 5.25, "symbol": "🪨", "is_blocking": true, "name": "石柱", "prop_type": "decoration"},
-    {"id": "pillar_2", "x": 9.75, "y": 5.25, "symbol": "🪨", "is_blocking": true, "name": "石柱", "prop_type": "decoration"}
+    {"id": "door_south", "x": 8.25, "y": 0.75, "symbol": "D", "is_blocking": false, "name": "南側木門", "prop_type": "door"},
+    {"id": "door_north", "x": 8.25, "y": 11.25, "symbol": "D", "is_blocking": false, "name": "北側木門", "prop_type": "door"},
+    {"id": "pillar_1", "x": 5.25, "y": 5.25, "symbol": "O", "is_blocking": true, "name": "石柱", "prop_type": "decoration"},
+    {"id": "pillar_2", "x": 9.75, "y": 5.25, "symbol": "O", "is_blocking": true, "name": "石柱", "prop_type": "decoration"}
   ],
   "zones": [
     {"name": "主室", "x_min": 1.5, "y_min": 1.5, "x_max": 13.5, "y_max": 10.5, "description": "簡陋的石造房間，兩根石柱立於中央"}

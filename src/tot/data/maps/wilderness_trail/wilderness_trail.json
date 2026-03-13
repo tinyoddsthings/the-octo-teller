@@ -10,6 +10,7 @@
       "node_type": "landmark",
       "description": "一條被踩出的泥濘小徑從鎮郊延伸進森林。路旁立著一塊斑駁的路標，上面的字跡已難以辨認。",
       "ambient": "鳥鳴聲從樹冠傳來，落葉在微風中沙沙作響",
+      "sub_map": "starter_town",
       "hidden_items": [
         {
           "id": "old_signpost",
@@ -73,7 +74,8 @@
       "name": "洞穴入口",
       "node_type": "dungeon",
       "description": "一個被藤蔓半遮蓋的洞口，從裡面吹出涼爽的空氣。洞口周圍的岩石上有爪痕。",
-      "ambient": "洞穴深處傳來微弱的回音，空氣中帶著潮濕和礦物的氣味"
+      "ambient": "洞穴深處傳來微弱的回音，空氣中帶著潮濕和礦物的氣味",
+      "sub_map": "cliff_ruins"
     }
   ],
   "edges": [

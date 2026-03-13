@@ -180,9 +180,30 @@
 - [x] E-3.1: status/map/help/load 指令
 - [x] E-3.2: docs/exploration-design.md + todo.md 延後功能文件化
 
+### 🔥 2-XB: 渲染架構重構 + Prop Prefab 系統（最高優先）
+> 📄 設計文件：[`docs/rendering-refactor-design.md`](docs/rendering-refactor-design.md)
+> 📄 計畫詳情：[`.claude-personal/plans/parallel-nibbling-whale.md`](.claude-personal/plans/parallel-nibbling-whale.md)
+> 里程碑：MapState → RenderBuffer → BrailleMapCanvas 三層分離；地圖 JSON prefab 化；entity.symbol 移除
+> **前置：** 2-XA Phase 1~3 已完成
+
+- [ ] **Phase 0a**: `models/map.py` — Entity / Wall 移除 symbol 欄位
+- [ ] **Phase 0b**: bone_engine 四處 — aoe.py / deployment.py / spatial.py / area_explore.py 移除 symbol=
+- [ ] **Phase 0c**: TUI emoji_map — demo.py 回傳 emoji_map；app.py 新增 `_emoji_map`；stats_panel / input_handler 改用 emoji_map 參數
+- [ ] **Phase 0d**: 刪除 `src/tot/visuals/map_renderer.py`；combat_logger.py 改用 `render_braille_map()`
+- [ ] **Phase 0e**: tests 移除 symbol=（test_aoe / test_geometry / test_spatial）
+- [ ] **Phase 1a**: 新建 `src/tot/data/prop_defs/`（structural / interactive / terrain prefab）
+- [ ] **Phase 1b**: `loader.py` 新增 `_expand_props()` — prefab 展開邏輯
+- [ ] **Phase 1c**: `cave_explore.json` / `tutorial_room.json` — props 改用 prefab，移除 symbol
+- [ ] **Phase 2a**: 新建 `src/tot/tui/render_buffer.py`（RenderLayer / TextureType / RenderItem / RenderBuffer）
+- [ ] **Phase 2b**: `canvas.py` — 改用 RenderBuffer 驅動渲染，新增 _fill_circle / _outline_circle
+- [ ] **Phase 2c**: `app.py` — `_refresh_map()` 改建 RenderBuffer 傳給 canvas
+- [ ] **Phase 2d**: `geometry.py` — `extract_static_obstacles()` 改用 prop.bounds 計算 AABB
+- [ ] **Phase 3**: `render_braille_map()` / `render_to_plain()` 改用 RenderBuffer
+- [ ] **Phase 4**: 新增 `tests/test_prop_prefab.py` / `tests/test_render_buffer.py`；全測試通過
+
 ### 2-XA: Area 自由探索（Pointcrawl + Area 混合模式）
 > 里程碑：進入 Pointcrawl 節點後可自由移動、搜索物件、拾取物品
-> 📄 計畫文件：[`plans/parallel-nibbling-whale.md`](.claude-personal/plans/parallel-nibbling-whale.md)
+> 📄 計畫文件：[`.claude-personal/plans/parallel-nibbling-whale.md`](.claude-personal/plans/parallel-nibbling-whale.md)
 - [ ] Phase 1: 模型層擴展 — LootEntry + Prop 探索欄位 + AreaExploreState
 - [ ] Phase 2: bone_engine/area_explore.py — enter/exit/move/search/take/terrain
 - [ ] Phase 3: cave_explore.json 探索專用地圖（25×20m 洞穴）

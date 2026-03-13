@@ -26,8 +26,9 @@ class ExplorationTUI(App):
     CSS_PATH = "styles.tcss"
     TITLE = "T.O.T. 探索系統"
 
-    def __init__(self) -> None:
+    def __init__(self, initial_map: str | None = None) -> None:
         super().__init__()
+        self._initial_map = initial_map or "ruins"
         self.characters: list[Character] = []
         self.exp_map: ExplorationMap | None = None
         self.state: ExplorationState | None = None
@@ -41,7 +42,7 @@ class ExplorationTUI(App):
 
     async def on_mount(self) -> None:
         """啟動時載入 demo 場景。"""
-        chars, exp_map, state = create_exploration_demo("ruins")
+        chars, exp_map, state = create_exploration_demo(self._initial_map)
         self.characters = chars
         self.exp_map = exp_map
         self.state = state

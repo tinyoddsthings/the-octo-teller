@@ -10,6 +10,7 @@
       "node_type": "room",
       "description": "殘破的石拱門框架矗立在崖壁前，藤蔓攀附其上。入口處散落著碎石，空氣中帶著潮濕的泥土味。",
       "ambient": "海風從崖邊吹來，帶著鹹味和遠處海鷗的鳴叫",
+      "combat_map": "cave_explore",
       "elevation_m": 0,
       "hidden_items": [
         {
