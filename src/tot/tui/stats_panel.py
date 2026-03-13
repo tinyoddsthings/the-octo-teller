@@ -10,8 +10,8 @@ from uuid import UUID
 
 from textual.widgets import Static
 
-from tot.models import Character, Combatant, CombatState, MapState, Monster
-from tot.tui.combat_bridge import display_name, get_actor
+from tot.models import Character, Combatant, CombatState, Monster
+from tot.tui.combat_bridge import combatant_marker, display_name
 
 
 class StatsPanel(Static):
@@ -21,7 +21,6 @@ class StatsPanel(Static):
         self,
         combat_state: CombatState | None,
         combatant_map: dict[UUID, Combatant],
-        map_state: MapState | None,
     ) -> None:
         """根據戰鬥狀態重新渲染面板內容。"""
         if not combat_state:
@@ -36,7 +35,7 @@ class StatsPanel(Static):
             if not combatant:
                 continue
 
-            line = self._format_entry(idx, entry, combatant, combat_state, combatant_map, map_state)
+            line = self._format_entry(idx, entry, combatant, combat_state)
             lines.append(line)
 
         self.update("\n".join(lines))
@@ -47,13 +46,10 @@ class StatsPanel(Static):
         entry,
         combatant: Character | Monster,
         combat_state: CombatState,
-        combatant_map: dict[UUID, Combatant],
-        map_state: MapState | None,
     ) -> str:
         """格式化單一先攻條目。"""
         name = display_name(combatant)
-        actor = get_actor(entry.combatant_id, map_state)
-        emoji = actor.symbol if actor else "?"
+        marker_char = combatant_marker(combatant)
 
         # HP 血條
         hp_cur = combatant.hp_current
@@ -72,8 +68,8 @@ class StatsPanel(Static):
         bar = f"[{color}]{'█' * filled}{'░' * (bar_len - filled)}[/]"
 
         # 狀態標記
-        marker = "[bold white]▶[/] " if idx == combat_state.current_turn_index else "  "
-        alive_mark = "" if combatant.is_alive else " [red]💀[/]"
+        turn_marker = "[bold white]▶[/] " if idx == combat_state.current_turn_index else "  "
+        alive_mark = "" if combatant.is_alive else " [red]✕[/]"
 
         ai_mark = ""
         if isinstance(combatant, Character) and combatant.is_ai_controlled:
@@ -86,13 +82,13 @@ class StatsPanel(Static):
         econ_str = ""
         if idx == combat_state.current_turn_index and combatant.is_alive:
             ts = combat_state.turn_state
-            act_icon = "[dim]⚔️[/]" if ts.action_used else "⚔️"
-            bonus_icon = "[dim]➕[/]" if ts.bonus_action_used else "➕"
+            act_icon = "[dim]⚔[/]" if ts.action_used else "⚔"
+            bonus_icon = "[dim]+[/]" if ts.bonus_action_used else "+"
             mv_remaining = ts.movement_remaining
-            econ_str = f"  {act_icon} {bonus_icon} 🦶 {mv_remaining:.0f}m"
+            econ_str = f"  {act_icon} {bonus_icon} {mv_remaining:.0f}m"
 
         return (
-            f"{marker}{emoji} {name:<8s} "
+            f"{turn_marker}{marker_char} {name:<8s} "
             f"HP {hp_cur:>2d}/{hp_max:>2d} {bar} AC {ac}"
             f"{cond_str}{ai_mark}{alive_mark}{econ_str}"
         )

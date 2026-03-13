@@ -46,7 +46,6 @@ def _make_actor(
         id=f"act_{name}",
         x=gx * GS + GS / 2,
         y=gy * GS + GS / 2,
-        symbol="👹" if combatant_type == "monster" else "🧙",
         combatant_id=uuid4(),
         combatant_type=combatant_type,
         name=name,

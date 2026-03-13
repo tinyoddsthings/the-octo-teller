@@ -62,7 +62,6 @@ class Entity(BaseModel):
     id: str
     x: float
     y: float
-    symbol: str = "?"  # ASCII 單字元
     is_blocking: bool = False
     name: str = ""
 
@@ -152,7 +151,6 @@ class Wall(BaseModel):
     width: float  # 寬（公尺）
     height: float  # 高（公尺）
     name: str = "wall"
-    symbol: str = "#"
 
 
 class Zone(BaseModel):

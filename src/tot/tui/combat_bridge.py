@@ -94,6 +94,15 @@ def display_name(combatant: Character | Monster) -> str:
     return combatant.name
 
 
+def combatant_marker(combatant: Combatant) -> str:
+    """依角色類型回傳幾何標記，與 Braille canvas 形狀一致。"""
+    if not combatant.is_alive:
+        return "✕"
+    if isinstance(combatant, Character):
+        return "●"
+    return "◆"
+
+
 def find_target(
     name: str,
     characters: list[Character],

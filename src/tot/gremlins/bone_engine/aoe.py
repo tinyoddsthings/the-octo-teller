@@ -241,7 +241,7 @@ def preview_aoe(
     names: list[str] = []
     for a in hit:
         tag = " ⚠️友軍" if a.id in friendly_ids else ""
-        names.append(f"{a.symbol} {a.name}{tag}")
+        names.append(f"{a.name}{tag}")
 
     msg_parts: list[str] = [f"🎯 {spell.name} 預覽"]
     msg_parts.append(f"中心：({center.x:.1f}, {center.y:.1f})")

@@ -118,7 +118,6 @@ def enter_area(
         id=party_id,
         x=spawn_pos.x,
         y=spawn_pos.y,
-        symbol="@",
         is_blocking=True,
         name="隊伍",
         combatant_id=uuid4(),

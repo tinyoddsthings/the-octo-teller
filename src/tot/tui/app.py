@@ -161,7 +161,7 @@ class CombatTUI(App):
 
     def _refresh_status(self) -> None:
         self.query_one("#status-panel", StatsPanel).update_state(
-            self.combat_state, self._combatant_map, self.map_state
+            self.combat_state, self._combatant_map
         )
 
     # ----- 指令處理 -----
@@ -680,10 +680,11 @@ class CombatTUI(App):
             self._combatant_map,
         )
 
+        from tot.tui.combat_bridge import combatant_marker
+
         input_widget = self.query_one("#cmd-input", Input)
-        actor = get_actor(current.id, self.map_state)
-        emoji = actor.symbol if actor else "🧙"
-        input_widget.placeholder = f"{emoji} {current.name} > 輸入數字或指令"
+        marker = combatant_marker(current)
+        input_widget.placeholder = f"{marker} {current.name} > 輸入數字或指令"
         self._input_handler.show_action_choices(current, self.combat_state, self._log)
 
     # ----- 戰鬥結束判定 -----

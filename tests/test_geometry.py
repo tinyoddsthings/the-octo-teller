@@ -173,7 +173,6 @@ class TestExtractStaticObstacles:
             id="w1",
             x=3.75,
             y=3.75,
-            symbol="🧱",
             is_blocking=True,
             prop_type="wall",
         )

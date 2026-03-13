@@ -21,12 +21,12 @@ from tot.models import (
     Spell,
 )
 from tot.tui.combat_bridge import (
+    combatant_marker,
     find_target,
     format_conditions,
     format_initiative,
     format_spells,
     format_status,
-    get_actor,
     show_help,
 )
 
@@ -130,26 +130,21 @@ class InputHandler:
         if current and map_state:
             attacker_pos = get_actor_position(current.id, map_state)
 
-        alive = [(m.label or m.name) for m in monsters if m.is_alive]
-        self.menu_options = alive
+        alive_mons = [m for m in monsters if m.is_alive]
+        self.menu_options = [(m.label or m.name) for m in alive_mons]
         self.phase = MenuPhase.TARGET
 
         log.log("\n[bold white]選擇目標：[/]")
-        for i, name in enumerate(alive, 1):
+        for i, mon in enumerate(alive_mons, 1):
+            name = mon.label or mon.name
+            marker = combatant_marker(mon)
             dist_str = ""
-            emoji = ""
-            if map_state:
-                m = [m for m in monsters if m.is_alive and (m.label or m.name) == name]
-                if m:
-                    actor = get_actor(m[0].id, map_state)
-                    if actor:
-                        emoji = actor.symbol + " "
-                    if attacker_pos:
-                        tgt_pos = get_actor_position(m[0].id, map_state)
-                        if tgt_pos:
-                            dist = distance(attacker_pos, tgt_pos)
-                            dist_str = f" ({dist:.1f}m)"
-            log.log(f"  [cyan]{i}.[/] {emoji}{name}{dist_str}")
+            if attacker_pos and map_state:
+                tgt_pos = get_actor_position(mon.id, map_state)
+                if tgt_pos:
+                    dist = distance(attacker_pos, tgt_pos)
+                    dist_str = f" ({dist:.1f}m)"
+            log.log(f"  [cyan]{i}.[/] {marker} {name}{dist_str}")
         log.log("  [dim]0. ← 返回[/]")
 
     def show_spell_choices(
@@ -212,17 +207,14 @@ class InputHandler:
 
         log.log("\n[bold white]選擇目標：[/]")
         for i, (name, tgt) in enumerate(targets, 1):
+            marker = combatant_marker(tgt)
             dist_str = ""
-            emoji = ""
-            actor = get_actor(tgt.id, map_state) if map_state else None
-            if actor:
-                emoji = actor.symbol + " "
             if attacker_pos and map_state:
                 tgt_pos = get_actor_position(tgt.id, map_state)
                 if tgt_pos:
                     dist = distance(attacker_pos, tgt_pos)
                     dist_str = f" ({dist:.1f}m)"
-            log.log(f"  [cyan]{i}.[/] {emoji}{name}{dist_str}")
+            log.log(f"  [cyan]{i}.[/] {marker} {name}{dist_str}")
         log.log("  [dim]0. ← 返回[/]")
 
     # ----- 查詢指令 -----

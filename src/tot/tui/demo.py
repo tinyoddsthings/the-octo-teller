@@ -26,19 +26,6 @@ from tot.models import (
     WeaponProperty,
 )
 
-# 角色 emoji 對照
-PC_EMOJIS = {
-    "陶德": "🧙",
-    "Aldric": "🗡️",
-    "Branwen": "🛡️",
-}
-
-MONSTER_EMOJIS = {
-    "蟲巢首領": "👹",
-    "大地精1": "👺",
-    "大地精2": "👿",
-}
-
 
 def create_demo_scene() -> tuple[list[Character], list[Monster], MapState, CombatState]:
     """建立 demo 戰鬥場景。
@@ -227,7 +214,6 @@ def create_demo_scene() -> tuple[list[Character], list[Monster], MapState, Comba
 
     for idx, char in enumerate(characters):
         pos = spawns_pc[idx] if idx < len(spawns_pc) else spawns_pc[-1]
-        emoji = PC_EMOJIS.get(char.name, "🧙")
         map_state.actors.append(
             Actor(
                 id=str(char.id),
@@ -235,14 +221,12 @@ def create_demo_scene() -> tuple[list[Character], list[Monster], MapState, Comba
                 combatant_type="character",
                 x=pos.x,
                 y=pos.y,
-                symbol=emoji,
                 name=char.name,
             )
         )
 
     for idx, mon in enumerate(monsters):
         pos = spawns_enemy[idx] if idx < len(spawns_enemy) else spawns_enemy[-1]
-        emoji = MONSTER_EMOJIS.get(mon.label or mon.name, "👹")
         map_state.actors.append(
             Actor(
                 id=str(mon.id),
@@ -250,7 +234,6 @@ def create_demo_scene() -> tuple[list[Character], list[Monster], MapState, Comba
                 combatant_type="monster",
                 x=pos.x,
                 y=pos.y,
-                symbol=emoji,
                 name=mon.label or mon.name,
             )
         )

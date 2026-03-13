@@ -65,7 +65,7 @@ def map_with_wall() -> MapState:
         name="wall_test",
         width=7.5,
         height=7.5,
-        props=[Prop(id="wall1", x=3.75, y=3.75, symbol="🧱", is_blocking=True, prop_type="wall")],
+        props=[Prop(id="wall1", x=3.75, y=3.75, is_blocking=True, prop_type="wall")],
     )
     return MapState(manifest=manifest)
 
