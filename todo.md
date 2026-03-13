@@ -15,12 +15,13 @@
 - [x] 骰子系統 (dice.py) — d4~d100、advantage/disadvantage、modifier
 - [x] 角色建立流程 (character.py) — 12 職業/屬性/技能
 - [x] 戰鬥引擎 (combat.py) — 先攻、回合制、攻擊/傷害/死亡豁免/武器專精
-- [x] 戰鬥地圖系統 — 格子座標、拓樸區域、ASCII 渲染、戰爭迷霧
+- [x] 戰鬥地圖系統 — 連續座標（公尺）、拓樸區域、ASCII 渲染、戰爭迷霧
 - [x] Pointcrawl 探索系統 — 三層拓樸（地城/城鎮/世界）
 - [x] 佈陣階段 (deployment.py) — 遭遇判定 + 佈陣 + 渲染
 
-## Phase 2: Bone Engine 補完 — 法術、休息、協調器
+## Phase 2: Bone Engine 補完
 > 里程碑：純文字 CLI 可跑完「探索→遭遇→佈陣→戰鬥→休息」完整循環
+> 開發順序：① 物理引擎 → ② 事件+協調 → ③ 實體+規則 → ④ TUI 整合
 
 ### 2-A: 狀態系統重構 (conditions.py)
 > combat.py 已內聯處理 13 種狀態的攻擊/豁免效果，
@@ -41,23 +42,13 @@
 - [x] Step 5: 專注機制 — 開始/中斷專注 + 戰鬥中自動檢定
 - [x] Step 5b: 法術成分系統 — V/S/M 欄位 + can_cast 檢查 + 材料消耗
 - [x] Step 5c: 升環擴充 — 目標數/專注解除/持續時間/範圍/召喚（model 欄位全開，引擎先做①③）
-- [ ] Step 6: 範圍法術 — AoE 判定（圓形/錐形/線形）+ 空間系統整合
+- [ ] Step 6: 範圍法術 — 已併入 ③ 實體+規則（統一用 BoundingShape）
 - [x] Step 7: 單元測試 — test_spells.py（57 tests）
 
-### 2-C: 休息機制 (rest.py)
-- [ ] Step 1: 短休 — Hit Dice 恢復 HP、職業短休資源回復
-- [ ] Step 2: 長休 — 全滿 HP、法術欄位回復、力竭降一級、Hit Dice 回復一半
-- [ ] Step 3: 與 conditions.py 整合（休息結束狀態的自動清除）
-- [ ] Step 4: 單元測試 — test_rest.py
-
-### 2-D: 遊戲協調器 (engine.py)
-> 將探索→佈陣→戰鬥→休息串成狀態機
-- [ ] Step 1: GamePhase 列舉 + GameState 模型
-- [ ] Step 2: 狀態轉換邏輯 — transition rules + 各階段進出 hook
-- [ ] Step 3: 回合管理整合 — 串接 combat advance_turn + conditions tick
-- [ ] Step 4: 存檔/讀檔 — GameState 序列化/反序列化（JSON 檔案）
-- [ ] Step 5: CLI demo script — 純文字跑完完整遊戲循環（含存讀檔）
-- [ ] Step 6: 單元測試 — test_engine.py
+### 2-S: 空間系統重構（連續空間 + Wall AABB + 碰撞） ✅
+> Grid 系統已全面移除：TerrainTile/grid_size_m/to_grid/from_grid/grid_distance/terrain[y][x] 全數刪除
+> 改為純連續空間（公尺 float）+ Wall AABB 障礙物清單
+> 剩餘項目已併入 ①~④ 各階段
 
 ### 2-F: 破門與噪音系統
 - [x] Step 1: ExplorationEdge 加 break_dc / noise_on_force；MoveResult 加 noise_generated
@@ -71,15 +62,209 @@
 - [x] Step 2: 5.5e 建角順序（背景→種族→職業→屬性→技能）
 - [x] Step 3: 單元測試 — test_character_builder.py
 
-### 2-E: Phase 1 已完成模組的測試補齊
+### 2-H: TUI 戰鬥介面 (tui/)
+> 用 Textual 建構四面板 TUI，邊玩邊測 Bone Engine
+- [x] Step 1: pyproject.toml 新增 tui optional dependency (textual>=0.50)
+- [x] Step 2: demo.py — 3 PC vs 2 哥布林 demo 場景
+- [x] Step 3: app.py — 四面板佈局（地圖/狀態/紀錄/輸入）
+- [x] Step 4: 玩家攻擊指令 (attack <目標>)
+- [x] Step 5: 怪物自動行動修復 — set_timer 排程 + 攻擊後自動結束回合
+- [x] Step 6: 法術指令 (cast <法術> <目標>)
+- [x] Step 7: 移動指令 (move <方向/座標>)
+
+### 2-H-fix: TUI 戰鬥 Bug 修復（5 項）
+- [x] Fix 2: spawn/prop 座標 grid→公尺轉換（loader.py）
+- [x] Fix 3: 玩家移動輸入 grid→公尺 + _step_move_to 改用 move_entity
+- [x] Fix 4: 近戰攻擊射程判定統一公尺（combat.py）
+- [x] Fix 5: 近戰自動移動提示（Fix 4 修完後自動修復）
+- [x] Fix 1: 0 HP 角色自動 UNCONSCIOUS + 回合跳過
+
+### 2-I: 三層測試框架
+> AI 自動對戰整合測試 + 結構化 Log + D&D 規則斷言
+- [x] Phase A: 基礎設施 — Action/PlayerStrategy/RandomStrategy/GreedyMeleeStrategy/ScriptedStrategy + CombatLogger
+- [x] Phase B: HeadlessCombatRunner — 純 Python 無頭戰鬥引擎（BFS 移動 + 攻擊 + OA + 條件跳過）
+- [x] Phase C: 規則斷言 + 整合測試 — 7 項 D&D 斷言 + 24 個 pytest（多種子壓力測試）
+- [x] Phase D: 人類試玩 Log 強化 — app.py 每輪自動記錄地圖快照 + 狀態面板到 log 檔
+
+### 2-J/2-T: 已併入 ④ TUI 渲染 + 介面整合
+> 詳見上方 ④ 階段
+
+### 2-M: 資料模型重構（models-refactor）
+> 📄 設計文件：[`docs/data_model.md`](docs/data_model.md)
+> 目的：`models.py`（898 行）拆分為多檔案架構，提煉共基類，消除重複邏輯
+- [x] Phase A: models.py 拆分為 models/ package（純搬移，`__init__.py` 全量 re-export）
+- [x] Phase B: Combatant 基類 — 提煉 Character/Monster 共有 11 欄位 + ability_modifier/has_condition；型別別名統一
+- [x] Phase C: Query Methods 集中 + 重複消除
+  - [x] C-1: MapState 新增 get_actor / get_actor_position / alive_actors methods
+  - [x] C-2: CombatState 新增 current_entry method
+  - [x] C-3: 移除 6 處重複 lookup（movement.py、spatial.py、combat.py、combat_logger.py、combat_runner.py；combat_bridge.py 保留 wrapper）
+  - [x] C-4: 攻擊加值集中 — 4 處合併為 combat.calc_weapon_attack_bonus() / calc_damage_modifier()
+  - [x] C-5: 距離計算統一 — 13 處 inline math.sqrt 改用 distance() / Position.distance_to()
+  - [x] C-6: DAMAGE_TYPE_ZH 字典去重 — spells.py 為 canonical，combat_bridge.py import
+- [x] Phase C+: Combatant 型別傳播 + 清理
+  - [x] C+-1: Combatant 型別 quick wins（_get_size / grapple_save_dc / _get_save_bonus / move_toward_target）
+  - [x] C+-2: TUI dict 型別統一 dict[UUID, Combatant]（10 個檔案）
+  - [x] C+-3: 死程式碼移除 — start_concentration / is_concentrating / resolve_weapon_mastery
+- [x] Phase D: Spell 子模型 + 死欄位清理
+  - [x] D-1: 新增 SpellComponents / SpellAoe / SpellUpcast 子模型 + model_validator flat→nested 相容
+  - [x] D-2: 刪除 3 個死欄位（upcast_duration_map / upcast_aoe_bonus / upcast_no_concentration_at）
+  - [x] D-3: 遷移呼叫點（aoe.py 7 行、spells.py 15 行、app.py 6 行、test_spells.py 6 行）
+- [ ] Phase E: LLM Context Helpers（⏸ 延後至 Phase 4 前）
+
+### ① 基礎物理引擎 + 幾何系統
+> 📄 設計文件：[`docs/bone-engine-v2-design.md`](docs/bone-engine-v2-design.md) §4~§5
+
+- [ ] `move_entity()` 強制位移路徑檢測 — `forced=True` 時用 Liang-Barsky 掃描路徑，碰牆停在牆前 📄 [`docs/spatial-combat-design.md`](docs/spatial-combat-design.md) §4 ADR-2.5
+- [ ] 2-V A-3: 資料模型擴充 `models.py` — Position.z + TerrainTile.height_m + Actor.size/z/bounds + Material/Fragility 列舉 + Prop 可摧毀欄位+bounds + ShapeType（5種：CIRCLE/RECTANGLE/CONE/LINE/CYLINDER）+ BoundingShape（含方向欄位 direction_deg/angle_deg/length_m/height_m + intersects_line）+ SurfaceEffect（改用 bounds）+ MapState.surfaces + CoverResult
+- [ ] 2-V A-4: 材質系統 `bone_engine/materials.py` — MATERIAL_AC 查表 + roll_object_hp + apply_object_damage
+- [ ] 2-V A-5 (partial): `test_materials.py`（AC/HP/傷害/摧毀）
+- [ ] 2-V Phase E: Actor.size + bounds 全面傳播
+  - [ ] E-1: place_actors_at_spawn() 設定 actor.size — 從 Character/Monster 同步
+  - [ ] E-2: spatial.py Size.MEDIUM 全面替換 — move_entity/can_end_move_at/check_collision
+  - [ ] E-3: pathfinding.py + movement.py 同步 — Minkowski inflation 用真實 mover_size
+  - [ ] E-4: 更新既有測試 — 所有 Actor fixture 加 size=Size.MEDIUM（explicit）
+- [ ] 2-V Phase C: Z 軸地形
+  - [ ] C-1: spatial.py 加高度邏輯 — check_height_traversal + calculate_falling_damage
+  - [ ] C-2: move_entity 擴充 — 新增 tz 參數 + 高度差檢查
+  - [ ] C-3: Actor.size 傳播 — spatial.py 中 Size.MEDIUM 硬編碼改用 actor.size
+  - [ ] C-4: 測試 `test_z_axis.py` — 高度通行/掉落傷害/distance_3d
+
+### ② 事件系統 + 遊戲協調器 + Log
+> 📄 設計文件：[`docs/bone-engine-v2-design.md`](docs/bone-engine-v2-design.md) §3, §5
+> 📄 設計文件：[`docs/game-session-design.md`](docs/game-session-design.md)
+
+- [ ] 2-V A-1: 事件系統 `bone_engine/events.py` — GameEvent 基底 + 12 種事件子類 + EventBus
+- [ ] 2-V A-2: 雙層 Log `bone_engine/log_layers.py` — SystemLog（結構化）+ NarrativeLog（玩家可讀）
+- [ ] 2-V A-5 (partial): `test_events.py`（EventBus 訂閱/發送/歷史）
+- [ ] 2-D: 遊戲協調器 (engine.py)
+  - [ ] Step 1: GamePhase 列舉 + GameState 模型
+  - [ ] Step 2: 狀態轉換邏輯 — transition rules + 各階段進出 hook
+  - [ ] Step 3: 回合管理整合 — 串接 combat advance_turn + conditions tick
+  - [ ] Step 4: 存檔/讀檔 — GameState 序列化/反序列化（JSON 檔案）
+  - [ ] Step 5: CLI demo script — 純文字跑完完整遊戲循環（含存讀檔）
+  - [ ] Step 6: 單元測試 — test_engine.py
+- [ ] 2-V Phase F: GameStateManager + 事件整合
+  - [ ] F-1: `bone_engine/game_state.py` — GameStateManager 包裝 MapState+CombatState+EventBus
+  - [ ] F-2: TUI 整合（漸進式）— NarrativeLog 接入 LogManager，逐步遷移 action function
+  - [ ] F-3: 測試 `test_game_state.py` — 狀態變更→事件/NarrativeLog 可讀文字/SystemLog 完整記錄
+
+### ③ 實體定義 + 規則效果
+> 📄 設計文件：[`docs/bone-engine-v2-design.md`](docs/bone-engine-v2-design.md) §6~§9
+
+- [ ] 2-V Phase B: 表面效果系統
+  - [ ] B-1: `bone_engine/surfaces.py` — check_surface_enter/leave + resolve_surface_effect + tick_surfaces_round_start
+  - [ ] B-2: 測試 `test_surfaces.py` — 進入/離開幾何判定、傷害骰+豁免、持續回合遞減+過期
+- [ ] 2-V Phase D: 掩護系統強化
+  - [ ] D-0: pathfinding.py docstring 補充 — `find_path_to_range()` 加呼叫者須先透過 `build_actor_lists()` 的提示 📄 [`docs/spatial-combat-design.md`](docs/spatial-combat-design.md) §3 ADR-2
+  - [ ] D-1: spatial.py `determine_cover()` 重寫為 **Corner-Ray 演算法**（攻擊者 4 角→目標 4 角 = 16 射線），回傳 CoverResult（含掩護物件清單），整合 Prop 掩護 + 可摧毀狀態 📄 [`docs/spatial-combat-design.md`](docs/spatial-combat-design.md) §2 ADR-1
+  - [ ] D-2: combat.py 加投射物打掩護 — resolve_projectile_vs_cover()
+  - [ ] D-3: 測試 `test_cover_v2.py` — Prop 掩護判定/多重掩護取最大/投射物打掩護/物件摧毀後掩護消失
+- [ ] 2-B Step 6: 範圍法術 — AoE 判定（統一用 BoundingShape）+ 空間系統整合
+- [ ] 2-C: 休息機制 (rest.py)
+  - [x] Step 1: 短休 — Hit Dice 恢復 HP（自動分配版，2-X E-0.3 實作）
+  - [x] Step 2: 長休 — 全滿 HP、法術欄位回復、Hit Dice 回復一半（2-X E-0.3 實作）
+  - [ ] Step 3: 與 conditions.py 整合（休息結束狀態的自動清除）
+  - [x] Step 4: 單元測試 — test_rest.py（11 tests）
+
+### 2-X: 探索 TUI
+> 里程碑：Pointcrawl 探索可用 TUI 測試（移動/搜索/物品/開門/休息）
+> 📄 設計文件：[`docs/exploration-design.md`](docs/exploration-design.md)
+- [x] E-0.1: bone_engine/checks.py — 技能/屬性檢定包裝（12 tests）
+- [x] E-0.2: NodeItem 模型 + exploration.py 擴充（物品搜索/拿取/POI/被動感知）
+- [x] E-0.3: bone_engine/rest.py — 短休/長休（2-C Steps 1-2 子集，11 tests）
+- [x] E-1.1: tui/exploration/ package + demo + explore.sh + wilderness_trail.json
+- [x] E-1.2: explore_map_widget.py — Pointcrawl 節點圖 Widget
+- [x] E-1.3: app.py + styles.tcss + explore_status.py
+- [x] E-2.1: explore_input.py 狀態機 + 移動指令
+- [x] E-2.2: 門互動 + 角色選擇 + 鑰匙
+- [x] E-2.3: 搜索指令（通道 + 物品）
+- [x] E-2.4: 查看 + 拿取 + POI + 休息
+- [x] E-3.1: status/map/help/load 指令
+- [x] E-3.2: docs/exploration-design.md + todo.md 延後功能文件化
+
+### 🔥 2-XB: 渲染架構重構 + Prop Prefab 系統（最高優先）
+> 📄 設計文件：[`docs/rendering-refactor-design.md`](docs/rendering-refactor-design.md)
+> 📄 計畫詳情：[`.claude-personal/plans/parallel-nibbling-whale.md`](.claude-personal/plans/parallel-nibbling-whale.md)
+> 里程碑：MapState → RenderBuffer → BrailleMapCanvas 三層分離；地圖 JSON prefab 化；entity.symbol 移除
+> **前置：** 2-XA Phase 1~3 已完成
+
+- [ ] **Phase 0a**: `models/map.py` — Entity / Wall 移除 symbol 欄位
+- [ ] **Phase 0b**: bone_engine 四處 — aoe.py / deployment.py / spatial.py / area_explore.py 移除 symbol=
+- [ ] **Phase 0c**: TUI emoji_map — demo.py 回傳 emoji_map；app.py 新增 `_emoji_map`；stats_panel / input_handler 改用 emoji_map 參數
+- [ ] **Phase 0d**: 刪除 `src/tot/visuals/map_renderer.py`；combat_logger.py 改用 `render_braille_map()`
+- [ ] **Phase 0e**: tests 移除 symbol=（test_aoe / test_geometry / test_spatial）
+- [ ] **Phase 1a**: 新建 `src/tot/data/prop_defs/`（structural / interactive / terrain prefab）
+- [ ] **Phase 1b**: `loader.py` 新增 `_expand_props()` — prefab 展開邏輯
+- [ ] **Phase 1c**: `cave_explore.json` / `tutorial_room.json` — props 改用 prefab，移除 symbol
+- [ ] **Phase 2a**: 新建 `src/tot/tui/render_buffer.py`（RenderLayer / TextureType / RenderItem / RenderBuffer）
+- [ ] **Phase 2b**: `canvas.py` — 改用 RenderBuffer 驅動渲染，新增 _fill_circle / _outline_circle
+- [ ] **Phase 2c**: `app.py` — `_refresh_map()` 改建 RenderBuffer 傳給 canvas
+- [ ] **Phase 2d**: `geometry.py` — `extract_static_obstacles()` 改用 prop.bounds 計算 AABB
+- [ ] **Phase 3**: `render_braille_map()` / `render_to_plain()` 改用 RenderBuffer
+- [ ] **Phase 4**: 新增 `tests/test_prop_prefab.py` / `tests/test_render_buffer.py`；全測試通過
+
+### 2-XA: Area 自由探索（Pointcrawl + Area 混合模式）
+> 里程碑：進入 Pointcrawl 節點後可自由移動、搜索物件、拾取物品
+> 📄 計畫文件：[`.claude-personal/plans/parallel-nibbling-whale.md`](.claude-personal/plans/parallel-nibbling-whale.md)
+- [ ] Phase 1: 模型層擴展 — LootEntry + Prop 探索欄位 + AreaExploreState
+- [ ] Phase 2: bone_engine/area_explore.py — enter/exit/move/search/take/terrain
+- [ ] Phase 3: cave_explore.json 探索專用地圖（25×20m 洞穴）
+- [ ] Phase 4: TUI Area 模式 — BrailleMapCanvas 切換 + 座標移動 + XY 軸刻度
+- [ ] Phase 5: Prop 互動完整流程 — 搜索→發現→拾取→鑰匙開鎖
+- [ ] Phase 6: 地形效果 + tests/test_area_explore.py
+
+### 2-X 延後（探索進階）
+> 📄 設計文件：[`docs/exploration-design.md`](docs/exploration-design.md)
+- [ ] 光照與視覺（LightLevel + Darkvision 感知修正）
+- [ ] 行進隊形（MarchingOrder + 前衛/後衛機制）
+- [ ] 旅行速度（TravelPace + 感知/隱匿修正）
+- [ ] 隨機遭遇（danger_level 消費 + 遭遇表）
+- [ ] 陷阱機制（NodeTrap + Investigation/Thieves' Tools）
+- [ ] 時間壓力（火把/法術持續/NPC 行程）
+- [ ] 探索→戰鬥切換（遭遇判定 → CombatTUI）
+- [ ] 野外地形效果（困難地形/天氣/能見度）
+
+### ④ TUI 渲染 + 介面整合
+> 📄 設計文件：[`docs/game-session-design.md`](docs/game-session-design.md)
+
+- [ ] 2-T: TUI 架構重構 — 純規則邏輯從 TUI 搬進 bone_engine
+  - [ ] Step 1: 新建 `bone_engine/movement.py` — 移動相關純計算
+  - [ ] Step 2: `bone_engine/combat.py` 加借機攻擊觸發查詢
+  - [ ] Step 3: 重構 `tui/actions.py` 為薄層
+  - [ ] Step 4: 重構 `tui/npc_ai.py` 為薄層
+  - [ ] Step 5: 單元測試 — `tests/test_movement.py`
+- [ ] 2-J: TUI 戰鬥移動引導重設計
+  - [ ] Step 1: 主選單重排 — 攻擊/法術/閃避/撤離置前，移動降至末段
+  - [ ] Step 2: 近戰攻擊流程不變
+  - [ ] Step 3: 遠程武器佔位詢問
+  - [ ] Step 4: 法術佔位詢問
+  - [ ] Step 5: 整合測試
+
+### 跨階段：測試補齊
+- [ ] 2-E 剩餘項目
+  - [ ] test_combat.py — 攻擊/傷害/死亡豁免/武器專精/借機攻擊
+  - [ ] test_character.py — 12 職業建構、法術欄位、AC 計算
+  - [ ] test_spatial.py — 距離/LOS/掩蔽/移動
+  - [ ] test_exploration.py — 節點移動/隱藏通道/子地圖/時間
+  - [ ] test_deployment.py — 遭遇判定/佈陣/確認
+  - [ ] test_map_renderer.py — ASCII 渲染/戰爭迷霧/佈陣預覽
+
+### 2-K: TUI 大改 — Drawille 點字渲染 + 模組化拆分
+> 用 Unicode Braille 2×4 次像素取代 ASCII，實現高解析度棋盤格、平滑 AoE 圓形、精確座標定位
+- [x] Phase T-1: 模組化拆分（app.py 2068L → 7 模組：combat_bridge/log_manager/actions/npc_ai/input_handler/app/styles.tcss）
+- [x] Phase T-2: BrailleMapCanvas Widget（drawille 渲染：格線/地形/牆壁/角色標記 + Rich 彩色標籤）
+- [x] Phase T-3: StatsPanel Widget（先攻序 + HP 血條 + 行動經濟 + 狀態異常）
+- [x] Phase T-4: AoE 覆蓋渲染（球/錐/方/線四種形狀預覽 + 稀疏填充 + 射線法判定）
+- [x] Phase T-5: 收尾（canvas.py 單元測試 16 項 + todo.md 更新）
+
+### 2-E: Phase 1 已完成模組的測試補齊（剩餘項目已併入跨階段測試）
 - [x] conftest.py — 共用 fixtures（std_fighter/wizard/cleric + goblin/skeleton/ogre + rng42）
 - [x] test_dice.py — 表達式解析/擲骰/優劣勢/kh/kl/便利函式（39 tests）
-- [ ] test_combat.py — 攻擊/傷害/死亡豁免/武器專精/借機攻擊
-- [ ] test_character.py — 12 職業建構、法術欄位、AC 計算
-- [ ] test_spatial.py — 距離/LOS/掩蔽/移動
-- [ ] test_exploration.py — 節點移動/隱藏通道/子地圖/時間
-- [ ] test_deployment.py — 遭遇判定/佈陣/確認
-- [ ] test_map_renderer.py — ASCII 渲染/戰爭迷霧/佈陣預覽
+
+### 低優先備忘（空間幾何 ADR）
+> 📄 完整分析：[`docs/spatial-combat-design.md`](docs/spatial-combat-design.md)
+- [ ] Braille 長寬比驗證 — 目視確認 3m×3m 正方形房間渲染為正方形（📄 §5 ADR-3）
+- [x] 距離計算哲學文件化 — 維持純歐氏距離，UI 層做 5 呎 snap 顯示（📄 §6 ADR-4）
 
 ## Phase 3: 怪物 AI + 升級系統
 > 里程碑：怪物有智慧行為、角色可升級（純確定性，屬 Bone Engine）
@@ -101,6 +286,7 @@
 - [ ] Step 4: 單元測試 — test_level_up.py
 
 ## Phase 4: Mimic + Narrator（LLM 層）
+> 📄 架構總覽：[`docs/architecture.md`](docs/architecture.md)（Gremlin 代理人層）
 > 里程碑：自然語言輸入→結構化動作→敘事輸出
 
 ### 4-A: LLM 基礎建設
@@ -123,6 +309,7 @@
 - [ ] 單元測試 — test_narrator.py（mock LLM）
 
 ## Phase 5: 記憶系統
+> 📄 架構總覽：[`docs/architecture.md`](docs/architecture.md)（三層記憶架構）
 > 里程碑：跨 session 記憶、規則 RAG 查詢
 > 需要 Docker 運行 Redis / PostgreSQL / Qdrant
 
@@ -147,6 +334,7 @@
 - [ ] 記憶壓縮 — 過長對話的摘要策略
 
 ## Phase 6: 進階 Gremlin + 系統擴展
+> 📄 架構總覽：[`docs/architecture.md`](docs/architecture.md)（六隻 Gremlin 職責）
 > 里程碑：完整六隻 Gremlin 架構
 
 ### 6-A: Companion Gremlin — NPC 隊友
@@ -168,6 +356,7 @@
 - [ ] 多 session 同時進行 — 狀態隔離/資源管理
 
 ## Phase 7: Telegram Bot 介面
+> 📄 架構總覽：[`docs/architecture.md`](docs/architecture.md)（Telegram Bot 層）
 > 里程碑：可透過 Telegram 開團、建角、探索、戰鬥
 
 ### 7-A: Bot 核心

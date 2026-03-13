@@ -14,7 +14,11 @@ from uuid import UUID
 from tot.gremlins.bone_engine.combat import start_combat
 from tot.gremlins.bone_engine.dice import roll_d20
 from tot.gremlins.bone_engine.exploration import prepare_combat_from_node
-from tot.gremlins.bone_engine.spatial import place_actors_at_spawn
+from tot.gremlins.bone_engine.spatial import (
+    check_collision,
+    is_position_clear,
+    place_actors_at_spawn,
+)
 from tot.models import (
     Ability,
     Actor,
@@ -27,6 +31,7 @@ from tot.models import (
     MapState,
     Monster,
     Position,
+    Size,
     Skill,
 )
 
@@ -138,7 +143,7 @@ def _place_monsters(
     monsters: list[Monster],
     map_state: MapState,
 ) -> None:
-    """將怪物放置到 enemies spawn points。"""
+    """將怪物放置到 enemies spawn points（公尺座標）。"""
     enemy_spawns = map_state.manifest.spawn_points.get("enemies", [])
     for i, mon in enumerate(monsters):
         if i >= len(enemy_spawns):
@@ -148,7 +153,6 @@ def _place_monsters(
             id=f"mob_{i}",
             x=sp.x,
             y=sp.y,
-            symbol="👹",
             combatant_id=mon.id,
             combatant_type="monster",
             name=mon.name,
@@ -164,12 +168,11 @@ def _place_characters(
     map_state: MapState,
     marching_order: MarchingOrder | None = None,
 ) -> dict[str, Position]:
-    """將角色按行軍順序放置到佈陣區域。回傳放置結果。"""
+    """將角色按行軍順序放置到佈陣區域（公尺座標）。回傳放置結果。"""
     # 依行軍順序排列角色
     if marching_order:
         id_to_char = {c.id: c for c in characters}
         ordered = [id_to_char[uid] for uid in marching_order if uid in id_to_char]
-        # 行軍順序裡沒有的角色排在後面
         remaining = [c for c in characters if c.id not in {uid for uid in marching_order}]
         ordered.extend(remaining)
     else:
@@ -184,7 +187,6 @@ def _place_characters(
             id=f"pc_{i}",
             x=sp.x,
             y=sp.y,
-            symbol="🧙",
             combatant_id=char.id,
             combatant_type="character",
             name=char.name,
@@ -224,40 +226,43 @@ def manual_deploy(
 ) -> DeploymentState:
     """手動調整角色位置。
 
-    驗證：目標在佈陣區內、不與他人重疊、不在阻擋地形上。
+    position 為公尺座標。
+    驗證：目標在佈陣區內、不與他人重疊、不在障礙物上。
     """
+    from tot.models import SIZE_RADIUS_M
+
     cid = str(character_id)
     if cid not in deployment.placements:
         msg = f"角色 {cid} 不在佈陣中"
         raise ValueError(msg)
 
-    # 檢查是否在佈陣區內
-    if position not in deployment.spawn_zone:
+    ms = deployment.map_state
+
+    # 檢查是否在佈陣區內（比對公尺座標，容差 0.01m）
+    in_zone = any(
+        abs(sp.x - position.x) < 0.01 and abs(sp.y - position.y) < 0.01
+        for sp in deployment.spawn_zone
+    )
+    if not in_zone:
         msg = f"位置 ({position.x}, {position.y}) 不在佈陣區域內"
         raise ValueError(msg)
 
-    # 檢查阻擋地形
-    ms = deployment.map_state
-    if (
-        ms.terrain
-        and 0 <= position.y < len(ms.terrain)
-        and 0 <= position.x < len(ms.terrain[position.y])
-        and ms.terrain[position.y][position.x].is_blocking
-    ):
-        msg = f"位置 ({position.x}, {position.y}) 是阻擋地形"
+    # 檢查靜態障礙物（circle-AABB）
+    mover_radius = SIZE_RADIUS_M[Size.MEDIUM]
+    if not is_position_clear(position, mover_radius, ms):
+        msg = f"位置 ({position.x}, {position.y}) 被障礙物擋住"
         raise ValueError(msg)
 
-    # 檢查靜態 Prop 阻擋
-    for prop in ms.manifest.props:
-        if prop.x == position.x and prop.y == position.y and prop.is_blocking:
-            msg = f"位置 ({position.x}, {position.y}) 被 {prop.name} 擋住"
-            raise ValueError(msg)
-
-    # 檢查是否與其他角色重疊（不含自己）
-    for other_cid, other_pos in deployment.placements.items():
-        if other_cid != cid and other_pos == position:
-            msg = f"位置 ({position.x}, {position.y}) 已被其他角色佔據"
-            raise ValueError(msg)
+    # 檢查碰撞（半徑距離判定）
+    own_actor = next(
+        (a for a in ms.actors if str(a.combatant_id) == cid),
+        None,
+    )
+    exclude = own_actor.id if own_actor else None
+    collider = check_collision(position, Size.MEDIUM, ms, exclude_id=exclude)
+    if collider:
+        msg = f"位置 ({position.x}, {position.y}) 與 {collider.name} 碰撞"
+        raise ValueError(msg)
 
     # 更新 placements
     new_placements = dict(deployment.placements)
@@ -279,16 +284,19 @@ def validate_deployment(deployment: DeploymentState) -> list[str]:
     """檢查佈陣是否完備。回傳錯誤訊息列表（空 = 通過）。"""
     errors: list[str] = []
 
+    # 佈陣區的公尺座標集合（用 tuple 做 key，容差比對）
+    spawn_coords = {(round(sp.x, 2), round(sp.y, 2)) for sp in deployment.spawn_zone}
+
     # 檢查位置是否都在佈陣區內
     for cid, pos in deployment.placements.items():
-        if pos not in deployment.spawn_zone:
+        pos_key = (round(pos.x, 2), round(pos.y, 2))
+        if pos_key not in spawn_coords:
             errors.append(f"角色 {cid} 的位置 ({pos.x}, {pos.y}) 不在佈陣區域內")
 
-    # 檢查是否有重疊
-    positions = list(deployment.placements.values())
-    seen: set[tuple[int, int]] = set()
-    for pos in positions:
-        key = (pos.x, pos.y)
+    # 檢查是否有重疊（比對公尺座標）
+    seen: set[tuple[float, float]] = set()
+    for pos in deployment.placements.values():
+        key = (round(pos.x, 2), round(pos.y, 2))
         if key in seen:
             errors.append(f"位置 ({pos.x}, {pos.y}) 有多個角色重疊")
         seen.add(key)

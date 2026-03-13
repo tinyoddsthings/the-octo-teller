@@ -1,0 +1,22 @@
+Screen {
+    layout: vertical;
+}
+#map-panel {
+    height: 1fr;
+    min-height: 10;
+    border: round green;
+}
+#status-panel {
+    height: auto;
+    max-height: 12;
+    border: round cyan;
+    padding: 0 1;
+}
+#log-panel {
+    height: 35%;
+    border: round yellow;
+}
+#cmd-input {
+    dock: bottom;
+    height: 3;
+}

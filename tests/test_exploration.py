@@ -1,13 +1,17 @@
-"""探索系統測試——破門、噪音、警戒連動。"""
+"""探索系統測試——破門、噪音、警戒連動、跳躍/墜落、崖岸遺跡地圖。"""
 
 from __future__ import annotations
 
 import random
 
+from tot.data.loader import load_exploration_map
 from tot.gremlins.bone_engine.deployment import resolve_encounter
 from tot.gremlins.bone_engine.exploration import (
     MoveResult,
+    attempt_jump,
+    calculate_fall_damage_dice,
     force_open_edge,
+    move_to_node,
     unlock_edge,
 )
 from tot.models import (
@@ -260,3 +264,178 @@ class TestAlertedEncounter:
         )
 
         assert result.stealth_rolls == {}
+
+
+# ---------------------------------------------------------------------------
+# 墜落傷害骰計算測試
+# ---------------------------------------------------------------------------
+
+
+class TestCalculateFallDamageDice:
+    """calculate_fall_damage_dice() 規則正確性。"""
+
+    def test_zero_height(self):
+        """高度 <= 0 → 無傷害骰。"""
+        assert calculate_fall_damage_dice(0) == ""
+        assert calculate_fall_damage_dice(-5) == ""
+
+    def test_three_meters(self):
+        """3m（10 呎）= 1d6。"""
+        assert calculate_fall_damage_dice(3) == "1d6"
+
+    def test_six_meters(self):
+        """6m（20 呎）= 2d6。"""
+        assert calculate_fall_damage_dice(6) == "2d6"
+
+    def test_ten_meters(self):
+        """10m → ceil(10/3)=4d6（非整除向上取整）。"""
+        assert calculate_fall_damage_dice(10) == "4d6"
+
+    def test_sixty_meters_cap(self):
+        """60m+ 上限 20d6。"""
+        assert calculate_fall_damage_dice(60) == "20d6"
+        assert calculate_fall_damage_dice(100) == "20d6"
+
+
+# ---------------------------------------------------------------------------
+# 跳躍/墜落測試
+# ---------------------------------------------------------------------------
+
+
+def _make_jump_map(fall_damage_on_fail: bool = True) -> ExplorationMap:
+    """建立含跳躍邊的測試地圖（room_a → room_b，DC12，-6m）。"""
+    return ExplorationMap(
+        id="jump_map",
+        name="跳躍測試地圖",
+        scale="dungeon",
+        entry_node_id="room_a",
+        nodes=[
+            ExplorationNode(id="room_a", name="起跳點", node_type="room", elevation_m=6),
+            ExplorationNode(id="room_b", name="落地點", node_type="room", elevation_m=0),
+        ],
+        edges=[
+            ExplorationEdge(
+                id="jump_edge",
+                from_node_id="room_a",
+                to_node_id="room_b",
+                name="斷橋跳躍",
+                requires_jump=True,
+                jump_dc=12,
+                fall_damage_on_fail=fall_damage_on_fail,
+                elevation_change_m=-6,
+                distance_minutes=1,
+            ),
+        ],
+    )
+
+
+def _make_jump_state() -> ExplorationState:
+    return ExplorationState(
+        current_map_id="jump_map",
+        current_node_id="room_a",
+        discovered_nodes={"room_a"},
+    )
+
+
+class TestAttemptJump:
+    """attempt_jump() 成功/失敗/墜落分支。"""
+
+    def test_jump_success(self):
+        """check_total >= jump_dc → 成功，移動到目的地。"""
+        exp_map = _make_jump_map()
+        state = _make_jump_state()
+        char = _make_characters()[0]
+        rng = random.Random(42)
+
+        result = attempt_jump(state, exp_map, "jump_edge", char, 15, rng=rng)
+
+        assert result.success is True
+        assert result.node is not None
+        assert result.node.id == "room_b"
+        assert state.current_node_id == "room_b"
+        assert result.fall_damage_total == 0
+
+    def test_jump_fail_with_fall(self):
+        """check_total < jump_dc + fall_damage_on_fail → 仍到達，有墜落傷害。"""
+        exp_map = _make_jump_map(fall_damage_on_fail=True)
+        state = _make_jump_state()
+        char = _make_characters()[0]
+        rng = random.Random(42)
+
+        result = attempt_jump(state, exp_map, "jump_edge", char, 8, rng=rng)
+
+        assert result.success is False
+        assert result.node is not None
+        assert result.node.id == "room_b"  # 仍到達
+        assert state.current_node_id == "room_b"  # state 已更新
+        assert result.fall_damage_total > 0
+        assert result.fall_damage_dice == "2d6"  # ceil(6/3)=2d6
+
+    def test_jump_fail_no_fall(self):
+        """check_total < jump_dc + fall_damage_on_fail=False → 原地不動，無傷害。"""
+        exp_map = _make_jump_map(fall_damage_on_fail=False)
+        state = _make_jump_state()
+        char = _make_characters()[0]
+
+        result = attempt_jump(state, exp_map, "jump_edge", char, 8)
+
+        assert result.success is False
+        assert result.node is None
+        assert state.current_node_id == "room_a"  # 沒動
+        assert result.fall_damage_total == 0
+
+
+class TestMoveBlockedByJump:
+    """move_to_node() 遇到 requires_jump 邊應回傳失敗。"""
+
+    def test_move_blocked_by_jump(self):
+        exp_map = _make_jump_map()
+        state = _make_jump_state()
+
+        result = move_to_node(state, exp_map, "jump_edge")
+
+        assert result.success is False
+        assert "跳躍" in result.message
+        assert state.current_node_id == "room_a"  # 沒移動
+
+
+# ---------------------------------------------------------------------------
+# 崖岸遺跡地圖載入測試
+# ---------------------------------------------------------------------------
+
+
+class TestCliffRuinsMap:
+    """cliff_ruins.json 地圖完整性。"""
+
+    def test_load_cliff_ruins(self):
+        """地圖可正常載入。"""
+        exp_map = load_exploration_map(name="cliff_ruins")
+        assert exp_map.id == "cliff_ruins"
+
+    def test_node_count(self):
+        """應有 10 個節點。"""
+        exp_map = load_exploration_map(name="cliff_ruins")
+        assert len(exp_map.nodes) == 10
+
+    def test_edge_count(self):
+        """應有 11 條路徑。"""
+        exp_map = load_exploration_map(name="cliff_ruins")
+        assert len(exp_map.edges) == 11
+
+    def test_has_jump_edges(self):
+        """至少有 3 條跳躍路徑。"""
+        exp_map = load_exploration_map(name="cliff_ruins")
+        jump_edges = [e for e in exp_map.edges if e.requires_jump]
+        assert len(jump_edges) >= 3
+
+    def test_has_hidden_edge(self):
+        """暗門 (hidden_dc=14) 存在。"""
+        exp_map = load_exploration_map(name="cliff_ruins")
+        hidden = [e for e in exp_map.edges if e.hidden_dc > 0]
+        assert len(hidden) >= 1
+
+    def test_elevation_variety(self):
+        """節點海拔至少三種不同值。"""
+        exp_map = load_exploration_map(name="cliff_ruins")
+        elevations = {n.elevation_m for n in exp_map.nodes}
+        assert len(elevations) >= 3

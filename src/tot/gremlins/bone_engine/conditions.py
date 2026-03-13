@@ -6,10 +6,10 @@
 
 from __future__ import annotations
 
-from tot.models import ActiveCondition, Character, Condition, Monster
+import math
 
-# 生物型別別名
-Combatant = Character | Monster
+from tot.models import ActiveCondition, Character, Combatant, Condition, GameClock, Monster
+from tot.models.time import format_seconds_human
 
 # ---------------------------------------------------------------------------
 # 狀態分類常數
@@ -33,6 +33,7 @@ _NON_STACKABLE = frozenset(
         Condition.BLINDED,
         Condition.CHARMED,
         Condition.DEAFENED,
+        Condition.DISENGAGING,
         Condition.DODGING,
         Condition.FRIGHTENED,
         Condition.INCAPACITATED,
@@ -68,9 +69,14 @@ def apply_condition(
     *,
     source: str = "",
     remaining_rounds: int | None = None,
+    expires_at_second: int | None = None,
     exhaustion_level: int = 0,
 ) -> ActiveCondition | None:
     """套用狀態到生物。回傳新套用的 ActiveCondition，若被免疫則回傳 None。
+
+    持續時間可用兩種方式指定（二擇一）：
+    - remaining_rounds: 傳統回合倒數（向後相容）
+    - expires_at_second: 絕對秒數到期（配合 GameClock）
 
     堆疊規則：
     - 免疫檢查（Monster.condition_immunities）
@@ -88,17 +94,22 @@ def apply_condition(
 
     # 同源堆疊狀態（如 GRAPPLED）
     if condition in _SOURCE_STACKING:
-        return _apply_source_stacking(combatant, condition, source, remaining_rounds)
+        return _apply_source_stacking(
+            combatant, condition, source, remaining_rounds, expires_at_second
+        )
 
     # 一般不堆疊狀態
     if condition in _NON_STACKABLE:
-        return _apply_non_stackable(combatant, condition, source, remaining_rounds)
+        return _apply_non_stackable(
+            combatant, condition, source, remaining_rounds, expires_at_second
+        )
 
     # 未分類的狀態直接加入
     ac = ActiveCondition(
         condition=condition,
         source=source,
         remaining_rounds=remaining_rounds,
+        expires_at_second=expires_at_second,
     )
     combatant.conditions.append(ac)
     return ac
@@ -179,18 +190,32 @@ def tick_conditions_start_of_turn(combatant: Combatant) -> list[ActiveCondition]
     return []
 
 
-def tick_conditions_end_of_turn(combatant: Combatant) -> list[ActiveCondition]:
-    """回合結束時遞減持續時間，移除到期狀態。回傳被移除的狀態。"""
+def tick_conditions_end_of_turn(
+    combatant: Combatant,
+    game_clock: GameClock | None = None,
+) -> list[ActiveCondition]:
+    """回合結束時處理到期狀態。回傳被移除的狀態。
+
+    雙模式支援：
+    - expires_at_second + game_clock：比對絕對時間
+    - remaining_rounds（向後相容）：倒數遞減
+    """
     expired: list[ActiveCondition] = []
     remaining: list[ActiveCondition] = []
+    now = game_clock.total_seconds if game_clock else None
 
     for ac in combatant.conditions:
-        if ac.remaining_rounds is not None:
+        # 優先用絕對秒數判斷
+        if ac.expires_at_second is not None and now is not None:
+            if now >= ac.expires_at_second:
+                expired.append(ac)
+                continue
+            remaining.append(ac)
+        elif ac.remaining_rounds is not None:
             new_rounds = ac.remaining_rounds - 1
             if new_rounds <= 0:
                 expired.append(ac)
                 continue
-            # 建立更新後的 ActiveCondition（Pydantic model 不直接修改）
             remaining.append(ac.model_copy(update={"remaining_rounds": new_rounds}))
         else:
             remaining.append(ac)
@@ -243,13 +268,17 @@ def _apply_source_stacking(
     condition: Condition,
     source: str,
     remaining_rounds: int | None,
+    expires_at_second: int | None = None,
 ) -> ActiveCondition:
     """同源不堆疊、異源可並存。同源時取較長持續時間。"""
     for i, ac in enumerate(combatant.conditions):
         if ac.condition == condition and ac.source == source:
             # 同源：取較長持續時間
             new_rounds = _longer_duration(ac.remaining_rounds, remaining_rounds)
-            updated = ac.model_copy(update={"remaining_rounds": new_rounds})
+            new_expires = _longer_duration(ac.expires_at_second, expires_at_second)
+            updated = ac.model_copy(
+                update={"remaining_rounds": new_rounds, "expires_at_second": new_expires}
+            )
             combatant.conditions[i] = updated
             return updated
 
@@ -258,6 +287,7 @@ def _apply_source_stacking(
         condition=condition,
         source=source,
         remaining_rounds=remaining_rounds,
+        expires_at_second=expires_at_second,
     )
     combatant.conditions.append(ac)
     return ac
@@ -271,9 +301,11 @@ def _apply_non_stackable(
     condition: Condition,
     source: str,
     remaining_rounds: int | None,
+    expires_at_second: int | None = None,
 ) -> ActiveCondition:
     """不堆疊：移除舊的，套用新的（取較長持續時間）。"""
     old_rounds: int | None | object = _SENTINEL
+    old_expires: int | None | object = _SENTINEL
     new_conditions: list[ActiveCondition] = []
     for ac in combatant.conditions:
         if ac.condition == condition:
@@ -281,6 +313,10 @@ def _apply_non_stackable(
                 old_rounds = ac.remaining_rounds
             else:
                 old_rounds = _longer_duration(old_rounds, ac.remaining_rounds)
+            if old_expires is _SENTINEL:
+                old_expires = ac.expires_at_second
+            else:
+                old_expires = _longer_duration(old_expires, ac.expires_at_second)
         else:
             new_conditions.append(ac)
 
@@ -288,10 +324,15 @@ def _apply_non_stackable(
         final_rounds = remaining_rounds
     else:
         final_rounds = _longer_duration(old_rounds, remaining_rounds)
+    if old_expires is _SENTINEL:
+        final_expires = expires_at_second
+    else:
+        final_expires = _longer_duration(old_expires, expires_at_second)
     new_ac = ActiveCondition(
         condition=condition,
         source=source,
         remaining_rounds=final_rounds,
+        expires_at_second=final_expires,
     )
     new_conditions.append(new_ac)
     combatant.conditions = new_conditions
@@ -306,3 +347,31 @@ def _longer_duration(
     if a is None or b is None:
         return None
     return max(a, b)
+
+
+# ---------------------------------------------------------------------------
+# Step 4: 顯示工具
+# ---------------------------------------------------------------------------
+
+
+def format_remaining(
+    expires_at: int | None,
+    clock: GameClock,
+    *,
+    in_combat: bool = False,
+) -> str:
+    """格式化效果剩餘時間。
+
+    in_combat=True → 顯示「N 輪」
+    in_combat=False → 顯示人類可讀時間
+    永久效果 → 「永久」
+    """
+    if expires_at is None:
+        return "永久"
+    remaining = expires_at - clock.total_seconds
+    if remaining <= 0:
+        return "已到期"
+    if in_combat:
+        rounds = math.ceil(remaining / 6)
+        return f"{rounds} 輪"
+    return format_seconds_human(remaining)

@@ -6,10 +6,20 @@
 
 from __future__ import annotations
 
+import math
+import random
 from dataclasses import dataclass
 
 from tot.data.loader import load_map_manifest
+from tot.gremlins.bone_engine.dice import roll_damage
+from tot.gremlins.bone_engine.time_costs import (
+    DUNGEON_MOVE_DEFAULT,
+    SEARCH_ROOM_DUNGEON,
+    SEARCH_ROOM_TOWN,
+    TOWN_MOVE_DEFAULT,
+)
 from tot.models import (
+    Character,
     ExplorationEdge,
     ExplorationMap,
     ExplorationNode,
@@ -17,6 +27,8 @@ from tot.models import (
     MapScale,
     MapStackEntry,
     MapState,
+    NodeItem,
+    format_seconds_human,
 )
 
 # ---------------------------------------------------------------------------
@@ -30,7 +42,7 @@ class MoveResult:
 
     success: bool
     node: ExplorationNode | None = None  # 到達的節點
-    elapsed_minutes: int = 0  # 消耗時間（分鐘）
+    elapsed_seconds: int = 0  # 消耗時間（秒）
     message: str = ""
     noise_generated: bool = False  # 此次行動是否產生噪音
 
@@ -39,9 +51,24 @@ class MoveResult:
 class SearchResult:
     """搜索房間結果。"""
 
-    elapsed_minutes: int = 10  # 搜索消耗時間
+    elapsed_seconds: int = 600  # 搜索消耗時間（秒），預設 10 分鐘
     discovered_edges: list[str] | None = None  # 發現的隱藏通道 id
     message: str = ""
+
+
+@dataclass(frozen=True)
+class JumpResult:
+    """跳躍/攀爬結果。"""
+
+    success: bool
+    node: ExplorationNode | None = None
+    elapsed_seconds: int = 0  # 消耗時間（秒）
+    message: str = ""
+    fall_damage_dice: str = ""  # e.g. "3d6"
+    fall_damage_total: int = 0  # 實際傷害
+    check_total: int = 0
+    check_dc: int = 0
+    character_name: str = ""
 
 
 @dataclass(frozen=True)
@@ -84,16 +111,118 @@ def _get_edge(exp_map: ExplorationMap, edge_id: str) -> ExplorationEdge:
     raise KeyError(msg)
 
 
-def _scale_to_minutes(scale: MapScale, edge: ExplorationEdge) -> int:
-    """根據地圖尺度計算移動時間（分鐘）。"""
+def _scale_to_seconds(scale: MapScale, edge: ExplorationEdge) -> int:
+    """根據地圖尺度計算移動時間（秒）。"""
     if scale == MapScale.DUNGEON:
-        return edge.distance_minutes if edge.distance_minutes > 0 else 1
+        if edge.distance_minutes > 0:
+            return edge.distance_minutes * 60
+        return DUNGEON_MOVE_DEFAULT
     if scale == MapScale.TOWN:
-        # 城鎮內移動預設 30 分鐘
-        return edge.distance_minutes if edge.distance_minutes > 0 else 30
-    # 世界圖層：天 → 分鐘
+        if edge.distance_minutes > 0:
+            return edge.distance_minutes * 60
+        return TOWN_MOVE_DEFAULT
+    # 世界圖層：天 → 秒
     days = edge.distance_days if edge.distance_days > 0 else 1
-    return int(days * 24 * 60)
+    return int(days * 86400)
+
+
+# ---------------------------------------------------------------------------
+# 跳躍 / 墜落
+# ---------------------------------------------------------------------------
+
+
+def calculate_fall_damage_dice(height_m: float) -> str:
+    """根據墜落高度計算傷害骰。
+
+    D&D 規則：每 3m（10 呎）1d6，最高 20d6。
+    """
+    if height_m <= 0:
+        return ""
+    dice_count = min(math.ceil(height_m / 3), 20)
+    return f"{dice_count}d6"
+
+
+def attempt_jump(
+    state: ExplorationState,
+    exp_map: ExplorationMap,
+    edge_id: str,
+    character: Character,
+    check_total: int,
+    *,
+    rng: random.Random | None = None,
+) -> JumpResult:
+    """嘗試跳躍/攀爬通過路徑。
+
+    成功（total >= jump_dc）：移動到目的地。
+    失敗 + fall_damage_on_fail：仍移動到目的地，骰墜落傷害。
+    失敗 + 無 fall_damage：不移動，回傳失敗。
+    """
+    edge = _get_edge(exp_map, edge_id)
+    current = state.current_node_id
+
+    # 判斷目標節點
+    if edge.from_node_id == current:
+        target_id = edge.to_node_id
+    elif not edge.is_one_way and edge.to_node_id == current:
+        target_id = edge.from_node_id
+    else:
+        return JumpResult(success=False, message="這條路徑不在你目前的位置")
+
+    target_node = _get_node_strict(exp_map, target_id)
+    elapsed = _scale_to_seconds(exp_map.scale, edge)
+
+    if check_total >= edge.jump_dc:
+        # 成功
+        state.current_node_id = target_id
+        state.game_clock.add_event(elapsed)
+        state.discovered_nodes.add(target_id)
+        target_node.is_visited = True
+        return JumpResult(
+            success=True,
+            node=target_node,
+            elapsed_seconds=elapsed,
+            message=f"{character.name} 成功通過了「{edge.name or edge_id}」！",
+            check_total=check_total,
+            check_dc=edge.jump_dc,
+            character_name=character.name,
+        )
+
+    # 失敗
+    if edge.fall_damage_on_fail:
+        # 墜落但仍到達目的地
+        height = abs(edge.elevation_change_m)
+        dice_expr = calculate_fall_damage_dice(height)
+        damage = 0
+        if dice_expr:
+            damage = roll_damage(dice_expr, rng=rng).total
+
+        state.current_node_id = target_id
+        state.game_clock.add_event(elapsed)
+        state.discovered_nodes.add(target_id)
+        target_node.is_visited = True
+        return JumpResult(
+            success=False,
+            node=target_node,
+            elapsed_seconds=elapsed,
+            message=(
+                f"{character.name} 跳躍失敗，墜落到了「{target_node.name}」！"
+                f"受到 {damage} 點墜落傷害（{dice_expr}）"
+            ),
+            fall_damage_dice=dice_expr,
+            fall_damage_total=damage,
+            check_total=check_total,
+            check_dc=edge.jump_dc,
+            character_name=character.name,
+        )
+
+    # 失敗，不墜落，原地不動
+    return JumpResult(
+        success=False,
+        message=f"{character.name} 攀爬失敗，滑了下來。",
+        check_total=check_total,
+        check_dc=edge.jump_dc,
+        character_name=character.name,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -158,19 +287,25 @@ def move_to_node(
             message=f"「{edge.name or edge_id}」上鎖了（DC {edge.lock_dc}）",
         )
 
+    if edge.requires_jump:
+        return MoveResult(
+            success=False,
+            message=f"「{edge.name or edge_id}」需要跳躍才能通過！請使用跳躍指令。",
+        )
+
     target_node = _get_node_strict(exp_map, target_id)
-    elapsed = _scale_to_minutes(exp_map.scale, edge)
+    elapsed = _scale_to_seconds(exp_map.scale, edge)
 
     # 更新狀態
     state.current_node_id = target_id
-    state.elapsed_minutes += elapsed
+    state.game_clock.add_event(elapsed)
     state.discovered_nodes.add(target_id)
     target_node.is_visited = True
 
     return MoveResult(
         success=True,
         node=target_node,
-        elapsed_minutes=elapsed,
+        elapsed_seconds=elapsed,
         message=f"你移動到了「{target_node.name}」",
     )
 
@@ -291,20 +426,21 @@ def search_room(
 
     地城圖層消耗 10 分鐘，城鎮消耗 60 分鐘。
     """
-    search_time = 10 if exp_map.scale == MapScale.DUNGEON else 60
-    state.elapsed_minutes += search_time
+    search_seconds = SEARCH_ROOM_DUNGEON if exp_map.scale == MapScale.DUNGEON else SEARCH_ROOM_TOWN
+    state.game_clock.add_event(search_seconds)
 
     found = discover_hidden(state, exp_map, node_id, check_total)
     found_ids = [e.id for e in found]
 
+    time_str = format_seconds_human(search_seconds)
     if found:
         names = "、".join(e.name or e.id for e in found)
-        msg = f"搜索了 {search_time} 分鐘，發現了隱藏通道：{names}"
+        msg = f"搜索了 {time_str}，發現了隱藏通道：{names}"
     else:
-        msg = f"搜索了 {search_time} 分鐘，沒有發現任何東西"
+        msg = f"搜索了 {time_str}，沒有發現任何東西"
 
     return SearchResult(
-        elapsed_minutes=search_time,
+        elapsed_seconds=search_seconds,
         discovered_edges=found_ids if found_ids else None,
         message=msg,
     )
@@ -325,6 +461,126 @@ def get_node_description(
         available_exits=exits,
         is_first_visit=is_first,
     )
+
+
+# ---------------------------------------------------------------------------
+# POI 互動
+# ---------------------------------------------------------------------------
+
+
+def list_pois(exp_map: ExplorationMap, node_id: str) -> list[ExplorationNode]:
+    """列出節點內的 POI 子節點（城鎮專用）。"""
+    node = _get_node_strict(exp_map, node_id)
+    return list(node.pois)
+
+
+def visit_poi(
+    state: ExplorationState,
+    exp_map: ExplorationMap,
+    node_id: str,
+    poi_id: str,
+) -> NodeDescription:
+    """造訪 POI 子節點，回傳描述素材。
+
+    城鎮內 POI 不消耗移動時間（已在節點內）。
+    """
+    node = _get_node_strict(exp_map, node_id)
+    poi = None
+    for p in node.pois:
+        if p.id == poi_id:
+            poi = p
+            break
+    if poi is None:
+        msg = f"POI '{poi_id}' 不存在於節點 '{node_id}'"
+        raise KeyError(msg)
+
+    poi.is_visited = True
+    return NodeDescription(
+        node=poi,
+        available_exits=[],
+        is_first_visit=not poi.is_visited,
+    )
+
+
+# ---------------------------------------------------------------------------
+# 被動感知 + 物品搜索
+# ---------------------------------------------------------------------------
+
+
+def auto_passive_perception(
+    state: ExplorationState,
+    exp_map: ExplorationMap,
+    node_id: str,
+    best_passive: int,
+) -> list[ExplorationEdge]:
+    """進入新節點時自動以隊伍最高被動感知檢查隱藏通道。
+
+    不消耗時間（被動 = 不需主動宣告），回傳新發現的路徑。
+    """
+    return discover_hidden(state, exp_map, node_id, best_passive)
+
+
+def get_visible_items(
+    exp_map: ExplorationMap,
+    node_id: str,
+) -> list[NodeItem]:
+    """回傳明顯可見（investigation_dc == 0）或已發現的物品。
+
+    進入節點時自動顯示用。
+    """
+    node = _get_node_strict(exp_map, node_id)
+    return [
+        item
+        for item in node.hidden_items
+        if not item.is_taken and (item.investigation_dc == 0 or item.is_discovered)
+    ]
+
+
+def search_items(
+    exp_map: ExplorationMap,
+    node_id: str,
+    check_total: int,
+) -> list[NodeItem]:
+    """搜索節點內未發現的隱藏物品。
+
+    check_total vs investigation_dc，回傳新發現的物品。
+    不消耗額外時間（已包含在 search_room 的 10 分鐘中）。
+    """
+    node = _get_node_strict(exp_map, node_id)
+    found: list[NodeItem] = []
+    for item in node.hidden_items:
+        if item.is_discovered or item.is_taken:
+            continue
+        if item.investigation_dc <= 0:
+            continue
+        if check_total >= item.investigation_dc:
+            item.is_discovered = True
+            found.append(item)
+    return found
+
+
+def take_item(
+    exp_map: ExplorationMap,
+    node_id: str,
+    item_id: str,
+) -> NodeItem | None:
+    """拿取已發現的物品。標記 is_taken，回傳該物品；找不到回傳 None。"""
+    node = _get_node_strict(exp_map, node_id)
+    for item in node.hidden_items:
+        if item.id == item_id and item.is_discovered and not item.is_taken:
+            item.is_taken = True
+            return item
+    return None
+
+
+# ---------------------------------------------------------------------------
+# 格式化工具
+# ---------------------------------------------------------------------------
+
+
+def format_time(seconds: int) -> str:
+    """將秒數格式化為可讀字串。委派給 format_seconds_human。"""
+    return format_seconds_human(seconds)
 
 
 # ---------------------------------------------------------------------------

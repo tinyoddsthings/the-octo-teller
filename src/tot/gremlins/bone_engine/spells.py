@@ -30,16 +30,13 @@ from tot.models import (
     Ability,
     ActiveCondition,
     Character,
+    Combatant,
     Condition,
     DamageType,
-    Monster,
     Spell,
     SpellAttackType,
     SpellEffectType,
 )
-
-# 生物型別別名
-Combatant = Character | Monster
 
 # ---------------------------------------------------------------------------
 # 法術資料庫
@@ -135,21 +132,21 @@ def can_cast(
     """
     # ── 成分檢查（Character + Monster 都適用）──
     # V：被沉默 → 無法施放
-    if "V" in spell.components and has_condition_effect(caster, Condition.SILENCED):
+    if "V" in spell.components.required and has_condition_effect(caster, Condition.SILENCED):
         return CastError("被沉默，無法施放需要語言成分的法術")
 
     # S：被無力化 → 無法做手勢
-    if "S" in spell.components and is_incapacitated(caster):
+    if "S" in spell.components.required and is_incapacitated(caster):
         return CastError("無力化狀態，無法施放需要姿勢成分的法術")
 
     # M：有金額材料 → 檢查背包（僅 Character，Monster 不追蹤物品）
     if (
-        "M" in spell.components
-        and spell.material_cost > 0
+        "M" in spell.components.required
+        and spell.components.material_cost_gp > 0
         and isinstance(caster, Character)
         and not _has_material(caster, spell)
     ):
-        return CastError(f"缺少材料成分：{spell.material_description}")
+        return CastError(f"缺少材料成分：{spell.components.material_description}")
 
     # 戲法不需要欄位
     if spell.level == 0:
@@ -251,11 +248,8 @@ def cast_spell(
     # 專注管理
     concentration_broken: str | None = None
     concentration_started = False
-    needs_concentration = spell.concentration
-    if spell.upcast_no_concentration_at and actual_slot >= spell.upcast_no_concentration_at:
-        needs_concentration = False
 
-    if needs_concentration:
+    if spell.concentration:
         if isinstance(caster, Character) and caster.concentration_spell:
             concentration_broken = break_concentration(caster)
         if isinstance(caster, Character):
@@ -300,12 +294,12 @@ def cast_spell(
 
     if result is not None:
         # 材料消耗（施法成功後）
-        if result.success and spell.material_consumed and isinstance(caster, Character):
+        if result.success and spell.components.material_consumed and isinstance(caster, Character):
             _consume_material(caster, spell)
         return result
 
     # 材料消耗
-    if spell.material_consumed and isinstance(caster, Character):
+    if spell.components.material_consumed and isinstance(caster, Character):
         _consume_material(caster, spell)
 
     # BUFF / UTILITY — 目前只回傳成功訊息
@@ -339,7 +333,7 @@ def _resolve_damage_spell(
         return CastResult(success=False, spell=spell, message="傷害法術需要目標")
 
     upcast_levels = max(0, actual_slot - spell.level) if spell.level > 0 else 0
-    damage_dice = _upcast_damage(spell.damage_dice, spell.upcast_dice, upcast_levels)
+    damage_dice = _upcast_damage(spell.damage_dice, spell.upcast.dice, upcast_levels)
 
     # 法術攻擊（遠程或近戰）
     if spell.attack_type != SpellAttackType.NONE:
@@ -561,7 +555,7 @@ def _resolve_healing_spell(
         return CastResult(success=False, spell=spell, message="治療法術只能作用於角色")
 
     upcast_levels = max(0, actual_slot - spell.level) if spell.level > 0 else 0
-    healing_dice = _upcast_damage(spell.healing_dice, spell.upcast_dice, upcast_levels)
+    healing_dice = _upcast_damage(spell.healing_dice, spell.upcast.dice, upcast_levels)
 
     healing = roll(healing_dice, rng=rng).total
     # 加上施法屬性調整值
@@ -656,25 +650,6 @@ def _resolve_condition_spell(
 
 
 # ---------------------------------------------------------------------------
-# 專注管理（額外 API）
-# ---------------------------------------------------------------------------
-
-
-def start_concentration(caster: Character, spell_name: str) -> str | None:
-    """開始專注。回傳被中斷的舊法術名稱（若有）。"""
-    old = None
-    if caster.concentration_spell:
-        old = break_concentration(caster)
-    caster.concentration_spell = spell_name
-    return old
-
-
-def is_concentrating(caster: Character) -> bool:
-    """是否正在維持專注。"""
-    return caster.concentration_spell is not None
-
-
-# ---------------------------------------------------------------------------
 # 內部輔助函式
 # ---------------------------------------------------------------------------
 
@@ -687,8 +662,27 @@ def _target_name(target: Combatant) -> str:
     return target.name
 
 
+DAMAGE_TYPE_ZH: dict[str, str] = {
+    "Acid": "強酸",
+    "Bludgeoning": "鈍擊",
+    "Cold": "寒冷",
+    "Fire": "火焰",
+    "Force": "力場",
+    "Lightning": "閃電",
+    "Necrotic": "黯蝕",
+    "Piercing": "穿刺",
+    "Poison": "毒素",
+    "Psychic": "心靈",
+    "Radiant": "光輝",
+    "Slashing": "揮砍",
+    "Thunder": "雷鳴",
+}
+
+
 def _damage_type_name(dt: DamageType | None) -> str:
-    return dt.value if dt else ""
+    if dt is None:
+        return ""
+    return DAMAGE_TYPE_ZH.get(dt.value, dt.value)
 
 
 def _spell_attack_bonus(caster: Combatant) -> int:
@@ -719,11 +713,7 @@ def _get_save_bonus(target: Combatant, ability: Ability | None) -> int:
     """取得目標的豁免加值。"""
     if ability is None:
         return 0
-    if isinstance(target, Character):
-        return target.ability_scores.modifier(ability)
-    if isinstance(target, Monster):
-        return target.ability_scores.modifier(ability)
-    return 0
+    return target.ability_scores.modifier(ability)
 
 
 def _upcast_damage(
@@ -791,8 +781,8 @@ def _upcast_damage(
 def get_max_targets(spell: Spell, slot_level: int) -> int:
     """計算升環後的最大目標數。"""
     base = spell.max_targets
-    if spell.upcast_additional_targets and spell.level > 0:
-        extra = (slot_level - spell.level) * spell.upcast_additional_targets
+    if spell.upcast.additional_targets and spell.level > 0:
+        extra = (slot_level - spell.level) * spell.upcast.additional_targets
         return base + extra
     return base
 
@@ -804,15 +794,15 @@ def get_max_targets(spell: Spell, slot_level: int) -> int:
 
 def _has_material(caster: Character, spell: Spell) -> bool:
     """檢查角色是否持有法術所需的材料成分。"""
-    if spell.material_cost <= 0:
+    if spell.components.material_cost_gp <= 0:
         return True
-    return any(item.name == spell.material_description for item in caster.inventory)
+    return any(item.name == spell.components.material_description for item in caster.inventory)
 
 
 def _consume_material(caster: Character, spell: Spell) -> None:
     """消耗法術所需的材料成分。"""
     for item in caster.inventory:
-        if item.name == spell.material_description:
+        if item.name == spell.components.material_description:
             if item.quantity > 1:
                 item.quantity -= 1
             else:

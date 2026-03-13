@@ -32,6 +32,12 @@ src/tot/data/srd/*.json
 src/tot/visuals/assets/**/*.png
 src/tot/visuals/assets/**/*.jpg
 
+# Combat logs
+logs/
+
+# MCP logs
+mcp_*.log
+
 # Database
 *.db
 *.sqlite3

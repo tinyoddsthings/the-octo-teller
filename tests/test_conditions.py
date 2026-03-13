@@ -8,6 +8,7 @@ from tot.gremlins.bone_engine.conditions import (
     apply_condition,
     can_take_action,
     exhaustion_penalty,
+    format_remaining,
     get_conditions,
     has_condition_effect,
     is_incapacitated,
@@ -15,7 +16,7 @@ from tot.gremlins.bone_engine.conditions import (
     tick_conditions_end_of_turn,
     tick_conditions_start_of_turn,
 )
-from tot.models import Character, Condition, Monster
+from tot.models import Character, Condition, GameClock, Monster
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -354,3 +355,111 @@ class TestCombatIntegration:
         assert combat_cta(fighter)
         apply_condition(fighter, Condition.STUNNED)
         assert not combat_cta(fighter)
+
+
+# ---------------------------------------------------------------------------
+# TestExpiresAtSecond — 絕對秒數到期
+# ---------------------------------------------------------------------------
+
+
+class TestExpiresAtSecond:
+    """expires_at_second + GameClock 整合測試。"""
+
+    def test_apply_with_expires_at(self, fighter):
+        ac = apply_condition(fighter, Condition.BLINDED, expires_at_second=30000)
+        assert ac is not None
+        assert ac.expires_at_second == 30000
+
+    def test_tick_with_clock_not_expired(self, fighter):
+        """時間尚未到期，狀態保留。"""
+        apply_condition(fighter, Condition.BLINDED, expires_at_second=30000)
+        clock = GameClock(in_game_start_second=0, accumulated_seconds=29000)
+        expired = tick_conditions_end_of_turn(fighter, game_clock=clock)
+        assert expired == []
+        assert fighter.has_condition(Condition.BLINDED)
+
+    def test_tick_with_clock_expired(self, fighter):
+        """時間到期，狀態移除。"""
+        apply_condition(fighter, Condition.BLINDED, expires_at_second=30000)
+        clock = GameClock(in_game_start_second=0, accumulated_seconds=30000)
+        expired = tick_conditions_end_of_turn(fighter, game_clock=clock)
+        assert len(expired) == 1
+        assert expired[0].condition == Condition.BLINDED
+        assert not fighter.has_condition(Condition.BLINDED)
+
+    def test_tick_with_clock_past_expiry(self, fighter):
+        """時間已超過到期，狀態移除。"""
+        apply_condition(fighter, Condition.POISONED, expires_at_second=30000)
+        clock = GameClock(in_game_start_second=0, accumulated_seconds=31000)
+        expired = tick_conditions_end_of_turn(fighter, game_clock=clock)
+        assert len(expired) == 1
+
+    def test_mixed_expires_and_rounds(self, fighter):
+        """同時有 expires_at_second 和 remaining_rounds 的狀態。"""
+        apply_condition(fighter, Condition.BLINDED, expires_at_second=30000)
+        apply_condition(fighter, Condition.POISONED, remaining_rounds=3)
+        apply_condition(fighter, Condition.PRONE)  # 永久
+
+        clock = GameClock(in_game_start_second=0, accumulated_seconds=30000)
+        expired = tick_conditions_end_of_turn(fighter, game_clock=clock)
+
+        # BLINDED 到期，POISONED 倒數減 1，PRONE 保留
+        assert len(expired) == 1
+        assert expired[0].condition == Condition.BLINDED
+        assert fighter.has_condition(Condition.POISONED)
+        assert fighter.has_condition(Condition.PRONE)
+
+        # POISONED 應剩 2 輪
+        poisoned = [ac for ac in fighter.conditions if ac.condition == Condition.POISONED]
+        assert poisoned[0].remaining_rounds == 2
+
+    def test_tick_without_clock_ignores_expires_at(self, fighter):
+        """沒有 clock 時，expires_at_second 的狀態不會到期。"""
+        apply_condition(fighter, Condition.BLINDED, expires_at_second=30000)
+        expired = tick_conditions_end_of_turn(fighter)  # 無 clock
+        assert expired == []
+        assert fighter.has_condition(Condition.BLINDED)
+
+    def test_non_stackable_with_expires(self, fighter):
+        """不堆疊狀態用 expires_at_second 取較長的。"""
+        apply_condition(fighter, Condition.BLINDED, expires_at_second=30000)
+        apply_condition(fighter, Condition.BLINDED, expires_at_second=35000)
+        blinds = [ac for ac in fighter.conditions if ac.condition == Condition.BLINDED]
+        assert len(blinds) == 1
+        assert blinds[0].expires_at_second == 35000
+
+
+# ---------------------------------------------------------------------------
+# TestFormatRemaining
+# ---------------------------------------------------------------------------
+
+
+class TestFormatRemaining:
+    """format_remaining 顯示工具。"""
+
+    def test_permanent(self):
+        clock = GameClock(in_game_start_second=0, accumulated_seconds=0)
+        assert format_remaining(None, clock) == "永久"
+
+    def test_expired(self):
+        clock = GameClock(in_game_start_second=0, accumulated_seconds=100)
+        assert format_remaining(50, clock) == "已到期"
+
+    def test_combat_rounds(self):
+        clock = GameClock(in_game_start_second=0, accumulated_seconds=0)
+        # 18 秒 → ceil(18/6) = 3 輪
+        assert format_remaining(18, clock, in_combat=True) == "3 輪"
+
+    def test_combat_rounds_partial(self):
+        clock = GameClock(in_game_start_second=0, accumulated_seconds=0)
+        # 7 秒 → ceil(7/6) = 2 輪
+        assert format_remaining(7, clock, in_combat=True) == "2 輪"
+
+    def test_exploration_time(self):
+        clock = GameClock(in_game_start_second=0, accumulated_seconds=0)
+        # 3600 秒 = 1 小時
+        assert format_remaining(3600, clock, in_combat=False) == "1 小時"
+
+    def test_exploration_minutes(self):
+        clock = GameClock(in_game_start_second=0, accumulated_seconds=0)
+        assert format_remaining(600, clock) == "10 分鐘"

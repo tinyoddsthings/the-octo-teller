@@ -1,0 +1,148 @@
+{
+  "name": "地底洞窟",
+  "width": 25.0,
+  "height": 20.0,
+  "walls": [
+    {"x": 0.0, "y": 0.0, "width": 11.0, "height": 1.5, "name": "南牆左段"},
+    {"x": 14.0, "y": 0.0, "width": 11.0, "height": 1.5, "name": "南牆右段"},
+    {"x": 0.0, "y": 18.5, "width": 10.0, "height": 1.5, "name": "北牆左段"},
+    {"x": 15.0, "y": 18.5, "width": 10.0, "height": 1.5, "name": "北牆右段"},
+    {"x": 0.0, "y": 1.5, "width": 1.5, "height": 17.0, "name": "西牆"},
+    {"x": 23.5, "y": 1.5, "width": 1.5, "height": 17.0, "name": "東牆"},
+    {"x": 8.0, "y": 10.0, "width": 1.5, "height": 4.0, "name": "中央岩壁"},
+    {"x": 16.0, "y": 7.0, "width": 1.5, "height": 3.0, "name": "東側岩壁"}
+  ],
+  "props": [
+    {
+      "id": "entrance_south",
+      "x": 12.5, "y": 0.75,
+      "symbol": "D", "is_blocking": false,
+      "name": "洞穴入口", "prop_type": "door"
+    },
+    {
+      "id": "exit_north",
+      "x": 12.5, "y": 19.25,
+      "symbol": "L", "is_blocking": true,
+      "name": "鐵柵門（上鎖）", "prop_type": "door",
+      "interactable": true,
+      "interact_message": "一扇生鏽的鐵柵門，需要鑰匙才能打開"
+    },
+    {
+      "id": "torch_1",
+      "x": 3.0, "y": 3.0,
+      "symbol": "f", "is_blocking": false,
+      "name": "壁掛火把", "prop_type": "decoration"
+    },
+    {
+      "id": "torch_2",
+      "x": 22.0, "y": 3.0,
+      "symbol": "f", "is_blocking": false,
+      "name": "壁掛火把", "prop_type": "decoration"
+    },
+    {
+      "id": "pillar_1",
+      "x": 6.0, "y": 8.0,
+      "symbol": "O", "is_blocking": true,
+      "name": "天然石柱", "prop_type": "decoration",
+      "cover_bonus": 5
+    },
+    {
+      "id": "pillar_2",
+      "x": 19.0, "y": 12.0,
+      "symbol": "O", "is_blocking": true,
+      "name": "天然石柱", "prop_type": "decoration",
+      "cover_bonus": 5
+    },
+    {
+      "id": "rubble_zone",
+      "x": 12.5, "y": 9.0,
+      "symbol": ".", "is_blocking": false,
+      "name": "碎石區", "prop_type": "decoration",
+      "terrain_type": "rubble",
+      "bounds": {"shape_type": "rectangle", "half_width_m": 3.0, "half_height_m": 2.0}
+    },
+    {
+      "id": "hill_west",
+      "x": 4.5, "y": 14.0,
+      "symbol": "▲", "is_blocking": false,
+      "name": "西側高台", "prop_type": "decoration",
+      "terrain_type": "hill",
+      "elevation_m": 2.0,
+      "bounds": {"shape_type": "rectangle", "half_width_m": 2.0, "half_height_m": 1.5}
+    },
+    {
+      "id": "chest_west",
+      "x": 4.5, "y": 14.5,
+      "symbol": "C", "is_blocking": false,
+      "name": "古老石箱", "prop_type": "item",
+      "interactable": true,
+      "investigation_dc": 12,
+      "interact_message": "一個古老的石箱，蓋子半開著，裡面似乎有東西",
+      "loot_items": [
+        {"item_id": "gold_pouch", "name": "金幣袋", "quantity": 1, "value_gp": 50},
+        {"item_id": "iron_key", "name": "生鏽鐵鑰匙", "description": "可以打開北方鐵柵門", "grants_key": "north_door_key"}
+      ]
+    },
+    {
+      "id": "crevice_east",
+      "x": 20.0, "y": 8.0,
+      "symbol": "V", "is_blocking": false,
+      "name": "東側裂縫", "prop_type": "decoration",
+      "terrain_type": "crevice",
+      "elevation_m": -1.5,
+      "bounds": {"shape_type": "rectangle", "half_width_m": 1.5, "half_height_m": 2.0}
+    },
+    {
+      "id": "hidden_scroll",
+      "x": 20.5, "y": 8.5,
+      "symbol": "?", "is_blocking": false,
+      "name": "裂縫中的卷軸", "prop_type": "item",
+      "hidden": true,
+      "interactable": true,
+      "investigation_dc": 15,
+      "interact_message": "在裂縫深處發現一卷泛黃的羊皮紙",
+      "loot_items": [
+        {"item_id": "ancient_scroll", "name": "古老卷軸", "description": "記載著某種古老語言的文字"}
+      ]
+    },
+    {
+      "id": "water_pool",
+      "x": 12.5, "y": 16.0,
+      "symbol": "~", "is_blocking": false,
+      "name": "北側水池", "prop_type": "decoration",
+      "terrain_type": "water",
+      "bounds": {"shape_type": "circle", "radius_m": 2.5}
+    },
+    {
+      "id": "mushrooms",
+      "x": 3.0, "y": 8.0,
+      "symbol": "M", "is_blocking": false,
+      "name": "發光蘑菇群", "prop_type": "item",
+      "interactable": true,
+      "investigation_dc": 0,
+      "interact_message": "一叢發出微弱藍光的蘑菇，可能有藥用價值",
+      "loot_items": [
+        {"item_id": "glowing_mushroom", "name": "發光蘑菇", "quantity": 3, "description": "發出微弱藍光的蘑菇"}
+      ]
+    }
+  ],
+  "zones": [
+    {"name": "入口區", "x_min": 1.5, "y_min": 1.5, "x_max": 23.5, "y_max": 5.0, "description": "洞穴入口，火把照亮的石造通道"},
+    {"name": "中央大廳", "x_min": 1.5, "y_min": 5.0, "x_max": 23.5, "y_max": 12.0, "description": "寬闊的天然洞穴大廳，碎石散落一地"},
+    {"name": "西側高台", "x_min": 1.5, "y_min": 12.0, "x_max": 8.0, "y_max": 18.5, "description": "地勢升高的岩石平台，可以俯瞰大廳"},
+    {"name": "北側深處", "x_min": 8.0, "y_min": 12.0, "x_max": 23.5, "y_max": 18.5, "description": "洞穴深處，空氣潮濕，有水流聲"}
+  ],
+  "zone_connections": [
+    {"from_zone": "入口區", "to_zone": "中央大廳"},
+    {"from_zone": "中央大廳", "to_zone": "西側高台"},
+    {"from_zone": "中央大廳", "to_zone": "北側深處"}
+  ],
+  "spawn_points": {
+    "players": [
+      {"x": 12.5, "y": 2.5},
+      {"x": 11.0, "y": 2.5},
+      {"x": 14.0, "y": 2.5},
+      {"x": 12.5, "y": 4.0}
+    ]
+  }
+}
