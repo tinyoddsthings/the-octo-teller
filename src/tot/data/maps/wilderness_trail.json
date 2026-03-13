@@ -1,0 +1,120 @@
+{
+  "id": "wilderness_trail",
+  "name": "林間小徑",
+  "scale": "world",
+  "entry_node_id": "trail_entrance",
+  "nodes": [
+    {
+      "id": "trail_entrance",
+      "name": "林道入口",
+      "node_type": "landmark",
+      "description": "一條被踩出的泥濘小徑從鎮郊延伸進森林。路旁立著一塊斑駁的路標，上面的字跡已難以辨認。",
+      "ambient": "鳥鳴聲從樹冠傳來，落葉在微風中沙沙作響",
+      "hidden_items": [
+        {
+          "id": "old_signpost",
+          "name": "斑駁路標",
+          "description": "路標上隱約可見「小心…谷」的字樣。",
+          "item_type": "clue",
+          "investigation_dc": 0
+        }
+      ]
+    },
+    {
+      "id": "crossroads",
+      "name": "岔路口",
+      "node_type": "landmark",
+      "description": "小徑在此分為兩條。一條向東下坡通往溪谷，另一條向北穿過更茂密的林區。地上散落著馬蹄印。",
+      "ambient": "遠處傳來流水聲，林中偶爾傳來樹枝折斷的聲響"
+    },
+    {
+      "id": "creek_valley",
+      "name": "溪谷",
+      "node_type": "landmark",
+      "description": "清澈的溪水在苔蘚覆蓋的岩石間流淌。溪谷兩側是陡峭的土壁，只有一條狹窄的路徑可以通行。",
+      "ambient": "潺潺水聲、青蛙的鳴叫、濕潤的泥土氣味",
+      "hidden_items": [
+        {
+          "id": "shiny_pebble",
+          "name": "閃亮卵石",
+          "description": "溪底有一顆異常閃亮的卵石，似乎不是普通的石頭。",
+          "item_type": "item",
+          "investigation_dc": 13,
+          "value_gp": 5
+        }
+      ]
+    },
+    {
+      "id": "abandoned_camp",
+      "name": "廢棄營地",
+      "node_type": "landmark",
+      "description": "一片空地上殘留著篝火的痕跡和幾頂破損的帳篷。看起來這裡已經被遺棄了好一陣子。",
+      "ambient": "風吹過破帳篷發出嗚嗚聲，灰燼中偶爾冒出一絲煙",
+      "hidden_items": [
+        {
+          "id": "camp_journal",
+          "name": "探險者日誌",
+          "description": "一本被雨水泡爛的日誌，最後幾頁提到了北方洞穴裡的「閃光」。",
+          "item_type": "clue",
+          "investigation_dc": 11
+        },
+        {
+          "id": "supply_cache",
+          "name": "補給暗格",
+          "description": "帳篷底下藏著一個木箱，裡面有一些保存尚好的口糧和一把匕首。",
+          "item_type": "chest",
+          "investigation_dc": 15,
+          "value_gp": 10
+        }
+      ]
+    },
+    {
+      "id": "cave_entrance",
+      "name": "洞穴入口",
+      "node_type": "dungeon",
+      "description": "一個被藤蔓半遮蓋的洞口，從裡面吹出涼爽的空氣。洞口周圍的岩石上有爪痕。",
+      "ambient": "洞穴深處傳來微弱的回音，空氣中帶著潮濕和礦物的氣味"
+    }
+  ],
+  "edges": [
+    {
+      "id": "w1",
+      "from_node_id": "trail_entrance",
+      "to_node_id": "crossroads",
+      "name": "林間小徑",
+      "distance_days": 0.25
+    },
+    {
+      "id": "w2",
+      "from_node_id": "crossroads",
+      "to_node_id": "creek_valley",
+      "name": "東向下坡路",
+      "distance_days": 0.5
+    },
+    {
+      "id": "w3",
+      "from_node_id": "crossroads",
+      "to_node_id": "abandoned_camp",
+      "name": "北向林道",
+      "distance_days": 0.5,
+      "danger_level": 3
+    },
+    {
+      "id": "w4",
+      "from_node_id": "abandoned_camp",
+      "to_node_id": "cave_entrance",
+      "name": "獸徑",
+      "distance_days": 0.25,
+      "danger_level": 5
+    },
+    {
+      "id": "w5",
+      "from_node_id": "creek_valley",
+      "to_node_id": "cave_entrance",
+      "name": "隱藏谷道",
+      "is_discovered": false,
+      "hidden_dc": 14,
+      "distance_days": 0.5
+    }
+  ]
+}

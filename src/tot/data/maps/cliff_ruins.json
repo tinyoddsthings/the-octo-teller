@@ -1,0 +1,239 @@
+{
+  "id": "cliff_ruins",
+  "name": "崖岸遺跡",
+  "scale": "dungeon",
+  "entry_node_id": "entrance",
+  "nodes": [
+    {
+      "id": "entrance",
+      "name": "遺跡入口",
+      "node_type": "room",
+      "description": "殘破的石拱門框架矗立在崖壁前，藤蔓攀附其上。入口處散落著碎石，空氣中帶著潮濕的泥土味。",
+      "ambient": "海風從崖邊吹來，帶著鹹味和遠處海鷗的鳴叫",
+      "elevation_m": 0,
+      "hidden_items": [
+        {
+          "id": "fountain_coins",
+          "name": "噴泉錢幣",
+          "description": "乾涸噴泉底部散落著幾枚鏽蝕的銅幣，不值什麼錢。",
+          "item_type": "item",
+          "investigation_dc": 0,
+          "value_gp": 0
+        },
+        {
+          "id": "old_rope",
+          "name": "舊繩索",
+          "description": "藏在碎石堆下的一捲麻繩，看起來還算結實。",
+          "item_type": "item",
+          "investigation_dc": 10
+        }
+      ]
+    },
+    {
+      "id": "central_plaza",
+      "name": "中央廣場",
+      "node_type": "room",
+      "description": "寬闊的圓形廣場，地面鋪著龜裂的大理石。中央有一座倒塌的雕像底座，四周通往不同方向。",
+      "ambient": "風在殘柱間呼嘯，偶爾有碎石從高處滾落的聲響",
+      "elevation_m": 0,
+      "hidden_items": [
+        {
+          "id": "floor_scratches",
+          "name": "地板刮痕",
+          "description": "大理石地板上有一道道深深的刮痕，像是什麼重物被頻繁拖動——指向東翼走廊的方向。",
+          "item_type": "clue",
+          "investigation_dc": 0
+        }
+      ]
+    },
+    {
+      "id": "east_corridor",
+      "name": "東翼走廊",
+      "node_type": "corridor",
+      "description": "狹長的走廊，兩側牆壁上刻著褪色的浮雕。地面有被拖曳的痕跡，通往更深處。",
+      "ambient": "走廊深處傳來滴水聲，回音在石壁間反覆",
+      "elevation_m": 0
+    },
+    {
+      "id": "west_ledge",
+      "name": "西側崖架",
+      "node_type": "room",
+      "description": "一道狹窄的崖架沿著崖壁延伸，俯瞰下方的遺跡入口。崖架盡頭可以看到一座斷裂的石橋。",
+      "ambient": "崖風猛烈，腳下的碎石偶爾滑落，消失在下方",
+      "elevation_m": 5
+    },
+    {
+      "id": "bridge_west",
+      "name": "斷橋西側",
+      "node_type": "room",
+      "description": "石橋在中間斷裂，留下約三公尺的缺口。對面可以看到橋的另一半和一座塔樓的入口。",
+      "ambient": "橋面碎石在風中搖搖欲墜，下方是五公尺的落差",
+      "elevation_m": 5
+    },
+    {
+      "id": "bridge_east",
+      "name": "斷橋東側",
+      "node_type": "room",
+      "description": "斷橋的另一端，這邊比較穩固。一扇半開的石門通往塔樓內部。",
+      "ambient": "石門後傳來微弱的回音，像是建築在呼吸",
+      "elevation_m": 5
+    },
+    {
+      "id": "tower_entrance",
+      "name": "塔樓入口",
+      "node_type": "room",
+      "description": "圓形塔樓的底層，螺旋階梯沿著內壁盤旋而上。牆壁上嵌著已熄滅的火把座。",
+      "ambient": "塔樓內的空氣沉悶而陰冷，階梯上方傳來風聲",
+      "elevation_m": 5
+    },
+    {
+      "id": "watchtower_top",
+      "name": "瞭望塔頂",
+      "node_type": "room",
+      "description": "塔樓頂端的瞭望台，可以俯瞰整個遺跡和遠處的海岸。塔頂殘存一面破旗幟在風中飄盪。",
+      "ambient": "強風呼嘯，視野遼闊——能看到遺跡全貌和遠處的船帆",
+      "elevation_m": 10,
+      "hidden_items": [
+        {
+          "id": "eagle_amulet",
+          "name": "鷹之護符",
+          "description": "嵌在旗桿底座暗格中的銀色護符，雕刻著展翅雄鷹。佩戴者感到一股溫暖的力量。",
+          "item_type": "item",
+          "investigation_dc": 14,
+          "value_gp": 50
+        }
+      ]
+    },
+    {
+      "id": "underground_canal",
+      "name": "地下水道",
+      "node_type": "corridor",
+      "description": "濕滑的石砌水道，淺水沒過腳踝。牆壁上長滿了螢光苔蘚，發出幽綠的微光。",
+      "ambient": "水流聲在狹窄的空間裡放大，螢光苔蘚照出搖晃的影子",
+      "elevation_m": -5
+    },
+    {
+      "id": "underground_vault",
+      "name": "地下寶庫",
+      "node_type": "room",
+      "description": "小型的圓頂石室，地面比水道高出一步，保持乾燥。角落堆著幾個腐朽的木箱。",
+      "ambient": "空氣乾燥而沉悶，與外面的潮濕形成對比",
+      "elevation_m": -5,
+      "hidden_items": [
+        {
+          "id": "gold_chest",
+          "name": "金幣寶箱",
+          "description": "木箱底部藏著一個小鐵盒，裡面裝著一袋金幣。",
+          "item_type": "item",
+          "investigation_dc": 0,
+          "value_gp": 100
+        }
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "id": "e_entrance_plaza",
+      "from_node_id": "entrance",
+      "to_node_id": "central_plaza",
+      "name": "碎石通道",
+      "distance_minutes": 1
+    },
+    {
+      "id": "e_plaza_east",
+      "from_node_id": "central_plaza",
+      "to_node_id": "east_corridor",
+      "name": "東翼拱門",
+      "distance_minutes": 1
+    },
+    {
+      "id": "e_climb_ledge",
+      "from_node_id": "entrance",
+      "to_node_id": "west_ledge",
+      "name": "攀爬點",
+      "requires_jump": true,
+      "jump_dc": 10,
+      "fall_damage_on_fail": false,
+      "elevation_change_m": 5,
+      "distance_minutes": 2
+    },
+    {
+      "id": "e_ledge_bridge_w",
+      "from_node_id": "west_ledge",
+      "to_node_id": "bridge_west",
+      "name": "崖架小徑",
+      "distance_minutes": 1,
+      "elevation_change_m": 0
+    },
+    {
+      "id": "e_bridge_jump",
+      "from_node_id": "bridge_west",
+      "to_node_id": "bridge_east",
+      "name": "斷橋跳躍",
+      "requires_jump": true,
+      "jump_dc": 12,
+      "fall_damage_on_fail": true,
+      "elevation_change_m": -5,
+      "distance_minutes": 1
+    },
+    {
+      "id": "e_bridge_tower",
+      "from_node_id": "bridge_east",
+      "to_node_id": "tower_entrance",
+      "name": "石門通道",
+      "distance_minutes": 1,
+      "elevation_change_m": 0
+    },
+    {
+      "id": "e_plaza_stairs",
+      "from_node_id": "central_plaza",
+      "to_node_id": "bridge_west",
+      "name": "斜坡階梯",
+      "distance_minutes": 2,
+      "elevation_change_m": 5,
+      "terrain_type": "stairs"
+    },
+    {
+      "id": "e_tower_top",
+      "from_node_id": "tower_entrance",
+      "to_node_id": "watchtower_top",
+      "name": "螺旋階梯",
+      "distance_minutes": 3,
+      "elevation_change_m": 5,
+      "terrain_type": "stairs"
+    },
+    {
+      "id": "e_tower_jump_down",
+      "from_node_id": "watchtower_top",
+      "to_node_id": "central_plaza",
+      "name": "從塔頂跳下",
+      "requires_jump": true,
+      "jump_dc": 15,
+      "fall_damage_on_fail": true,
+      "is_one_way": true,
+      "elevation_change_m": -10,
+      "distance_minutes": 1
+    },
+    {
+      "id": "e_plaza_underground",
+      "from_node_id": "central_plaza",
+      "to_node_id": "underground_canal",
+      "name": "暗門",
+      "is_discovered": false,
+      "hidden_dc": 14,
+      "distance_minutes": 2,
+      "elevation_change_m": -5
+    },
+    {
+      "id": "e_canal_vault",
+      "from_node_id": "underground_canal",
+      "to_node_id": "underground_vault",
+      "name": "鐵柵門",
+      "is_locked": true,
+      "lock_dc": 15,
+      "break_dc": 18,
+      "distance_minutes": 1,
+      "elevation_change_m": 0
+    }
+  ]
+}

@@ -159,10 +159,47 @@
   - [ ] D-3: 測試 `test_cover_v2.py` — Prop 掩護判定/多重掩護取最大/投射物打掩護/物件摧毀後掩護消失
 - [ ] 2-B Step 6: 範圍法術 — AoE 判定（統一用 BoundingShape）+ 空間系統整合
 - [ ] 2-C: 休息機制 (rest.py)
-  - [ ] Step 1: 短休 — Hit Dice 恢復 HP、職業短休資源回復
-  - [ ] Step 2: 長休 — 全滿 HP、法術欄位回復、力竭降一級、Hit Dice 回復一半
+  - [x] Step 1: 短休 — Hit Dice 恢復 HP（自動分配版，2-X E-0.3 實作）
+  - [x] Step 2: 長休 — 全滿 HP、法術欄位回復、Hit Dice 回復一半（2-X E-0.3 實作）
   - [ ] Step 3: 與 conditions.py 整合（休息結束狀態的自動清除）
-  - [ ] Step 4: 單元測試 — test_rest.py
+  - [x] Step 4: 單元測試 — test_rest.py（11 tests）
+
+### 2-X: 探索 TUI
+> 里程碑：Pointcrawl 探索可用 TUI 測試（移動/搜索/物品/開門/休息）
+> 📄 設計文件：[`docs/exploration-design.md`](docs/exploration-design.md)
+- [x] E-0.1: bone_engine/checks.py — 技能/屬性檢定包裝（12 tests）
+- [x] E-0.2: NodeItem 模型 + exploration.py 擴充（物品搜索/拿取/POI/被動感知）
+- [x] E-0.3: bone_engine/rest.py — 短休/長休（2-C Steps 1-2 子集，11 tests）
+- [x] E-1.1: tui/exploration/ package + demo + explore.sh + wilderness_trail.json
+- [x] E-1.2: explore_map_widget.py — Pointcrawl 節點圖 Widget
+- [x] E-1.3: app.py + styles.tcss + explore_status.py
+- [x] E-2.1: explore_input.py 狀態機 + 移動指令
+- [x] E-2.2: 門互動 + 角色選擇 + 鑰匙
+- [x] E-2.3: 搜索指令（通道 + 物品）
+- [x] E-2.4: 查看 + 拿取 + POI + 休息
+- [x] E-3.1: status/map/help/load 指令
+- [x] E-3.2: docs/exploration-design.md + todo.md 延後功能文件化
+
+### 2-XA: Area 自由探索（Pointcrawl + Area 混合模式）
+> 里程碑：進入 Pointcrawl 節點後可自由移動、搜索物件、拾取物品
+> 📄 計畫文件：[`plans/parallel-nibbling-whale.md`](.claude-personal/plans/parallel-nibbling-whale.md)
+- [ ] Phase 1: 模型層擴展 — LootEntry + Prop 探索欄位 + AreaExploreState
+- [ ] Phase 2: bone_engine/area_explore.py — enter/exit/move/search/take/terrain
+- [ ] Phase 3: cave_explore.json 探索專用地圖（25×20m 洞穴）
+- [ ] Phase 4: TUI Area 模式 — BrailleMapCanvas 切換 + 座標移動 + XY 軸刻度
+- [ ] Phase 5: Prop 互動完整流程 — 搜索→發現→拾取→鑰匙開鎖
+- [ ] Phase 6: 地形效果 + tests/test_area_explore.py
+
+### 2-X 延後（探索進階）
+> 📄 設計文件：[`docs/exploration-design.md`](docs/exploration-design.md)
+- [ ] 光照與視覺（LightLevel + Darkvision 感知修正）
+- [ ] 行進隊形（MarchingOrder + 前衛/後衛機制）
+- [ ] 旅行速度（TravelPace + 感知/隱匿修正）
+- [ ] 隨機遭遇（danger_level 消費 + 遭遇表）
+- [ ] 陷阱機制（NodeTrap + Investigation/Thieves' Tools）
+- [ ] 時間壓力（火把/法術持續/NPC 行程）
+- [ ] 探索→戰鬥切換（遭遇判定 → CombatTUI）
+- [ ] 野外地形效果（困難地形/天氣/能見度）
 
 ### ④ TUI 渲染 + 介面整合
 > 📄 設計文件：[`docs/game-session-design.md`](docs/game-session-design.md)

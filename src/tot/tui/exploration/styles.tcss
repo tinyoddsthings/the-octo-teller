@@ -1,0 +1,23 @@
+Screen {
+    layout: vertical;
+}
+#explore-map {
+    height: auto;
+    max-height: 15;
+    border: round green;
+    padding: 0 1;
+}
+#explore-status {
+    height: auto;
+    max-height: 10;
+    border: round cyan;
+    padding: 0 1;
+}
+#explore-log {
+    height: 1fr;
+    border: round yellow;
+}
+#explore-input {
+    dock: bottom;
+    height: 3;
+}

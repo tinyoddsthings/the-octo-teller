@@ -28,6 +28,7 @@ from tot.models import (
     Condition,
     CoverType,
     DamageType,
+    GameClock,
     InitiativeEntry,
     MapState,
     Monster,
@@ -235,13 +236,18 @@ def start_combat(
     )
 
 
-def advance_turn(state: CombatState) -> CombatState:
+def advance_turn(
+    state: CombatState,
+    *,
+    game_clock: GameClock | None = None,
+) -> CombatState:
     """推進至下一回合。
 
     - 重置當前回合的 TurnState
     - 清除當前戰鬥者的 is_surprised
     - 重置當前戰鬥者的 reaction_used
     - 所有人都行動過後進入下一輪
+    - game_clock: 傳入時自動累加 1 回合（6 秒）到遊戲時鐘
     """
     if not state.is_active:
         return state
@@ -255,6 +261,9 @@ def advance_turn(state: CombatState) -> CombatState:
     if next_index >= len(state.initiative_order):
         next_index = 0
         state.round_number += 1
+        # 新一輪開始：累加 1 回合（6 秒）
+        if game_clock is not None:
+            game_clock.add_combat_round()
 
     state.current_turn_index = next_index
 

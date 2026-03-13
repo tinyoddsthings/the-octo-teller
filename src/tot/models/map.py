@@ -3,10 +3,22 @@
 from __future__ import annotations
 
 import math
-from typing import Literal
+from typing import Literal, Self
 from uuid import UUID
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
+
+from tot.models.enums import (
+    Ability,
+    Condition,
+    CoverType,
+    DamageType,
+    Fragility,
+    Material,
+    Size,
+    SurfaceTrigger,
+)
+from tot.models.shapes import BoundingShape
 
 
 class Position(BaseModel):
@@ -18,16 +30,27 @@ class Position(BaseModel):
 
     x: float = 0.0
     y: float = 0.0
+    z: float = 0.0  # 高度（公尺），高於地面
 
-    @field_validator("x", "y", mode="before")
+    @field_validator("x", "y", "z", mode="before")
     @classmethod
     def _round_to_cm(cls, v: float | int) -> float:
         """四捨五入到小數第二位（cm 精度）。"""
         return round(float(v), 2)
 
     def distance_to(self, other: Position) -> float:
-        """Euclidean 距離（公尺）。"""
+        """2D Euclidean 距離（公尺）。D&D 水平/垂直分開算。"""
         return math.sqrt((self.x - other.x) ** 2 + (self.y - other.y) ** 2)
+
+    def distance_3d(self, other: Position) -> float:
+        """3D Euclidean 距離（公尺）。"""
+        return math.sqrt(
+            (self.x - other.x) ** 2 + (self.y - other.y) ** 2 + (self.z - other.z) ** 2
+        )
+
+    def height_diff(self, other: Position) -> float:
+        """兩點高度差的絕對值（公尺）。"""
+        return abs(self.z - other.z)
 
 
 class Entity(BaseModel):
@@ -56,6 +79,27 @@ class Actor(Entity):
     combatant_type: Literal["character", "monster"]
     is_blocking: bool = True  # 生物預設阻擋通行
     is_alive: bool = True
+    size: Size = Size.MEDIUM
+    z: float = 0.0  # 高度（公尺）
+    bounds: BoundingShape | None = None
+
+    @model_validator(mode="after")
+    def _set_default_bounds(self) -> Self:
+        """bounds 未指定時，依 size 自動產生圓形碰撞區。"""
+        if self.bounds is None:
+            self.bounds = BoundingShape.from_size(self.size)
+        return self
+
+
+class LootEntry(BaseModel):
+    """Prop 內的可拾取物品。"""
+
+    item_id: str
+    name: str
+    description: str = ""
+    quantity: int = 1
+    value_gp: int = 0
+    grants_key: str | None = None  # 拿取後獲得鑰匙（開鎖用）
 
 
 class Prop(Entity):
@@ -78,6 +122,26 @@ class Prop(Entity):
     prop_type: str = "decoration"  # wall / door / trap / item / decoration
     hidden: bool = False  # 隱藏物件（未被發現的陷阱等）
     cover_bonus: int = 0  # 作為掩體的 AC 加值
+    # ── 可摧毀屬性 ──
+    material: Material | None = None  # None = 不可摧毀
+    fragility: Fragility = Fragility.RESILIENT
+    object_size: Size = Size.MEDIUM
+    hp_max: int = 0  # 0 = 不可摧毀
+    hp_current: int = 0
+    object_ac: int = 15
+    damage_immunities: list[DamageType] = Field(default_factory=list)
+    damage_threshold: int = 0
+    bounds: BoundingShape | None = None  # None = 沿用 _PROP_HALF AABB
+    # ── 探索互動屬性 ──
+    interactable: bool = False  # 可互動（搜索/開啟）
+    investigation_dc: int = 0  # 搜索 DC（0=明顯可見）
+    interact_message: str = ""  # 互動時顯示的訊息
+    is_searched: bool = False  # 已被搜索過
+    is_looted: bool = False  # 已被拾取過
+    loot_items: list[LootEntry] = Field(default_factory=list)
+    # ── 地形屬性 ──
+    terrain_type: str = ""  # hill / crevice / water / rubble
+    elevation_m: float = 0.0  # 地形高度（正=高地，負=低窪）
 
 
 class Wall(BaseModel):
@@ -110,6 +174,40 @@ class ZoneConnection(BaseModel):
     via: str = ""  # 對應 Prop.id（門、通道）
 
 
+class SurfaceEffect(BaseModel):
+    """地圖上的持續性區域效果（如油脂術、糾纏術、精靈之火）。"""
+
+    id: str
+    name: str
+    bounds: BoundingShape
+    center_x: float
+    center_y: float
+    center_z: float = 0.0
+    damage_dice: str = ""  # 例如 "2d4"
+    damage_type: DamageType | None = None
+    save_dc: int = 0
+    save_ability: Ability | None = None
+    save_half: bool = False  # 豁免成功是否半傷
+    applies_condition: Condition | None = None
+    is_difficult_terrain: bool = False
+    triggers: list[SurfaceTrigger] = Field(default_factory=lambda: [SurfaceTrigger.ENTER])
+    expires_at_second: int | None = None  # None = 永久
+    remaining_rounds: int | None = None  # 向後相容：尚未接入 GameClock 時使用
+    source_id: str | None = None  # 施放者 ID
+
+    def contains_point(self, x: float, y: float) -> bool:
+        """判斷點 (x, y) 是否在此效果範圍內。"""
+        return self.bounds.contains_point(self.center_x, self.center_y, x, y)
+
+
+class CoverResult(BaseModel):
+    """掩蔽計算結果。"""
+
+    cover_type: CoverType
+    cover_objects: list[str] = Field(default_factory=list)
+    primary_cover_id: str | None = None
+
+
 class MapManifest(BaseModel):
     """地圖靜態定義，從 JSON 載入。"""
 
@@ -130,6 +228,7 @@ class MapState(BaseModel):
     walls: list[Wall] = Field(default_factory=list)
     actors: list[Actor] = Field(default_factory=list)
     props: list[Prop] = Field(default_factory=list)  # 執行期動態追加的物件
+    surfaces: list[SurfaceEffect] = Field(default_factory=list)
 
     def get_actor(self, combatant_id: UUID) -> Actor | None:
         """以 combatant_id 查詢 Actor。"""

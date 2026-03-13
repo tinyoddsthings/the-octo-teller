@@ -42,7 +42,8 @@ class ActiveCondition(BaseModel):
 
     condition: Condition
     source: str = ""
-    remaining_rounds: int | None = None  # None = 無限期 / 直到被移除
+    expires_at_second: int | None = None  # None = 無限期 / 直到被移除
+    remaining_rounds: int | None = None  # 向後相容：尚未接入 GameClock 時使用
     exhaustion_level: int = 0  # 僅用於力竭（1-6 級）
 
 

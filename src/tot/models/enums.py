@@ -208,6 +208,90 @@ class AoeShape(StrEnum):
     CUBE = "cube"  # 方形，如雷鳴波
 
 
+class ShapeType(StrEnum):
+    """BoundingShape 幾何形狀類型。"""
+
+    CIRCLE = "circle"
+    RECTANGLE = "rectangle"
+    CONE = "cone"
+    LINE = "line"
+    CYLINDER = "cylinder"
+
+
+class Material(StrEnum):
+    """D&D 2024 DMG 物件材質。"""
+
+    CLOTH = "Cloth"
+    PAPER = "Paper"
+    ROPE = "Rope"
+    CRYSTAL = "Crystal"
+    GLASS = "Glass"
+    ICE = "Ice"
+    WOOD = "Wood"
+    BONE = "Bone"
+    STONE = "Stone"
+    IRON = "Iron"
+    STEEL = "Steel"
+    MITHRAL = "Mithral"
+    ADAMANTINE = "Adamantine"
+
+
+class Fragility(StrEnum):
+    """物件堅固程度（影響 HP 倍率）。"""
+
+    FRAGILE = "Fragile"  # ×1
+    RESILIENT = "Resilient"  # ×2
+
+
+class SurfaceTrigger(StrEnum):
+    """SurfaceEffect 觸發時機。"""
+
+    ENTER = "enter"  # 進入時
+    STAY = "stay"  # 回合開始仍在範圍內
+    LEAVE = "leave"  # 離開時
+
+
+class TileType(StrEnum):
+    """地格類型。"""
+
+    FLOOR = "floor"
+    WALL = "wall"
+
+
+# 材質 → AC（D&D 2024 DMG）
+MATERIAL_AC: dict[Material, int] = {
+    Material.CLOTH: 11,
+    Material.PAPER: 11,
+    Material.ROPE: 11,
+    Material.CRYSTAL: 13,
+    Material.GLASS: 13,
+    Material.ICE: 13,
+    Material.WOOD: 15,
+    Material.BONE: 15,
+    Material.STONE: 17,
+    Material.IRON: 19,
+    Material.STEEL: 19,
+    Material.MITHRAL: 21,
+    Material.ADAMANTINE: 23,
+}
+
+# 堅固程度 → HP 倍率
+FRAGILITY_HP_MULTIPLIER: dict[Fragility, int] = {
+    Fragility.FRAGILE: 1,
+    Fragility.RESILIENT: 2,
+}
+
+# 體型 → 物件 HP 骰（D&D 2024 DMG）
+OBJECT_HP_DICE: dict[Size, str] = {
+    Size.TINY: "1d4",
+    Size.SMALL: "1d6",
+    Size.MEDIUM: "1d8",
+    Size.LARGE: "2d6",
+    Size.HUGE: "3d6",
+    Size.GARGANTUAN: "5d6",
+}
+
+
 class WeaponProperty(StrEnum):
     AMMUNITION = "Ammunition"
     FINESSE = "Finesse"

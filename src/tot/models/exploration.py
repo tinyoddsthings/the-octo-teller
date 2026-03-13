@@ -7,7 +7,8 @@ from uuid import UUID
 from pydantic import BaseModel, Field
 
 from tot.models.enums import EncounterType, MapScale, NodeType
-from tot.models.map import MapState, Position
+from tot.models.map import LootEntry, MapState, Position
+from tot.models.time import GameClock
 
 
 class EncounterResult(BaseModel):
@@ -28,6 +29,20 @@ class DeploymentState(BaseModel):
     placements: dict[str, Position] = Field(default_factory=dict)
     encounter: EncounterResult
     is_confirmed: bool = False
+
+
+class NodeItem(BaseModel):
+    """節點內的可發現物品。"""
+
+    id: str
+    name: str
+    description: str = ""
+    item_type: str = "item"  # item / clue / chest / trap_hint
+    investigation_dc: int = 0  # 0 = 明顯可見，>0 需主動搜索
+    is_discovered: bool = False  # 是否已被發現
+    is_taken: bool = False  # 是否已被拿取
+    value_gp: int = 0  # 金幣價值
+    grants_key: str | None = None  # 拿取後獲得鑰匙 id（可開鎖用）
 
 
 class ExplorationNode(BaseModel):
@@ -51,6 +66,12 @@ class ExplorationNode(BaseModel):
     # 敘事用
     ambient: str = ""  # 環境氛圍描述（聲音、氣味…）
     npcs: list[str] = Field(default_factory=list)  # 此處可遇到的 NPC id
+
+    # 可發現物品
+    hidden_items: list[NodeItem] = Field(default_factory=list)
+
+    # 海拔（公尺）——顯示用，正值=高處
+    elevation_m: float = 0
 
 
 class ExplorationEdge(BaseModel):
@@ -76,6 +97,12 @@ class ExplorationEdge(BaseModel):
     distance_minutes: int = 0  # 移動分鐘數（地城圖層）
     danger_level: int = 0  # 危險等級 1-10（影響隨機遭遇）
     terrain_type: str = ""  # 地形（swamp/forest/mountain…）
+
+    # 高低地 / 跳躍
+    elevation_change_m: float = 0  # 高度差：正=上升、負=下降
+    requires_jump: bool = False  # 是否需要 Athletics 跳躍檢定
+    jump_dc: int = 0  # 跳躍 DC
+    fall_damage_on_fail: bool = False  # 失敗時是否墜落受傷（仍到達目的地）
 
     # 狀態
     is_blocked: bool = False  # 坍塌、封鎖等
@@ -106,9 +133,30 @@ class ExplorationState(BaseModel):
 
     current_map_id: str  # 目前所在的 ExplorationMap
     current_node_id: str  # 目前所在的節點
-    elapsed_minutes: int = 0  # 場景經過時間
+    game_clock: GameClock = Field(default_factory=GameClock)
     discovered_nodes: set[str] = Field(default_factory=set)
     discovered_edges: set[str] = Field(default_factory=set)
 
     # 子地圖堆疊：從世界→地城→房間，像 call stack
     map_stack: list[MapStackEntry] = Field(default_factory=list)
+
+    @property
+    def elapsed_minutes(self) -> int:
+        """向後相容：回傳經過的分鐘數。"""
+        return self.game_clock.elapsed_seconds // 60
+
+
+class AreaExploreState(BaseModel):
+    """Area 自由探索的即時狀態。
+
+    進入 Pointcrawl 節點的 area 地圖後啟用，
+    追蹤隊伍位置、移動速度、已發現/拾取的物件。
+    """
+
+    map_state: MapState
+    party_actor_id: str  # 隊伍 Actor 的 id
+    speed_per_turn: float = 9.0  # 每回合移動速度（公尺）
+    speed_remaining: float = 9.0  # 剩餘移動速度
+    discovered_props: set[str] = Field(default_factory=set)  # 已發現的隱藏 Prop id
+    looted_props: set[str] = Field(default_factory=set)  # 已拾取的 Prop id
+    collected_items: list[LootEntry] = Field(default_factory=list)  # 已收集物品

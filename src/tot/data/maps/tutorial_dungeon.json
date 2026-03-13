@@ -10,14 +10,40 @@
       "node_type": "room",
       "description": "潮濕的石造大廳，火把在牆上搖曳。地面鋪著破碎的石板，空氣中瀰漫著霉味。",
       "combat_map": "tutorial_room",
-      "ambient": "水滴聲迴盪在石壁之間，遠處傳來微弱的金屬碰撞聲"
+      "ambient": "水滴聲迴盪在石壁之間，遠處傳來微弱的金屬碰撞聲",
+      "hidden_items": [
+        {
+          "id": "wall_torch",
+          "name": "牆上火把",
+          "description": "搖曳的火把照亮了大廳，看起來最近才被更換過。",
+          "item_type": "item",
+          "investigation_dc": 0
+        },
+        {
+          "id": "rusty_key",
+          "name": "生鏽鑰匙",
+          "description": "藏在破碎石板下方的一把生鏽鑰匙，似乎可以打開某扇鐵門。",
+          "item_type": "item",
+          "investigation_dc": 12,
+          "grants_key": "rusty_key"
+        }
+      ]
     },
     {
       "id": "corridor_1",
       "name": "陰暗走廊",
       "node_type": "corridor",
       "description": "狹窄的走廊，地面有拖曳的痕跡。牆壁上刻著古老的符文，大部分已經模糊不清。",
-      "ambient": "腳步聲在走廊中回響，偶爾傳來老鼠竄動的聲音"
+      "ambient": "腳步聲在走廊中回響，偶爾傳來老鼠竄動的聲音",
+      "hidden_items": [
+        {
+          "id": "rune_fragment",
+          "name": "符文碎片",
+          "description": "一塊刻有古老符文的碎石片，記載了某種封印咒語的片段。",
+          "item_type": "clue",
+          "investigation_dc": 14
+        }
+      ]
     },
     {
       "id": "guard_room",
@@ -25,7 +51,24 @@
       "node_type": "room",
       "description": "破舊的桌椅散落，牆角有武器架。看起來很久沒有人使用了，但桌上的食物殘渣似乎還很新鮮。",
       "ambient": "武器架上的鏽蝕長劍在微風中輕輕搖晃",
-      "npcs": ["goblin_guard_a", "goblin_guard_b"]
+      "npcs": ["goblin_guard_a", "goblin_guard_b"],
+      "hidden_items": [
+        {
+          "id": "weapon_rack",
+          "name": "武器架",
+          "description": "牆角的武器架上掛著幾把生鏽的長劍和一面破盾。",
+          "item_type": "item",
+          "investigation_dc": 0
+        },
+        {
+          "id": "hidden_pouch",
+          "name": "桌下皮包",
+          "description": "桌子底部黏著一個小皮包，裡面裝著幾枚金幣。",
+          "item_type": "item",
+          "investigation_dc": 10,
+          "value_gp": 15
+        }
+      ]
     }
   ],
   "edges": [
@@ -43,6 +86,7 @@
       "name": "鏽蝕鐵門",
       "is_locked": true,
       "lock_dc": 12,
+      "key_item": "rusty_key",
       "break_dc": 15,
       "distance_minutes": 1
     },

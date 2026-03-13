@@ -27,7 +27,16 @@ from tot.gremlins.bone_engine.combat import (
 )
 from tot.gremlins.bone_engine.conditions import can_take_action, tick_conditions_end_of_turn
 from tot.gremlins.bone_engine.spells import can_cast
-from tot.models import Character, Combatant, CombatState, Condition, MapState, Monster, Spell
+from tot.models import (
+    Character,
+    Combatant,
+    CombatState,
+    Condition,
+    GameClock,
+    MapState,
+    Monster,
+    Spell,
+)
 from tot.tui.actions import (
     execute_attack,
     player_attack,
@@ -57,7 +66,7 @@ class CombatTUI(App):
     CSS_PATH = "styles.tcss"
     TITLE = "T.O.T. 戰鬥系統"
 
-    def __init__(self) -> None:
+    def __init__(self, *, game_clock: GameClock | None = None) -> None:
         super().__init__()
         self.characters: list[Character] = []
         self.monsters: list[Monster] = []
@@ -68,6 +77,8 @@ class CombatTUI(App):
         self._input_handler = InputHandler()
         # log_manager 在 compose 後初始化
         self._log: LogManager | None = None
+        # 遊戲時鐘（從探索系統傳入，戰鬥中暫停探索計時）
+        self._game_clock: GameClock | None = game_clock
 
     def compose(self) -> ComposeResult:
         yield BrailleMapCanvas(id="map-panel")
@@ -91,6 +102,10 @@ class CombatTUI(App):
             self._combatant_map[c.id] = c
         for m in self.monsters:
             self._combatant_map[m.id] = m
+
+        # 戰鬥開始：暫停探索計時
+        if self._game_clock is not None:
+            self._game_clock.pause_exploration()
 
         self._log.log("[bold green]⚔️  戰鬥開始！[/]")
         self._log.log_initiative(self.combat_state, self._combatant_map)
@@ -582,7 +597,7 @@ class CombatTUI(App):
             for ac in expired:
                 self._log.log(f"[dim]{display_name(current)} 的 {ac.condition.value} 效果結束。[/]")
 
-        advance_turn(self.combat_state)
+        advance_turn(self.combat_state, game_clock=self._game_clock)
         self._refresh_all()
 
         await self._start_next_turn()
@@ -627,7 +642,7 @@ class CombatTUI(App):
         expired = tick_conditions_end_of_turn(current)
         for ac in expired:
             self._log.log(f"[dim]{display_name(current)} 的 {ac.condition.value} 效果結束。[/]")
-        advance_turn(self.combat_state)
+        advance_turn(self.combat_state, game_clock=self._game_clock)
         self._refresh_all()
 
         if await self._check_combat_end():
@@ -683,6 +698,9 @@ class CombatTUI(App):
         if all_monsters_dead:
             self.combat_state.is_active = False
             self._input_handler.phase = MenuPhase.LOCKED
+            # 戰鬥結束：恢復探索計時
+            if self._game_clock is not None:
+                self._game_clock.start_exploration()
             total_xp = sum(m.xp_reward for m in self.monsters)
             self._log.log("\n[bold green]🎉 勝利！所有敵人被擊敗！[/]")
             self._log.log(f"[green]獲得經驗值：{total_xp} XP[/]")
@@ -692,6 +710,9 @@ class CombatTUI(App):
         if all_pcs_down:
             self.combat_state.is_active = False
             self._input_handler.phase = MenuPhase.LOCKED
+            # 戰鬥結束：恢復探索計時
+            if self._game_clock is not None:
+                self._game_clock.start_exploration()
             self._log.log("\n[bold red]💀 全滅…全體隊員倒下了。[/]")
             self._refresh_all()
             return True
