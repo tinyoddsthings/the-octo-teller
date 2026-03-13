@@ -16,7 +16,6 @@ from tot.models import (
     Monster,
     Position,
 )
-from tot.tui.canvas import render_braille_map
 
 # ---------------------------------------------------------------------------
 # Log 事件資料結構
@@ -150,6 +149,11 @@ class CombatLogger:
 
     def log_map_snapshot(self, map_state: MapState) -> None:
         """用 Braille 渲染器產生地圖快照。"""
+        try:
+            from tot.tui.canvas import render_braille_map
+        except ImportError:
+            self._log.map_snapshots[self._current_round] = "(drawille not installed)"
+            return
         rendered = render_braille_map(map_state, {}, w=60, h=20)
         self._log.map_snapshots[self._current_round] = rendered
 
