@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import pytest
 
-from tot.tui.canvas import AoeOverlay, BrailleMapCanvas
+drawille = pytest.importorskip("drawille", reason="drawille not installed")
+
+from tot.tui.canvas import AoeOverlay, BrailleMapCanvas  # noqa: E402
 
 
 @pytest.fixture
