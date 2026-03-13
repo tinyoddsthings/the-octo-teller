@@ -1442,6 +1442,8 @@ def move_entity(
 
 ## 8. Phase D：掩護系統強化
 
+> ⚠️ D-1 演算法已更新為 Corner-Ray 模型，詳見 [`spatial-combat-design.md`](spatial-combat-design.md) §2（ADR-1）
+
 **相依：Phase A 模型 + 材質系統**
 
 ### D-1：spatial.py 加射線掩護（+~90 行）

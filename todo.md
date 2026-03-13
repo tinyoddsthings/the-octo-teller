@@ -114,6 +114,7 @@
 ### ① 基礎物理引擎 + 幾何系統
 > 📄 設計文件：[`docs/bone-engine-v2-design.md`](docs/bone-engine-v2-design.md) §4~§5
 
+- [ ] `move_entity()` 強制位移路徑檢測 — `forced=True` 時用 Liang-Barsky 掃描路徑，碰牆停在牆前 📄 [`docs/spatial-combat-design.md`](docs/spatial-combat-design.md) §4 ADR-2.5
 - [ ] 2-V A-3: 資料模型擴充 `models.py` — Position.z + TerrainTile.height_m + Actor.size/z/bounds + Material/Fragility 列舉 + Prop 可摧毀欄位+bounds + ShapeType（5種：CIRCLE/RECTANGLE/CONE/LINE/CYLINDER）+ BoundingShape（含方向欄位 direction_deg/angle_deg/length_m/height_m + intersects_line）+ SurfaceEffect（改用 bounds）+ MapState.surfaces + CoverResult
 - [ ] 2-V A-4: 材質系統 `bone_engine/materials.py` — MATERIAL_AC 查表 + roll_object_hp + apply_object_damage
 - [ ] 2-V A-5 (partial): `test_materials.py`（AC/HP/傷害/摧毀）
@@ -154,7 +155,8 @@
   - [ ] B-1: `bone_engine/surfaces.py` — check_surface_enter/leave + resolve_surface_effect + tick_surfaces_round_start
   - [ ] B-2: 測試 `test_surfaces.py` — 進入/離開幾何判定、傷害骰+豁免、持續回合遞減+過期
 - [ ] 2-V Phase D: 掩護系統強化
-  - [ ] D-1: spatial.py 統一掩護 API — determine_cover_from_grid() 改名為 determine_cover()，回傳 CoverResult（含掩護物件清單），整合 Bresenham + Prop 掩護 + 可摧毀狀態；test_spatial.py 2 處呼叫改用 .cover_type
+  - [ ] D-0: pathfinding.py docstring 補充 — `find_path_to_range()` 加呼叫者須先透過 `build_actor_lists()` 的提示 📄 [`docs/spatial-combat-design.md`](docs/spatial-combat-design.md) §3 ADR-2
+  - [ ] D-1: spatial.py `determine_cover()` 重寫為 **Corner-Ray 演算法**（攻擊者 4 角→目標 4 角 = 16 射線），回傳 CoverResult（含掩護物件清單），整合 Prop 掩護 + 可摧毀狀態 📄 [`docs/spatial-combat-design.md`](docs/spatial-combat-design.md) §2 ADR-1
   - [ ] D-2: combat.py 加投射物打掩護 — resolve_projectile_vs_cover()
   - [ ] D-3: 測試 `test_cover_v2.py` — Prop 掩護判定/多重掩護取最大/投射物打掩護/物件摧毀後掩護消失
 - [ ] 2-B Step 6: 範圍法術 — AoE 判定（統一用 BoundingShape）+ 空間系統整合
@@ -258,6 +260,11 @@
 ### 2-E: Phase 1 已完成模組的測試補齊（剩餘項目已併入跨階段測試）
 - [x] conftest.py — 共用 fixtures（std_fighter/wizard/cleric + goblin/skeleton/ogre + rng42）
 - [x] test_dice.py — 表達式解析/擲骰/優劣勢/kh/kl/便利函式（39 tests）
+
+### 低優先備忘（空間幾何 ADR）
+> 📄 完整分析：[`docs/spatial-combat-design.md`](docs/spatial-combat-design.md)
+- [ ] Braille 長寬比驗證 — 目視確認 3m×3m 正方形房間渲染為正方形（📄 §5 ADR-3）
+- [x] 距離計算哲學文件化 — 維持純歐氏距離，UI 層做 5 呎 snap 顯示（📄 §6 ADR-4）
 
 ## Phase 3: 怪物 AI + 升級系統
 > 里程碑：怪物有智慧行為、角色可升級（純確定性，屬 Bone Engine）
