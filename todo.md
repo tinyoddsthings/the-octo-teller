@@ -196,10 +196,10 @@
 - [x] **Phase 1a**: 新建 `src/tot/data/prop_defs/`（structural / interactive / terrain prefab）
 - [x] **Phase 1b**: `loader.py` 新增 `_expand_props()` — prefab 展開邏輯
 - [x] **Phase 1c**: `cave_explore.json` / `tutorial_room.json` — props 改用 prefab，移除 symbol
-- [ ] **Phase 2a**: 新建 `src/tot/tui/render_buffer.py`（RenderLayer / TextureType / RenderItem / RenderBuffer）
-- [ ] **Phase 2b**: `canvas.py` — 改用 RenderBuffer 驅動渲染，新增 _fill_circle / _outline_circle
-- [ ] **Phase 2c**: `app.py` — `_refresh_map()` 改建 RenderBuffer 傳給 canvas
-- [ ] **Phase 2d**: `geometry.py` — `extract_static_obstacles()` 改用 prop.bounds 計算 AABB
+- [x] **Phase 2a**: 新建 `src/tot/tui/render_buffer.py`（RenderLayer / TextureType / RenderItem / RenderBuffer）
+- [x] **Phase 2b**: `canvas.py` — 改用 RenderBuffer 驅動渲染，新增 _fill_circle / _outline_circle
+- [x] **Phase 2c**: `app.py` — `_refresh_map()` 改建 RenderBuffer 傳給 canvas
+- [x] **Phase 2d**: `geometry.py` — `extract_static_obstacles()` 改用 prop.bounds 計算 AABB
 - [ ] **Phase 3**: `render_braille_map()` / `render_to_plain()` 改用 RenderBuffer
 - [ ] **Phase 4**: 新增 `tests/test_prop_prefab.py` / `tests/test_render_buffer.py`；全測試通過
 

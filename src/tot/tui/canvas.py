@@ -22,6 +22,7 @@ from textual.reactive import reactive
 from textual.widget import Widget
 
 from tot.models import Actor, Character, Combatant, MapState, Monster
+from tot.tui.render_buffer import RenderBuffer, RenderItem, TextureType
 
 # ---------------------------------------------------------------------------
 # AoE 覆蓋資料
@@ -113,6 +114,7 @@ class BrailleMapCanvas(Widget):
     map_state: reactive[MapState | None] = reactive(None)
     combatant_map: reactive[dict[UUID, Combatant]] = reactive(dict)
     aoe_overlay: reactive[AoeOverlay | None] = reactive(None)
+    render_buffer: reactive[RenderBuffer | None] = reactive(None)
 
     DEFAULT_CSS = """
     BrailleMapCanvas {
@@ -200,22 +202,36 @@ class BrailleMapCanvas(Widget):
         scale: float,
         canvas_h: int,
     ) -> None:
-        """繪製 Props——blocking 填滿、非 blocking 畫外框（公尺座標）。"""
+        """繪製 Props——依 bounds 形狀決定繪製方式（公尺座標）。"""
+        from tot.models.enums import ShapeType
+
         all_props = [*ms.manifest.props, *ms.props]
         for prop in all_props:
             if prop.hidden:
                 continue
-            # prop 佔據以其座標為中心的 1.5×1.5m 區域
-            half = 0.75
-            x0 = prop.x - half
-            y0 = prop.y - half
-            x1 = prop.x + half
-            y1 = prop.y + half
 
-            if prop.is_blocking:
-                self._fill_rect(canvas, x0, y0, x1, y1, scale, canvas_h)
+            bounds = prop.bounds
+            if bounds is not None and bounds.shape_type == ShapeType.CIRCLE:
+                # 圓形 bounds
+                if prop.is_blocking:
+                    self._fill_circle(canvas, prop.x, prop.y, bounds.radius_m, scale, canvas_h)
+                else:
+                    self._outline_circle(canvas, prop.x, prop.y, bounds.radius_m, scale, canvas_h)
             else:
-                self._outline_rect(canvas, x0, y0, x1, y1, scale, canvas_h)
+                # 矩形 bounds 或 fallback
+                if bounds is not None and bounds.shape_type == ShapeType.RECTANGLE:
+                    hw, hh = bounds.half_width_m, bounds.half_height_m
+                else:
+                    hw, hh = 0.75, 0.75  # 預設 1.5×1.5m
+                x0 = prop.x - hw
+                y0 = prop.y - hh
+                x1 = prop.x + hw
+                y1 = prop.y + hh
+
+                if prop.is_blocking:
+                    self._fill_rect(canvas, x0, y0, x1, y1, scale, canvas_h)
+                else:
+                    self._outline_rect(canvas, x0, y0, x1, y1, scale, canvas_h)
 
     def _fill_rect(
         self,
@@ -262,6 +278,44 @@ class BrailleMapCanvas(Widget):
                 if px >= 0 and py >= 0:
                     canvas.set(px, py)
 
+    def _fill_circle(
+        self,
+        canvas: Canvas,
+        cx: float,
+        cy: float,
+        radius_m: float,
+        scale: float,
+        canvas_h: int,
+    ) -> None:
+        """填滿圓形區域（公尺座標）。"""
+        r_px = int(radius_m * scale)
+        center_px, center_py = self._meter_to_px(cx, cy, scale, canvas_h)
+        for dx in range(-r_px, r_px + 1):
+            for dy in range(-r_px, r_px + 1):
+                if dx * dx + dy * dy <= r_px * r_px:
+                    px, py = center_px + dx, center_py + dy
+                    if px >= 0 and py >= 0:
+                        canvas.set(px, py)
+
+    def _outline_circle(
+        self,
+        canvas: Canvas,
+        cx: float,
+        cy: float,
+        radius_m: float,
+        scale: float,
+        canvas_h: int,
+    ) -> None:
+        """畫圓形外框（公尺座標）。"""
+        steps = max(24, int(radius_m * scale * 2 * math.pi))
+        for i in range(steps):
+            angle = 2 * math.pi * i / steps
+            mx = cx + radius_m * math.cos(angle)
+            my = cy + radius_m * math.sin(angle)
+            px, py = self._meter_to_px(mx, my, scale, canvas_h)
+            if px >= 0 and py >= 0:
+                canvas.set(px, py)
+
     def _draw_walls(
         self,
         canvas: Canvas,
@@ -298,6 +352,55 @@ class BrailleMapCanvas(Widget):
             px, py = cx + dx, cy + dy
             if px >= 0 and py >= 0:
                 canvas.set(px, py)
+
+    # ----- RenderBuffer 驅動繪製 -----
+
+    def _draw_render_item(
+        self,
+        canvas: Canvas,
+        item: RenderItem,
+        scale: float,
+        canvas_h: int,
+    ) -> None:
+        """依 RenderItem 的 texture 分派到對應繪製方法。"""
+        from tot.models.enums import ShapeType
+
+        cx, cy = item.center_x, item.center_y
+        b = item.bounds
+
+        match item.texture:
+            case TextureType.FILL:
+                hw = b.half_width_m if b.shape_type == ShapeType.RECTANGLE else 0.75
+                hh = b.half_height_m if b.shape_type == ShapeType.RECTANGLE else 0.75
+                self._fill_rect(canvas, cx - hw, cy - hh, cx + hw, cy + hh, scale, canvas_h)
+            case TextureType.OUTLINE:
+                hw = b.half_width_m if b.shape_type == ShapeType.RECTANGLE else 0.75
+                hh = b.half_height_m if b.shape_type == ShapeType.RECTANGLE else 0.75
+                self._outline_rect(canvas, cx - hw, cy - hh, cx + hw, cy + hh, scale, canvas_h)
+            case TextureType.CIRCLE_FILL:
+                self._fill_circle(canvas, cx, cy, b.radius_m, scale, canvas_h)
+            case TextureType.CIRCLE_OUTLINE:
+                self._outline_circle(canvas, cx, cy, b.radius_m, scale, canvas_h)
+            case TextureType.ACTOR_CIRCLE:
+                pcx, pcy = self._meter_to_px(cx, cy, scale, canvas_h)
+                for dx, dy in _CIRCLE_OFFSETS:
+                    px, py = pcx + dx, pcy + dy
+                    if px >= 0 and py >= 0:
+                        canvas.set(px, py)
+            case TextureType.ACTOR_DIAMOND:
+                pcx, pcy = self._meter_to_px(cx, cy, scale, canvas_h)
+                for dx, dy in _DIAMOND_OFFSETS:
+                    px, py = pcx + dx, pcy + dy
+                    if px >= 0 and py >= 0:
+                        canvas.set(px, py)
+            case TextureType.ACTOR_X:
+                pcx, pcy = self._meter_to_px(cx, cy, scale, canvas_h)
+                for dx, dy in _X_OFFSETS:
+                    px, py = pcx + dx, pcy + dy
+                    if px >= 0 and py >= 0:
+                        canvas.set(px, py)
+            case TextureType.SPARSE:
+                pass  # AoE 由既有 _draw_aoe 處理
 
     # ----- AoE 覆蓋繪製 -----
 
@@ -640,18 +743,19 @@ class BrailleMapCanvas(Widget):
         # 1. 刻度線
         self._draw_scale_lines(canvas, world_w, world_h, scale, canvas_h, interval)
 
-        # 2. 牆壁（Wall AABBs）
-        self._draw_walls(canvas, ms, scale, canvas_h)
-
-        # 3. Props（blocking=填滿，non-blocking=外框）
-        self._draw_props(canvas, ms, scale, canvas_h)
-
-        # 4. 角色形狀
+        # 2-4. 牆壁 / Props / 角色：優先用 RenderBuffer，否則 fallback
         cmap = self.combatant_map
-        for actor in ms.actors:
-            self._draw_actor_shape(canvas, actor, scale, canvas_h, cmap)
+        buf = self.render_buffer
+        if buf and buf.items:
+            for item in buf.items:
+                self._draw_render_item(canvas, item, scale, canvas_h)
+        else:
+            self._draw_walls(canvas, ms, scale, canvas_h)
+            self._draw_props(canvas, ms, scale, canvas_h)
+            for actor in ms.actors:
+                self._draw_actor_shape(canvas, actor, scale, canvas_h, cmap)
 
-        # 5. AoE 覆蓋
+        # 5. AoE 覆蓋（仍由專用方法處理）
         if self.aoe_overlay:
             self._draw_aoe(canvas, self.aoe_overlay, scale, canvas_h)
 
