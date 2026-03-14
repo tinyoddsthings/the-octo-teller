@@ -222,7 +222,7 @@ class BrailleMapCanvas(Widget):
                 if bounds is not None and bounds.shape_type == ShapeType.RECTANGLE:
                     hw, hh = bounds.half_width_m, bounds.half_height_m
                 else:
-                    hw, hh = 0.75, 0.75  # 預設 1.5×1.5m
+                    hw, hh = 0.75, 0.75  # 無 bounds 時 fallback 1.5×1.5m
                 x0 = prop.x - hw
                 y0 = prop.y - hh
                 x1 = prop.x + hw
@@ -886,6 +886,7 @@ def render_braille_map(
 ) -> str:
     """渲染 drawille 地圖為純文字字串（含座標軸）。
 
+    透過 RenderBuffer 統一牆壁/Props/角色的繪製路徑。
     用於 log 檔快照等不需要 Textual 的場景。
     標籤嵌入純文字（無 Rich markup / 顏色）。
     """
@@ -911,15 +912,11 @@ def render_braille_map(
     # 刻度線
     renderer._draw_scale_lines(canvas, world_w, world_h, scale, canvas_h, interval)
 
-    # 牆壁
-    renderer._draw_walls(canvas, map_state, scale, canvas_h)
-
-    # Props
-    renderer._draw_props(canvas, map_state, scale, canvas_h)
-
-    # 角色形狀
-    for actor in map_state.actors:
-        renderer._draw_actor_shape(canvas, actor, scale, canvas_h, combatant_map)
+    # 牆壁 / Props / 角色：透過 RenderBuffer 統一繪製
+    buf = RenderBuffer(world_w, world_h)
+    buf.build(map_state, combatant_map)
+    for item in buf.items:
+        renderer._draw_render_item(canvas, item, scale, canvas_h)
 
     # 取得 braille frame
     frame = canvas.frame()

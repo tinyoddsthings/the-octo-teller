@@ -200,8 +200,8 @@
 - [x] **Phase 2b**: `canvas.py` — 改用 RenderBuffer 驅動渲染，新增 _fill_circle / _outline_circle
 - [x] **Phase 2c**: `app.py` — `_refresh_map()` 改建 RenderBuffer 傳給 canvas
 - [x] **Phase 2d**: `geometry.py` — `extract_static_obstacles()` 改用 prop.bounds 計算 AABB
-- [ ] **Phase 3**: `render_braille_map()` / `render_to_plain()` 改用 RenderBuffer
-- [ ] **Phase 4**: 新增 `tests/test_prop_prefab.py` / `tests/test_render_buffer.py`；全測試通過
+- [x] **Phase 3**: `render_braille_map()` / `render_to_plain()` 改用 RenderBuffer
+- [x] **Phase 4**: 新增 `tests/test_prop_prefab.py`（14 tests）/ `tests/test_render_buffer.py`（17 tests）；全測試通過
 
 ### 2-XA: Area 自由探索（Pointcrawl + Area 混合模式）
 > 里程碑：進入 Pointcrawl 節點後可自由移動、搜索物件、拾取物品
