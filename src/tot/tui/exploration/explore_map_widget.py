@@ -87,6 +87,7 @@ class ExploreMapWidget(Static):
                 elev, group, visible_edges, exp_map, visible_node_ids
             ):
                 lines.append(f"  {note}")
+            lines.append("")  # 行距補償（iTerm2 零行距模式）
 
         return "\n".join(lines)
 

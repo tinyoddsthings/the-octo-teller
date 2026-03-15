@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from tot.models import MapState
+from tot.models import MapState, Prop
 
 
 @dataclass(slots=True)
@@ -86,7 +86,15 @@ def inflate_aabb(aabb: AABB, radius: float) -> AABB:
     )
 
 
-_PROP_HALF: float = 0.75  # blocking prop 的碰撞半徑（1.5m 物件的一半）
+_PROP_HALF: float = 0.75  # 無 bounds 時的 fallback（1.5m 物件的一半）
+
+
+def _prop_to_aabb(p: Prop) -> AABB:
+    """從 Prop 的 bounds 計算 AABB，無 bounds 時 fallback 1.5×1.5m。"""
+    if p.bounds is not None:
+        min_x, min_y, max_x, max_y = p.bounds.to_aabb(p.x, p.y)
+        return AABB(min_x, min_y, max_x, max_y)
+    return AABB(p.x - _PROP_HALF, p.y - _PROP_HALF, p.x + _PROP_HALF, p.y + _PROP_HALF)
 
 
 def extract_static_obstacles(map_state: MapState) -> list[AABB]:
@@ -94,7 +102,7 @@ def extract_static_obstacles(map_state: MapState) -> list[AABB]:
 
     包含：
     - Wall AABB（manifest.walls 和 map_state.walls）
-    - is_blocking 的 manifest Props（牆壁等靜態物）
+    - is_blocking 的 manifest Props（牆壁等靜態物，用 bounds 計算 AABB）
     - is_blocking 的 runtime Props（動態放置的物件）
     不含 Actor（Actor 是動態的，由 pathfinding 層另外處理）。
     """
@@ -108,15 +116,11 @@ def extract_static_obstacles(map_state: MapState) -> list[AABB]:
 
     for p in m.props:
         if p.is_blocking:
-            obstacles.append(
-                AABB(p.x - _PROP_HALF, p.y - _PROP_HALF, p.x + _PROP_HALF, p.y + _PROP_HALF)
-            )
+            obstacles.append(_prop_to_aabb(p))
 
     for p in map_state.props:
         if p.is_blocking:
-            obstacles.append(
-                AABB(p.x - _PROP_HALF, p.y - _PROP_HALF, p.x + _PROP_HALF, p.y + _PROP_HALF)
-            )
+            obstacles.append(_prop_to_aabb(p))
 
     return _deduplicate_aabbs(obstacles)
 

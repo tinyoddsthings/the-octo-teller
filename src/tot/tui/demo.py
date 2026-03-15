@@ -1,7 +1,7 @@
 """Demo 場景初始化——3 PC vs 蟲巢首領 + 2 大地精，tutorial_room 地圖。
 
 玩家只操控陶德（Wizard），Aldric/Branwen 由 AI 接管。
-每個角色和怪物都有獨立 emoji。
+角色/怪物以幾何標記（圓形/菱形）渲染於 Braille 地圖上。
 總 XP 400（調整後 600），Medium-Hard 遭遇。
 """
 
