@@ -17,7 +17,7 @@ from rich.text import Text
 from textual.reactive import reactive
 from textual.widget import Widget
 
-from tot.models.map import Actor, MapState, Prop
+from tot.models.map import MapState, Prop
 from tot.tui.render_buffer import RenderBuffer, RenderItem, RenderLayer
 from tot.tui.tiles import (
     CELL_SIZE_M,
@@ -25,7 +25,7 @@ from tot.tui.tiles import (
     TERRAIN_TILES,
     WALL_TILE,
     TileVisual,
-    resolve_actor_tile,
+    build_legend_lines,
     resolve_prop_tile,
     stamp_tile_texture,
     world_to_grid,
@@ -76,13 +76,10 @@ def _pad_to_width(s: str, width: int) -> str:
     return s
 
 
-_LEGEND_LINES: list[tuple[str, str]] = [
-    ("  圖例      ", "bold"),
-    ("  ⣿ 牆壁  ⠀ 地板", "bright_white"),
-    ("  ⠒ 水域  ⠢ 碎石", "bright_white"),
-    ("  @ 隊伍  ◇ 怪物", "bright_white"),
-]
-_LEGEND_WIDTH = max(_display_width(s) for s, _ in _LEGEND_LINES) + 2  # 終端欄位寬度
+_LEGEND_LINES = build_legend_lines()
+_LEGEND_WIDTH = (
+    max(sum(_display_width(s) for s, _ in segs) for segs in _LEGEND_LINES) + 2
+)  # 終端欄位寬度
 
 
 class TileMapCanvas(Widget):
@@ -135,10 +132,9 @@ class TileMapCanvas(Widget):
         for p in ms.props:
             prop_lookup[p.id] = p
 
-        # 建立 actor id → Actor 查找表
-        actor_lookup: dict[str, Actor] = {a.id: a for a in ms.actors}
-
         # 依 layer 由低到高填入（後者覆蓋前者）
+        # Actor 不進 grid：step 7c 已用 RenderBuffer 座標獨立繪製圓圈，
+        # 避免覆蓋地形紋理造成黑色空洞
         for item in buf.items:
             if item.layer == RenderLayer.WALL:
                 self._fill_wall(grid, item, grid_w, grid_h)
@@ -146,8 +142,6 @@ class TileMapCanvas(Widget):
                 self._fill_terrain(grid, item, prop_lookup, grid_w, grid_h)
             elif item.layer == RenderLayer.PROP:
                 self._fill_prop(grid, item, prop_lookup, grid_w, grid_h)
-            elif item.layer == RenderLayer.ACTOR:
-                self._fill_actor(grid, item, actor_lookup, grid_w, grid_h)
 
         return grid
 
@@ -212,23 +206,6 @@ class TileMapCanvas(Widget):
                 tile = resolve_prop_tile(prop.prop_type, prop.is_blocking, prop.interactable)
             else:
                 tile = TileVisual(char="?", fg="magenta")
-            grid[gy][gx] = tile
-
-    @staticmethod
-    def _fill_actor(
-        grid: list[list[TileVisual]],
-        item: RenderItem,
-        actor_lookup: dict[str, Actor],
-        grid_w: int,
-        grid_h: int,
-    ) -> None:
-        """Actor：中心點所在格子，從 MapState 反查 name/type。"""
-        gx, gy = world_to_grid(item.center_x, item.center_y)
-        if 0 <= gx < grid_w and 0 <= gy < grid_h:
-            actor = actor_lookup.get(item.entity_id)
-            name = actor.name if actor else item.entity_id
-            ctype = actor.combatant_type if actor else "monster"
-            tile = resolve_actor_tile(name, ctype)
             grid[gy][gx] = tile
 
     # ------------------------------------------------------------------
@@ -409,23 +386,23 @@ class TileMapCanvas(Widget):
             if pad_left > 0:
                 result.append(" " * pad_left)
 
-            # braille 區域逐字元套色（依圖層優先級選色）
+            # braille 區域逐字元套色（winner-take-all：最高優先級整個字元取代）
             frame_row = adj_row  # frame 行 = adj_row（因為 frame 從 0 開始，對齊 tile 區域）
             for col_idx in range(used_w_chars):
-                # OR-merge 所有層的 braille dots，用最高優先級色彩
-                merged_dots = 0
+                best_dots = 0
                 best_color = ""
                 best_pri = -1
                 for color, (frames, pri) in color_frames.items():
                     if frame_row < len(frames) and col_idx < len(frames[frame_row]):
                         ch = frames[frame_row][col_idx]
                         if ch not in blank_chars and "\u2800" <= ch <= "\u28ff":
-                            merged_dots |= ord(ch) - 0x2800
-                            if pri > best_pri:
+                            dots = ord(ch) - 0x2800
+                            if dots > 0 and pri > best_pri:
+                                best_dots = dots
                                 best_color = color
                                 best_pri = pri
-                if merged_dots > 0 and best_color:
-                    result.append(chr(0x2800 + merged_dots), style=best_color)
+                if best_dots > 0 and best_color:
+                    result.append(chr(0x2800 + best_dots), style=best_color)
                 else:
                     result.append("\u2800")
 
@@ -470,7 +447,6 @@ class TileMapCanvas(Widget):
 
             legend_idx = i - 1  # 從第 2 行開始疊加（跳過第一行座標）
             if 0 <= legend_idx < len(_LEGEND_LINES):
-                legend_str, legend_style = _LEGEND_LINES[legend_idx]
                 plain = line_text.plain
                 # 圖例放在行尾——用終端顯示寬度計算起始位置
                 legend_start = widget_w - _LEGEND_WIDTH
@@ -488,9 +464,15 @@ class TileMapCanvas(Widget):
                     # 補齊到 legend_start 寬度
                     if dw < legend_start:
                         result.append(" " * (legend_start - dw))
-                    # 疊加圖例（深色背景確保可讀）
-                    padded_legend = _pad_to_width(legend_str, _LEGEND_WIDTH)
-                    result.append(padded_legend, style=f"{legend_style} on #1a1a2e")
+                    # 疊加圖例：逐段 append，每段用自己的顏色 + 深色背景
+                    legend_segs = _LEGEND_LINES[legend_idx]
+                    for seg_text, seg_style in legend_segs:
+                        bg_style = f"{seg_style} on #1a1a2e" if seg_style else "on #1a1a2e"
+                        result.append(seg_text, style=bg_style)
+                    # 補齊到 _LEGEND_WIDTH
+                    seg_total = sum(_display_width(s) for s, _ in legend_segs)
+                    if seg_total < _LEGEND_WIDTH:
+                        result.append(" " * (_LEGEND_WIDTH - seg_total), style="on #1a1a2e")
                 else:
                     result.append_text(line_text)
             else:

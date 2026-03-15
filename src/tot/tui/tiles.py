@@ -30,27 +30,29 @@ class TileVisual:
     """單一 tile 的顯示資訊。
 
     char 必須是 ASCII 字元（保證終端寬度 = 1 欄）。
+    legend_label 非空時會自動出現在圖例中。
     """
 
     char: str  # 顯示字元（ASCII，寬度 1 欄）
     fg: str  # Rich 前景色
     bg: str = ""  # Rich 背景色（空 = 無）
+    legend_label: str = ""  # 非空 = 出現在圖例
 
 
 # ---------------------------------------------------------------------------
 # 地形映射（terrain_type → TileVisual）
 # ---------------------------------------------------------------------------
 
-FLOOR_TILE = TileVisual(char=".", fg="dim")
+FLOOR_TILE = TileVisual(char=".", fg="dim", legend_label="地板")
 
 TERRAIN_TILES: dict[str, TileVisual] = {
-    "rubble": TileVisual(char=":", fg="yellow"),
-    "water": TileVisual(char="~", fg="bright_blue", bg="on dark_blue"),
+    "rubble": TileVisual(char=":", fg="yellow", legend_label="碎石"),
+    "water": TileVisual(char="~", fg="bright_blue", bg="on dark_blue", legend_label="水域"),
     "hill": TileVisual(char="^", fg="green"),
     "crevice": TileVisual(char="v", fg="red"),
 }
 
-WALL_TILE = TileVisual(char="#", fg="bright_white")
+WALL_TILE = TileVisual(char="#", fg="bright_white", legend_label="牆壁")
 
 # ---------------------------------------------------------------------------
 # Prop 映射（prop_type + is_blocking → TileVisual）
@@ -80,7 +82,7 @@ def resolve_prop_tile(prop_type: str, is_blocking: bool, interactable: bool) -> 
 # Actor 映射
 # ---------------------------------------------------------------------------
 
-PARTY_TILE = TileVisual(char="@", fg="bold bright_green")
+PARTY_TILE = TileVisual(char="@", fg="bold bright_green", legend_label="隊伍")
 
 
 def resolve_actor_tile(name: str, combatant_type: str) -> TileVisual:
@@ -243,3 +245,69 @@ def stamp_tile_texture(
     key = tile_texture_key(tile)
     func = BRAILLE_TEXTURES.get(key, _tex_floor)
     func(canvas, px0, py0, pw, ph)
+
+
+# ---------------------------------------------------------------------------
+# Braille 取樣 + 自動圖例
+# ---------------------------------------------------------------------------
+
+
+def braille_sample(tile: TileVisual) -> str:
+    """用 2×4 dot canvas 跑紋理函數，回傳 1 個 braille 字元。
+
+    改紋理函數 → 此函數自動回傳新結果 → 圖例連動更新。
+    """
+    from drawille import Canvas as _Canvas
+
+    key = tile_texture_key(tile)
+    func = BRAILLE_TEXTURES.get(key, _tex_floor)
+    c = _Canvas()
+    func(c, 0, 0, 2, 4)
+    frame = c.frame(min_x=0, min_y=0)
+    if frame and frame.strip():
+        return frame.strip()[0]
+    return "\u2800"
+
+
+def build_legend_lines() -> list[list[tuple[str, str]]]:
+    """從 tile 定義自動組裝圖例資料。
+
+    回傳 list[list[(text, style)]]——每行是多段 segments，
+    每個 tile 條目用自己的 fg 顏色。
+    """
+    lines: list[list[tuple[str, str]]] = [[("  圖例      ", "bold")]]
+
+    # 收集 (braille_char, label, fg_style)
+    entries: list[tuple[str, str, str]] = [
+        (braille_sample(WALL_TILE), WALL_TILE.legend_label, WALL_TILE.fg),
+        (braille_sample(FLOOR_TILE), FLOOR_TILE.legend_label, FLOOR_TILE.fg),
+    ]
+    for tile in TERRAIN_TILES.values():
+        if tile.legend_label:
+            entries.append((braille_sample(tile), tile.legend_label, tile.fg))
+
+    # 每行 2 個，每個用自己的顏色
+    for i in range(0, len(entries), 2):
+        segs: list[tuple[str, str]] = [("  ", "")]
+        ch, label, style = entries[i]
+        segs.append((ch, style))
+        segs.append((f" {label}", style))
+        if i + 1 < len(entries):
+            segs.append(("  ", ""))
+            ch, label, style = entries[i + 1]
+            segs.append((ch, style))
+            segs.append((f" {label}", style))
+        lines.append(segs)
+
+    # Actor 行
+    lines.append(
+        [
+            ("  ", ""),
+            (PARTY_TILE.char, PARTY_TILE.fg),
+            (f" {PARTY_TILE.legend_label}", PARTY_TILE.fg),
+            ("  ", ""),
+            ("◇", "bold red"),
+            (" 怪物", "bold red"),
+        ]
+    )
+    return lines

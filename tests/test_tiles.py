@@ -5,9 +5,12 @@ from __future__ import annotations
 from tot.tui.tiles import (
     CELL_SIZE_M,
     FLOOR_TILE,
+    PARTY_TILE,
     PROP_TILES,
     TERRAIN_TILES,
     WALL_TILE,
+    braille_sample,
+    build_legend_lines,
     grid_to_world,
     resolve_actor_tile,
     resolve_prop_tile,
@@ -138,3 +141,66 @@ class TestActorTiles:
     def test_empty_name_fallback(self) -> None:
         tile = resolve_actor_tile("", "monster")
         assert tile.char == "M"
+
+
+# ---------------------------------------------------------------------------
+# Braille 取樣 + 自動圖例
+# ---------------------------------------------------------------------------
+
+
+class TestBrailleSample:
+    """braille_sample() 從紋理函數實際取樣。"""
+
+    def test_wall_filled(self) -> None:
+        """牆壁 = 全填 ⣿（2×4 dots 全亮）。"""
+        assert braille_sample(WALL_TILE) == "⣿"
+
+    def test_floor_blank(self) -> None:
+        """地板 = 空白 braille（無 dot）。"""
+        assert braille_sample(FLOOR_TILE) == "\u2800"
+
+    def test_water_has_dots(self) -> None:
+        """水域取樣有 dot（非空白）。"""
+        s = braille_sample(TERRAIN_TILES["water"])
+        assert s != "\u2800"
+
+
+class TestBuildLegendLines:
+    """build_legend_lines() 自動圖例生成。"""
+
+    def test_contains_all_labeled(self) -> None:
+        """所有有 legend_label 的 tile 都出現在圖例文字中。"""
+        lines = build_legend_lines()
+        combined = "".join(text for segs in lines for text, _ in segs)
+        for tile in [WALL_TILE, FLOOR_TILE, PARTY_TILE]:
+            if tile.legend_label:
+                assert tile.legend_label in combined, f"{tile.legend_label} 未出現在圖例"
+        for tile in TERRAIN_TILES.values():
+            if tile.legend_label:
+                assert tile.legend_label in combined, f"{tile.legend_label} 未出現在圖例"
+
+    def test_legend_sample_matches_texture(self) -> None:
+        """圖例中的 braille 字元 = braille_sample() 回傳值（防漂移）。"""
+        lines = build_legend_lines()
+        combined = "".join(text for segs in lines for text, _ in segs)
+        for tile in [WALL_TILE, FLOOR_TILE]:
+            sample = braille_sample(tile)
+            if tile.legend_label:
+                assert sample in combined, f"{tile.legend_label} 的 braille 取樣未出現在圖例"
+        for tile in TERRAIN_TILES.values():
+            sample = braille_sample(tile)
+            if tile.legend_label:
+                assert sample in combined, f"{tile.legend_label} 的 braille 取樣未出現在圖例"
+
+    def test_legend_uses_tile_colors(self) -> None:
+        """每個 tile 的圖例段落使用對應的 tile.fg 顏色。"""
+        lines = build_legend_lines()
+        # 展平所有 segments
+        all_segs = [(text, style) for segs in lines for text, style in segs]
+        # 牆壁 braille 應該用 bright_white
+        wall_sample = braille_sample(WALL_TILE)
+        wall_seg = [(t, s) for t, s in all_segs if t == wall_sample]
+        assert any(s == WALL_TILE.fg for _, s in wall_seg)
+        # 隊伍 @ 應該用 bold bright_green
+        party_seg = [(t, s) for t, s in all_segs if t == PARTY_TILE.char]
+        assert any(s == PARTY_TILE.fg for _, s in party_seg)

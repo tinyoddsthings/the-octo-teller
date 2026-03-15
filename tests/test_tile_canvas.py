@@ -188,8 +188,8 @@ class TestPropFill:
 
 
 class TestActorFill:
-    def test_party_actor(self) -> None:
-        """隊伍 actor 顯示為 @。"""
+    def test_actor_does_not_overwrite_grid(self) -> None:
+        """Actor 不進 grid（由 step 7c 獨立繪製），避免覆蓋地形紋理。"""
         ms = _make_empty_map(6.0, 6.0)
         ms.actors.append(
             Actor(
@@ -203,25 +203,8 @@ class TestActorFill:
             )
         )
         grid = _build(ms)
-        assert grid[0][0].char == "@"
-
-    def test_monster_uses_first_ascii_char(self) -> None:
-        """怪物 actor 顯示名字首個 ASCII 字母。"""
-        ms = _make_empty_map(6.0, 6.0)
-        ms.actors.append(
-            Actor(
-                id="goblin-1",
-                x=3.0,
-                y=3.0,
-                name="Goblin",
-                combatant_id=uuid4(),
-                combatant_type="monster",
-                size=Size.MEDIUM,
-            )
-        )
-        grid = _build(ms)
-        # (3.0, 3.0) → grid (2, 2)
-        assert grid[2][2].char == "G"
+        # Actor 不覆蓋 grid，底下保持地板
+        assert grid[0][0] == FLOOR_TILE
 
 
 # ---------------------------------------------------------------------------
@@ -230,8 +213,8 @@ class TestActorFill:
 
 
 class TestLayerPriority:
-    def test_actor_over_terrain(self) -> None:
-        """Actor 層覆蓋地形層。"""
+    def test_actor_preserves_terrain_in_grid(self) -> None:
+        """Actor 不進 grid，地形紋理保持完整。"""
         ms = _make_empty_map(6.0, 6.0)
         # 水域佔 grid (0,0)~(1,1)
         ms.manifest.props.append(
@@ -256,8 +239,8 @@ class TestLayerPriority:
             )
         )
         grid = _build(ms)
-        # Actor 層在 TERRAIN 之上，應為 @
-        assert grid[0][0].char == "@"
+        # Actor 不覆蓋 grid，水域紋理保持
+        assert grid[0][0].char == "~"
 
     def test_wall_over_floor(self) -> None:
         """牆壁覆蓋地板。"""
