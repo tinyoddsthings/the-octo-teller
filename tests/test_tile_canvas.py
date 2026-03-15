@@ -149,8 +149,8 @@ class TestTerrainFill:
 
 
 class TestPropFill:
-    def test_interactable_prop_shows_diamond(self) -> None:
-        """可互動 prop 顯示為 !。"""
+    def test_all_props_skip_grid(self) -> None:
+        """所有 prop 不進 grid（由 step 7b 碰撞體積渲染），保持地板。"""
         ms = _make_empty_map(6.0, 6.0)
         ms.manifest.props.append(
             Prop(
@@ -161,13 +161,6 @@ class TestPropFill:
                 interactable=True,
             )
         )
-        grid = _build(ms)
-        # (2.25, 2.25) → grid (1, 1)
-        assert grid[1][1].char == "!"
-
-    def test_door_skips_grid(self) -> None:
-        """門不進 grid（由 step 7b 碰撞外框渲染），保持地板。"""
-        ms = _make_empty_map(6.0, 6.0)
         ms.manifest.props.append(
             Prop(
                 id="door1",
@@ -179,7 +172,8 @@ class TestPropFill:
             )
         )
         grid = _build(ms)
-        assert grid[0][0] is FLOOR_TILE
+        assert grid[1][1] is FLOOR_TILE  # item → 不進 grid
+        assert grid[0][0] is FLOOR_TILE  # door → 不進 grid
 
 
 # ---------------------------------------------------------------------------

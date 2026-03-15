@@ -18,7 +18,7 @@ from textual.reactive import reactive
 from textual.widget import Widget
 
 from tot.models.map import MapState, Prop
-from tot.tui.render_buffer import RenderBuffer, RenderItem, RenderLayer
+from tot.tui.render_buffer import RenderBuffer, RenderItem, RenderLayer, TextureType
 from tot.tui.tiles import (
     CELL_SIZE_M,
     FLOOR_TILE,
@@ -27,33 +27,8 @@ from tot.tui.tiles import (
     WALL_TILE,
     TileVisual,
     build_legend_lines,
-    resolve_prop_tile,
     stamp_tile_texture,
-    world_to_grid,
 )
-
-# Actor 形狀 offsets（從 canvas.py 複製，避免跨模組耦合）
-_CIRCLE_OFFSETS: list[tuple[int, int]] = []
-for _dy in range(-2, 3):
-    for _dx in range(-2, 3):
-        if _dx * _dx + _dy * _dy <= 5:
-            _CIRCLE_OFFSETS.append((_dx, _dy))
-
-_DIAMOND_OFFSETS: list[tuple[int, int]] = [
-    (0, -2),
-    (-1, -1),
-    (0, -1),
-    (1, -1),
-    (-2, 0),
-    (-1, 0),
-    (0, 0),
-    (1, 0),
-    (2, 0),
-    (-1, 1),
-    (0, 1),
-    (1, 1),
-    (0, 2),
-]
 
 # ---------------------------------------------------------------------------
 # 圖例定義（疊加到地圖右上角）
@@ -197,17 +172,7 @@ class TileMapCanvas(Widget):
         grid_w: int,
         grid_h: int,
     ) -> None:
-        """Prop：中心點所在格子。門跳過（只靠 step 7b 碰撞外框渲染）。"""
-        prop = prop_lookup.get(item.entity_id)
-        if prop and prop.prop_type == "door":
-            return  # 門只用碰撞外框，不畫 grid tile
-        gx, gy = world_to_grid(item.center_x, item.center_y)
-        if 0 <= gx < grid_w and 0 <= gy < grid_h:
-            if prop:
-                tile = resolve_prop_tile(prop.prop_type, prop.is_blocking, prop.interactable)
-            else:
-                tile = TileVisual(char="?", fg="magenta")
-            grid[gy][gx] = tile
+        """Prop：全部跳過 grid tile，改由 step 7b 碰撞體積渲染。"""
 
     # ------------------------------------------------------------------
     # 動態圖例
@@ -219,20 +184,21 @@ class TileMapCanvas(Widget):
     ) -> list[list[tuple[str, str]]]:
         """掃描 grid + RenderBuffer，只顯示畫面上存在的項目。"""
         present: set[TileVisual] = set()
-        present_props: set[TileVisual] = set()
-        prop_tile_set = set(PROP_TILES.values())
         for row in grid:
             for tile in row:
-                if tile in prop_tile_set:
-                    present_props.add(tile)
-                else:
-                    present.add(tile)
+                present.add(tile)
 
+        # Prop 從 RenderBuffer 掃描（不再出現在 grid 中）
+        present_props: set[TileVisual] = set()
         has_party = False
         has_monsters = False
         if buf:
             for item in buf.items:
-                if item.layer == RenderLayer.ACTOR:
+                if item.layer == RenderLayer.PROP and item.label:
+                    tile = PROP_TILES.get(item.label)
+                    if tile:
+                        present_props.add(tile)
+                elif item.layer == RenderLayer.ACTOR:
                     if item.style and "green" in item.style:
                         has_party = True
                     else:
@@ -348,27 +314,75 @@ class TileMapCanvas(Widget):
                     for px in range(max(0, dx0), min(total_dots_w, dx1)):
                         wall_canvas.set(px, py)
 
-            # 7b. Blocking prop：用實際碰撞邊界繪製（dot 級精度）
+            # 7b. Prop：用實際碰撞體積繪製（dot 級精度）
             for item in buf.items:
                 if item.layer != RenderLayer.PROP:
                     continue
-                # 只繪製 blocking prop（FILL / CIRCLE_FILL）
-                if item.texture not in ("fill", "circle_fill"):
-                    continue
-                color = item.style or "yellow"
+                color = item.style or "cyan"
                 cvs = _get_canvas(color, priority=3)  # PROP 層
-                min_x, min_y, max_x, max_y = item.bounds.to_aabb(item.center_x, item.center_y)
+
+                tex = item.texture
+
+                # 無碰撞標記：中心 4 dots（2×2）
+                if tex == "marker":
+                    cx_dot = int(item.center_x * dpm_x)
+                    cy_dot = int((grid_world_h - item.center_y) * dpm_y)
+                    for ddx, ddy in [(0, 0), (1, 0), (0, 1), (1, 1)]:
+                        px, py = cx_dot + ddx, cy_dot + ddy
+                        if 0 <= px < total_dots_w and 0 <= py < total_dots_h:
+                            cvs.set(px, py)
+                    continue
+
+                min_x, min_y, max_x, max_y = item.bounds.to_aabb(
+                    item.center_x,
+                    item.center_y,
+                )
                 dx0 = int(min_x * dpm_x)
                 dx1 = int(max_x * dpm_x)
                 dy0 = int((grid_world_h - max_y) * dpm_y)
                 dy1 = int((grid_world_h - min_y) * dpm_y)
-                # 只畫外框（outline），不填滿，讓地形紋理可見
-                for py in range(max(0, dy0), min(total_dots_h, dy1)):
-                    for px in range(max(0, dx0), min(total_dots_w, dx1)):
-                        if py == dy0 or py == dy1 - 1 or px == dx0 or px == dx1 - 1:
-                            cvs.set(px, py)
 
-            # 7c. Actor
+                if tex in ("circle_fill", "circle_outline"):
+                    # 圓形：用橢圓方程式
+                    cx = (dx0 + dx1) / 2
+                    cy = (dy0 + dy1) / 2
+                    rx = (dx1 - dx0) / 2
+                    ry = (dy1 - dy0) / 2
+                    if rx < 1 or ry < 1:
+                        continue
+                    for py in range(max(0, dy0), min(total_dots_h, dy1)):
+                        for px in range(max(0, dx0), min(total_dots_w, dx1)):
+                            dist = ((px - cx) / rx) ** 2 + ((py - cy) / ry) ** 2
+                            is_inside = dist <= 1.0
+                            is_edge = abs(dist - 1.0) < 0.5
+                            hit = tex == "circle_fill" and is_inside
+                            hit = hit or (tex == "circle_outline" and is_edge)
+                            if hit:
+                                cvs.set(px, py)
+                else:
+                    # 矩形：fill = 填滿，outline = 外框
+                    is_fill = tex == "fill"
+                    for py in range(max(0, dy0), min(total_dots_h, dy1)):
+                        for px in range(max(0, dx0), min(total_dots_w, dx1)):
+                            if is_fill or py == dy0 or py == dy1 - 1 or px == dx0 or px == dx1 - 1:
+                                cvs.set(px, py)
+
+            # 7d. 掩體標記：收集 cover_label 位置（字元座標）
+            cover_annotations: dict[tuple[int, int], tuple[str, str]] = {}
+            for item in buf.items:
+                if item.layer != RenderLayer.PROP or not item.cover_label:
+                    continue
+                # 標記位置：prop 中心偏右上 1 字元
+                cx_dot = int(item.center_x * dpm_x)
+                cy_dot = int((grid_world_h - item.center_y) * dpm_y)
+                # dot → 字元座標（braille 每字元 2 dots 寬, 4 dots 高）
+                char_col = cx_dot // 2 + 1  # 偏右 1 字元
+                char_row = cy_dot // 4 - 1  # 偏上 1 字元
+                if 0 <= char_col < used_w_chars and 0 <= char_row < used_h_chars:
+                    color = "bold bright_yellow" if item.cover_label == "½" else "bold bright_cyan"
+                    cover_annotations[(char_col, char_row)] = (item.cover_label, color)
+
+            # 7c. Actor — 視覺大小 = 碰撞半徑
             for item in buf.items:
                 if item.layer != RenderLayer.ACTOR:
                     continue
@@ -378,12 +392,37 @@ class TileMapCanvas(Widget):
                 cx_dot = int(item.center_x * dpm_x)
                 cy_dot = int((grid_world_h - item.center_y) * dpm_y)
 
-                # 依 combatant_type 選形狀
-                offsets = _CIRCLE_OFFSETS if "circle" in item.texture else _DIAMOND_OFFSETS
-                for dx, dy in offsets:
-                    px, py = cx_dot + dx, cy_dot + dy
-                    if 0 <= px < total_dots_w and 0 <= py < total_dots_h:
-                        cvs.set(px, py)
+                # 碰撞半徑 → dot 半徑（最低 2 dots 確保可見）
+                radius_m = item.bounds.radius_m
+                rx_dot = max(2.0, radius_m * dpm_x)
+                ry_dot = max(2.0, radius_m * dpm_y)
+                ix_r = int(math.ceil(rx_dot))
+                iy_r = int(math.ceil(ry_dot))
+
+                tex = item.texture
+                for dy in range(-iy_r, iy_r + 1):
+                    py = cy_dot + dy
+                    if py < 0 or py >= total_dots_h:
+                        continue
+                    for dx in range(-ix_r, ix_r + 1):
+                        px = cx_dot + dx
+                        if px < 0 or px >= total_dots_w:
+                            continue
+                        nx = dx / rx_dot  # 正規化座標
+                        ny = dy / ry_dot
+                        hit = False
+                        if tex == TextureType.ACTOR_CIRCLE:
+                            # 填滿橢圓
+                            hit = nx * nx + ny * ny <= 1.0
+                        elif tex == TextureType.ACTOR_DIAMOND:
+                            # 菱形外框（曼哈頓距離 ≈ 1.0）
+                            md = abs(nx) + abs(ny)
+                            hit = 0.7 <= md <= 1.0
+                        elif tex == TextureType.ACTOR_X and nx * nx + ny * ny <= 1.0:
+                            # X 形：兩條對角線，限橢圓範圍內
+                            hit = abs(abs(nx) - abs(ny)) < 0.3
+                        if hit:
+                            cvs.set(px, py)
 
         # 9. 取各 Canvas 的 braille frame，統一對齊（保留優先級）
         color_frames: dict[str, tuple[list[str], int]] = {}  # color → (lines, priority)
@@ -424,8 +463,15 @@ class TileMapCanvas(Widget):
                 result.append(" " * pad_left)
 
             # braille 區域逐字元套色（winner-take-all：最高優先級整個字元取代）
+            # cover_annotations 可能在此行覆蓋 braille 字元為掩體標記
             frame_row = adj_row  # frame 行 = adj_row（因為 frame 從 0 開始，對齊 tile 區域）
             for col_idx in range(used_w_chars):
+                # 掩體標記覆蓋（½ / ¾）
+                ann = cover_annotations.get((col_idx, frame_row)) if buf else None
+                if ann is not None:
+                    result.append(ann[0], style=ann[1])
+                    continue
+
                 best_dots = 0
                 best_color = ""
                 best_pri = -1

@@ -15,6 +15,7 @@ from tot.tui.render_buffer import (
     TextureType,
     _actor_texture,
     _prop_texture,
+    _size_to_render_bounds,
 )
 
 # ---------------------------------------------------------------------------
@@ -45,10 +46,20 @@ class TestTextureDecision:
         prop = Prop(id="p", x=0, y=0, is_blocking=False, bounds=BoundingShape.rect(3, 2))
         assert _prop_texture(prop) == TextureType.OUTLINE
 
-    def test_no_bounds_blocking(self) -> None:
-        """無 bounds 的阻擋 prop → FILL（fallback 矩形）。"""
-        prop = Prop(id="p", x=0, y=0, is_blocking=True)
-        assert _prop_texture(prop) == TextureType.FILL
+    def test_no_bounds_decoration_outline(self) -> None:
+        """無 bounds 的裝飾 prop → OUTLINE（外框渲染）。"""
+        prop = Prop(id="p", x=0, y=0, is_blocking=False, prop_type="decoration")
+        assert _prop_texture(prop) == TextureType.OUTLINE
+
+    def test_no_bounds_item_marker(self) -> None:
+        """無 bounds 的物品 prop → MARKER（小標記，不是大外框）。"""
+        prop = Prop(id="p", x=0, y=0, is_blocking=False, prop_type="item")
+        assert _prop_texture(prop) == TextureType.MARKER
+
+    def test_no_bounds_interactable_marker(self) -> None:
+        """無 bounds 的可互動 prop → MARKER。"""
+        prop = Prop(id="p", x=0, y=0, is_blocking=False, interactable=True)
+        assert _prop_texture(prop) == TextureType.MARKER
 
     def test_alive_pc(self) -> None:
         cid = uuid4()
@@ -198,3 +209,93 @@ class TestRenderBufferBuild:
         assert buf.viewport_h == 20.0
         assert buf.camera_x == 7.5
         assert buf.camera_y == 10.0
+
+
+# ---------------------------------------------------------------------------
+# 無碰撞 prop 外框 + size-based bounds
+# ---------------------------------------------------------------------------
+
+
+class TestSizeToRenderBounds:
+    """_size_to_render_bounds 測試。"""
+
+    def test_tiny_bounds(self) -> None:
+        from tot.models.enums import Size
+
+        b = _size_to_render_bounds(Size.TINY)
+        assert b.half_width_m == 0.75 / 2
+        assert b.half_height_m == 0.75 / 2
+
+    def test_medium_bounds(self) -> None:
+        from tot.models.enums import Size
+
+        b = _size_to_render_bounds(Size.MEDIUM)
+        assert b.half_width_m == 1.5 / 2
+        assert b.half_height_m == 1.5 / 2
+
+    def test_large_bounds(self) -> None:
+        from tot.models.enums import Size
+
+        b = _size_to_render_bounds(Size.LARGE)
+        assert b.half_width_m == 3.0 / 2
+        assert b.half_height_m == 3.0 / 2
+
+
+# ---------------------------------------------------------------------------
+# 掩體標記 cover_label
+# ---------------------------------------------------------------------------
+
+
+class TestCoverLabel:
+    """cover_bonus → cover_label 映射測試。"""
+
+    def test_cover_half(self) -> None:
+        """cover_bonus=2 → ½。"""
+        prop = Prop(
+            id="box",
+            x=5.0,
+            y=5.0,
+            is_blocking=True,
+            cover_bonus=2,
+            bounds=BoundingShape.rect(1.0, 1.0),
+        )
+        ms = _make_map_state(props=[prop])
+        buf = RenderBuffer(10.0, 10.0)
+        buf.build(ms)
+        prop_items = [i for i in buf.items if i.layer == RenderLayer.PROP]
+        assert len(prop_items) == 1
+        assert prop_items[0].cover_label == "½"
+
+    def test_cover_three_quarter(self) -> None:
+        """cover_bonus=5 → ¾。"""
+        prop = Prop(
+            id="pillar",
+            x=5.0,
+            y=5.0,
+            is_blocking=True,
+            cover_bonus=5,
+            bounds=BoundingShape.circle(0.5),
+        )
+        ms = _make_map_state(props=[prop])
+        buf = RenderBuffer(10.0, 10.0)
+        buf.build(ms)
+        prop_items = [i for i in buf.items if i.layer == RenderLayer.PROP]
+        assert len(prop_items) == 1
+        assert prop_items[0].cover_label == "¾"
+
+    def test_cover_none(self) -> None:
+        """cover_bonus=0 → 空字串。"""
+        prop = Prop(
+            id="item",
+            x=5.0,
+            y=5.0,
+            is_blocking=False,
+            cover_bonus=0,
+            bounds=BoundingShape.rect(1.0, 1.0),
+        )
+        ms = _make_map_state(props=[prop])
+        buf = RenderBuffer(10.0, 10.0)
+        buf.build(ms)
+        prop_items = [i for i in buf.items if i.layer == RenderLayer.PROP]
+        assert len(prop_items) == 1
+        assert prop_items[0].cover_label == ""

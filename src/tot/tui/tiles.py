@@ -32,12 +32,15 @@ class TileVisual:
 
     char 必須是 ASCII 字元（保證終端寬度 = 1 欄）。
     legend_label 非空時會自動出現在圖例中。
+    legend_shape 非空時圖例用形狀繪製（與地圖視覺一致），
+    否則用 BRAILLE_TEXTURES 紋理取樣。
     """
 
     char: str  # 顯示字元（ASCII，寬度 1 欄）
     fg: str  # Rich 前景色
     bg: str = ""  # Rich 背景色（空 = 無）
     legend_label: str = ""  # 非空 = 出現在圖例
+    legend_shape: str = ""  # 非空 = 圖例用形狀繪製（同地圖視覺語言）
 
 
 # ---------------------------------------------------------------------------
@@ -60,11 +63,19 @@ WALL_TILE = TileVisual(char="#", fg="bright_white", legend_label="牆壁")
 # ---------------------------------------------------------------------------
 
 PROP_TILES: dict[str, TileVisual] = {
-    "door_open": TileVisual(char="□", fg="bright_yellow", legend_label="門（開）"),
-    "door_blocked": TileVisual(char="□", fg="bright_red", legend_label="門（鎖）"),
-    "decoration_blocking": TileVisual(char="O", fg="cyan", legend_label="障礙物"),
-    "decoration_nonblocking": TileVisual(char="o", fg="cyan", legend_label="裝飾"),
-    "item": TileVisual(char="!", fg="bright_magenta", legend_label="物品"),
+    "door_open": TileVisual(
+        char="□", fg="bright_yellow", legend_label="門（開）", legend_shape="rect_fill"
+    ),
+    "door_blocked": TileVisual(
+        char="□", fg="bright_red", legend_label="門（鎖）", legend_shape="rect_fill"
+    ),
+    "decoration_blocking": TileVisual(
+        char="O", fg="cyan", legend_label="障礙物", legend_shape="circle_fill"
+    ),
+    "decoration_nonblocking": TileVisual(
+        char="o", fg="cyan", legend_label="裝飾", legend_shape="rect_outline"
+    ),
+    "item": TileVisual(char="!", fg="bright_magenta", legend_label="物品", legend_shape="cross"),
 }
 
 
@@ -170,14 +181,26 @@ def _tex_crevice(canvas: Canvas, px0: int, py0: int, pw: int, ph: int) -> None:
                 canvas.set(px0 + dx, py0 + dy)
 
 
-def _tex_decoration(canvas: Canvas, px0: int, py0: int, pw: int, ph: int) -> None:
-    """裝飾物：中心小方塊。"""
+def _tex_obstacle(canvas: Canvas, px0: int, py0: int, pw: int, ph: int) -> None:
+    """障礙物（阻擋型）：中心大方塊。"""
     cx, cy = pw // 2, ph // 2
-    for dy in range(-1, 2):
-        for dx in range(-1, 2):
+    r = max(1, min(pw, ph) // 3)
+    for dy in range(-r, r + 1):
+        for dx in range(-r, r + 1):
             x, y = cx + dx, cy + dy
             if 0 <= x < pw and 0 <= y < ph:
                 canvas.set(px0 + x, py0 + y)
+
+
+def _tex_decoration(canvas: Canvas, px0: int, py0: int, pw: int, ph: int) -> None:
+    """裝飾（非阻擋型）：小空心菱形。"""
+    cx, cy = pw / 2 - 0.5, ph / 2 - 0.5
+    r = min(pw, ph) / 4
+    for dy in range(ph):
+        for dx in range(pw):
+            dist = abs(dx - cx) + abs(dy - cy)
+            if abs(dist - r) < 0.8:
+                canvas.set(px0 + dx, py0 + dy)
 
 
 def _tex_item(canvas: Canvas, px0: int, py0: int, pw: int, ph: int) -> None:
@@ -206,7 +229,7 @@ BRAILLE_TEXTURES: dict[str, Callable[..., None]] = {
     "hill": _tex_hill,
     "crevice": _tex_crevice,
     "decoration": _tex_decoration,
-    "decoration_blocking": _tex_decoration,
+    "decoration_blocking": _tex_obstacle,
     "decoration_nonblocking": _tex_decoration,
     "item": _tex_item,
     "door_open": _tex_door,
@@ -264,6 +287,82 @@ def braille_sample(tile: TileVisual) -> str:
 
 
 # ---------------------------------------------------------------------------
+# 圖例形狀函數（legend_shape → drawille 繪製）
+# ---------------------------------------------------------------------------
+# 與地圖碰撞體積視覺一致：改 legend_shape 就同時改圖例 icon。
+
+
+def _shape_rect_fill(canvas: Canvas, px0: int, py0: int, pw: int, ph: int) -> None:
+    """填滿矩形（= 地圖 FILL）。"""
+    for dy in range(ph):
+        for dx in range(pw):
+            canvas.set(px0 + dx, py0 + dy)
+
+
+def _shape_rect_outline(canvas: Canvas, px0: int, py0: int, pw: int, ph: int) -> None:
+    """矩形外框（= 地圖 OUTLINE）。"""
+    for dy in range(ph):
+        for dx in range(pw):
+            if dy == 0 or dy == ph - 1 or dx == 0 or dx == pw - 1:
+                canvas.set(px0 + dx, py0 + dy)
+
+
+def _shape_circle_fill(canvas: Canvas, px0: int, py0: int, pw: int, ph: int) -> None:
+    """填滿橢圓（= 地圖 CIRCLE_FILL）。"""
+    cx, cy = pw / 2 - 0.5, ph / 2 - 0.5
+    rx, ry = pw / 2, ph / 2
+    if rx <= 0 or ry <= 0:
+        return
+    for dy in range(ph):
+        for dx in range(pw):
+            if ((dx - cx) / rx) ** 2 + ((dy - cy) / ry) ** 2 <= 1.0:
+                canvas.set(px0 + dx, py0 + dy)
+
+
+def _shape_circle_outline(canvas: Canvas, px0: int, py0: int, pw: int, ph: int) -> None:
+    """橢圓外框（= 地圖 CIRCLE_OUTLINE）。"""
+    cx, cy = pw / 2 - 0.5, ph / 2 - 0.5
+    rx, ry = pw / 2, ph / 2
+    if rx <= 0 or ry <= 0:
+        return
+    for dy in range(ph):
+        for dx in range(pw):
+            dist = ((dx - cx) / rx) ** 2 + ((dy - cy) / ry) ** 2
+            if abs(dist - 1.0) < 0.5:
+                canvas.set(px0 + dx, py0 + dy)
+
+
+def _shape_cross(canvas: Canvas, px0: int, py0: int, pw: int, ph: int) -> None:
+    """十字（物品）。"""
+    cx, cy = pw // 2, ph // 2
+    # 水平線
+    for dx in range(pw):
+        canvas.set(px0 + dx, py0 + cy)
+    # 垂直線
+    for dy in range(ph):
+        canvas.set(px0 + cx, py0 + dy)
+
+
+def _shape_marker(canvas: Canvas, px0: int, py0: int, pw: int, ph: int) -> None:
+    """中心 2×2 dots。"""
+    cx, cy = pw // 2, ph // 2
+    for ddx, ddy in [(0, 0), (1, 0), (0, 1), (1, 1)]:
+        x, y = cx + ddx, cy + ddy
+        if 0 <= x < pw and 0 <= y < ph:
+            canvas.set(px0 + x, py0 + y)
+
+
+_LEGEND_SHAPES: dict[str, Callable[..., None]] = {
+    "rect_fill": _shape_rect_fill,
+    "rect_outline": _shape_rect_outline,
+    "circle_fill": _shape_circle_fill,
+    "circle_outline": _shape_circle_outline,
+    "cross": _shape_cross,
+    "marker": _shape_marker,
+}
+
+
+# ---------------------------------------------------------------------------
 # Wide braille 取樣（圖例用，4 chars × 2 lines = 8×8 dots）
 # ---------------------------------------------------------------------------
 
@@ -286,12 +385,19 @@ def _frame_to_lines(frame: str, w_chars: int, h_lines: int) -> list[str]:
 def braille_wide_sample(
     tile: TileVisual, w_chars: int = _WIDE_W, h_lines: int = _WIDE_H
 ) -> list[str]:
-    """用 (w_chars×2) × (h_lines×4) dot canvas 跑紋理函數，回傳多行 braille。"""
+    """用 (w_chars×2) × (h_lines×4) dot canvas 跑紋理/形狀函數，回傳多行 braille。
+
+    若 tile.legend_shape 非空，用 _LEGEND_SHAPES 形狀函數（與地圖視覺一致）；
+    否則用 BRAILLE_TEXTURES 紋理函數（地形用）。
+    """
     from drawille import Canvas as _Canvas
 
     w_d, h_d = w_chars * 2, h_lines * 4
-    key = tile_texture_key(tile)
-    func = BRAILLE_TEXTURES.get(key, _tex_floor)
+    if tile.legend_shape:
+        func = _LEGEND_SHAPES[tile.legend_shape]
+    else:
+        key = tile_texture_key(tile)
+        func = BRAILLE_TEXTURES.get(key, _tex_floor)
     c = _Canvas()
     func(c, 0, 0, w_d, h_d)
     return _frame_to_lines(c.frame(min_x=0, min_y=0), w_chars, h_lines)
@@ -344,7 +450,7 @@ def build_legend_lines(
     回傳 list[list[(text, style)]]——每行是多段 segments，
     每個 tile 條目用自己的 fg 顏色。
 
-    地形用 1-char 取樣（重複紋理），prop/actor 用 4×2 wide 取樣（形狀辨識）。
+    所有條目統一用 4×2 wide 取樣（8×8 dots），提升形狀辨識度。
 
     Args:
         present_tiles: 畫面上實際存在的地形 TileVisual 集合。
@@ -355,20 +461,6 @@ def build_legend_lines(
         has_monsters: 畫面上有怪物。
     """
     lines: list[list[tuple[str, str]]] = [[("  圖例      ", "bold")]]
-
-    def _append_entries(entries: list[tuple[str, str, str]]) -> None:
-        """每行 2 個 1-char 條目。"""
-        for i in range(0, len(entries), 2):
-            segs: list[tuple[str, str]] = [("  ", "")]
-            ch, label, style = entries[i]
-            segs.append((ch, style))
-            segs.append((f" {label}", style))
-            if i + 1 < len(entries):
-                segs.append(("  ", ""))
-                ch, label, style = entries[i + 1]
-                segs.append((ch, style))
-                segs.append((f" {label}", style))
-            lines.append(segs)
 
     def _append_wide_entries(
         entries: list[tuple[list[str], str, str]],
@@ -399,17 +491,20 @@ def build_legend_lines(
                 segs_bot.append((" " * pad, ""))
                 segs_bot.append((icon2[1], style2))
             lines.append(segs_bot)
+            # 每對條目後空一行，減少視覺擁擠
+            lines.append([("", "")])
 
-    # 地形條目（1-char 紋理取樣）
+    # 地形條目（4×2 wide 紋理取樣）
     all_tiles = [WALL_TILE, FLOOR_TILE, *TERRAIN_TILES.values()]
-    terrain_entries: list[tuple[str, str, str]] = []
+    terrain_wide: list[tuple[list[str], str, str]] = []
     for tile in all_tiles:
         if not tile.legend_label:
             continue
         if present_tiles is not None and tile not in present_tiles:
             continue
-        terrain_entries.append((braille_sample(tile), tile.legend_label, tile.fg))
-    _append_entries(terrain_entries)
+        terrain_wide.append((braille_wide_sample(tile), tile.legend_label, tile.fg))
+    if terrain_wide:
+        _append_wide_entries(terrain_wide)
 
     # Prop 條目（4×2 wide 取樣）
     prop_wide: list[tuple[list[str], str, str]] = []

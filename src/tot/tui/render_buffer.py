@@ -15,7 +15,7 @@ from uuid import UUID
 from tot.models.enums import ShapeType, Size
 from tot.models.map import Actor, MapState, Prop
 from tot.models.shapes import BoundingShape
-from tot.tui.tiles import resolve_prop_tile
+from tot.tui.tiles import PROP_TILES, resolve_prop_tile
 
 
 class RenderLayer(IntEnum):
@@ -39,6 +39,7 @@ class TextureType(StrEnum):
     ACTOR_CIRCLE = "actor_circle"  # PC（圓形）
     ACTOR_DIAMOND = "actor_diamond"  # 怪物（菱形）
     ACTOR_X = "actor_x"  # 死亡（X 形）
+    MARKER = "marker"  # 無碰撞裝飾（4 dots 標記）
     SPARSE = "sparse"  # AoE 稀疏填充
 
 
@@ -54,15 +55,31 @@ class RenderItem:
     texture: TextureType
     style: str = ""  # Rich color style
     label: str = ""  # 文字標籤
+    cover_label: str = ""  # 掩體標記（½ / ¾）
 
 
 # 預設 prop 碰撞 fallback（1.5×1.5m）
 _DEFAULT_PROP_BOUNDS = BoundingShape.rect(1.5, 1.5)
 
 
+def _size_to_render_bounds(size: Size) -> BoundingShape:
+    """依 object_size 推導無碰撞 prop 的渲染用 bounds。"""
+    if size == Size.TINY:
+        return BoundingShape.rect(0.75, 0.75)
+    if size in (Size.LARGE, Size.HUGE, Size.GARGANTUAN):
+        return BoundingShape.rect(3.0, 3.0)
+    # SMALL / MEDIUM fallback
+    return _DEFAULT_PROP_BOUNDS
+
+
 def _prop_texture(prop: Prop) -> TextureType:
     """依 prop 的形狀和阻擋屬性決定紋理。"""
-    is_circle = prop.bounds is not None and prop.bounds.shape_type == ShapeType.CIRCLE
+    if prop.bounds is None:
+        # 物品/可互動 → 小標記（十字），裝飾 → 外框
+        if prop.prop_type == "item" or prop.interactable:
+            return TextureType.MARKER
+        return TextureType.OUTLINE
+    is_circle = prop.bounds.shape_type == ShapeType.CIRCLE
     # 門一律用 FILL，確保碰撞外框始終繪製（開門/鎖門只靠顏色區分）
     if prop.prop_type == "door" or prop.is_blocking:
         return TextureType.CIRCLE_FILL if is_circle else TextureType.FILL
@@ -146,8 +163,21 @@ class RenderBuffer:
         for prop in all_props:
             if prop.hidden:
                 continue
-            bounds = prop.bounds if prop.bounds is not None else _DEFAULT_PROP_BOUNDS
+            if prop.bounds is not None:
+                bounds = prop.bounds
+            else:
+                bounds = _size_to_render_bounds(prop.object_size)
             is_terrain = bool(prop.terrain_type)
+            prop_tile = resolve_prop_tile(prop.prop_type, prop.is_blocking, prop.interactable)
+            # 反查 PROP_TILES key 供圖例掃描用
+            prop_key = next((k for k, v in PROP_TILES.items() if v is prop_tile), "")
+            # 掩體標記
+            if prop.cover_bonus >= 5:
+                cover_label = "¾"
+            elif prop.cover_bonus >= 2:
+                cover_label = "½"
+            else:
+                cover_label = ""
             self.items.append(
                 RenderItem(
                     entity_id=prop.id,
@@ -156,9 +186,9 @@ class RenderBuffer:
                     center_y=prop.y,
                     bounds=bounds,
                     texture=_prop_texture(prop),
-                    style="cyan"
-                    if is_terrain
-                    else resolve_prop_tile(prop.prop_type, prop.is_blocking, prop.interactable).fg,
+                    style="cyan" if is_terrain else prop_tile.fg,
+                    label=prop_key,
+                    cover_label=cover_label,
                 )
             )
 

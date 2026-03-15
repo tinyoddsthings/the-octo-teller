@@ -184,26 +184,26 @@ class TestBuildLegendLines:
                 assert tile.legend_label in combined, f"{tile.legend_label} 未出現在圖例"
 
     def test_legend_sample_matches_texture(self) -> None:
-        """圖例中的 braille 字元 = braille_sample() 回傳值（防漂移）。"""
+        """圖例中的 wide braille 取樣 = braille_wide_sample() 回傳值（防漂移）。"""
         lines = build_legend_lines()
         combined = "".join(text for segs in lines for text, _ in segs)
-        for tile in [WALL_TILE, FLOOR_TILE]:
-            sample = braille_sample(tile)
-            if tile.legend_label:
-                assert sample in combined, f"{tile.legend_label} 的 braille 取樣未出現在圖例"
-        for tile in TERRAIN_TILES.values():
-            sample = braille_sample(tile)
-            if tile.legend_label:
-                assert sample in combined, f"{tile.legend_label} 的 braille 取樣未出現在圖例"
+        for tile in [WALL_TILE, FLOOR_TILE, *TERRAIN_TILES.values()]:
+            if not tile.legend_label:
+                continue
+            icon_lines = braille_wide_sample(tile)
+            for icon_line in icon_lines:
+                assert icon_line in combined, (
+                    f"{tile.legend_label} 的 wide braille 取樣未出現在圖例"
+                )
 
     def test_legend_uses_tile_colors(self) -> None:
         """每個 tile 的圖例段落使用對應的 tile.fg 顏色。"""
         lines = build_legend_lines()
         # 展平所有 segments
         all_segs = [(text, style) for segs in lines for text, style in segs]
-        # 牆壁 braille 應該用 bright_white
-        wall_sample = braille_sample(WALL_TILE)
-        wall_seg = [(t, s) for t, s in all_segs if t == wall_sample]
+        # 牆壁 wide braille 上半行應用 bright_white
+        wall_icon = braille_wide_sample(WALL_TILE)
+        wall_seg = [(t, s) for t, s in all_segs if t == wall_icon[0]]
         assert any(s == WALL_TILE.fg for _, s in wall_seg)
         # 隊伍段落應該用 bold bright_green
         party_seg = [(t, s) for t, s in all_segs if s == PARTY_TILE.fg]
@@ -246,7 +246,8 @@ class TestBuildLegendLines:
 
     def test_wide_sample_returns_correct_dimensions(self) -> None:
         """braille_wide_sample 回傳正確的行數和寬度。"""
-        for tile in PROP_TILES.values():
+        all_tiles = [WALL_TILE, FLOOR_TILE, *TERRAIN_TILES.values(), *PROP_TILES.values()]
+        for tile in all_tiles:
             icon_lines = braille_wide_sample(tile)
             assert len(icon_lines) == 2, f"{tile.legend_label} wide sample 應有 2 行"
             for line in icon_lines:
@@ -291,3 +292,44 @@ class TestBuildLegendLines:
         assert "門（開）" in combined
         assert "門（鎖）" not in combined
         assert "物品" not in combined
+
+
+# ---------------------------------------------------------------------------
+# legend_shape 機制
+# ---------------------------------------------------------------------------
+
+
+class TestLegendShape:
+    """legend_shape 統一圖例形狀測試。"""
+
+    def test_all_props_have_legend_shape(self) -> None:
+        """所有 PROP_TILES 都有 legend_shape。"""
+        for key, tile in PROP_TILES.items():
+            assert tile.legend_shape, f"PROP_TILES[{key!r}] 缺少 legend_shape"
+
+    def test_door_legend_is_filled(self) -> None:
+        """門圖例 = 填滿矩形（全 dot 亮起，非外框）。"""
+        tile = PROP_TILES["door_open"]
+        icon_lines = braille_wide_sample(tile)
+        # 填滿 = 所有字元都不是空白 braille
+        for line in icon_lines:
+            for ch in line:
+                assert ch != "\u2800", "門圖例不應有空白 braille（應為填滿矩形）"
+
+    def test_item_legend_is_cross(self) -> None:
+        """物品圖例 = 十字形（有中心行全亮 + 中心列全亮的特徵）。"""
+        tile = PROP_TILES["item"]
+        icon_lines = braille_wide_sample(tile)
+        # 十字形：非空白（有 dot），且不是全填滿（有空白位置）
+        all_chars = "".join(icon_lines)
+        has_dots = any(ch != "\u2800" for ch in all_chars)
+        has_blanks = any(ch == "\u2800" for ch in all_chars)
+        assert has_dots, "物品圖例應有 dot（十字形）"
+        assert has_blanks, "物品圖例不應全填滿（應為十字，非填滿矩形）"
+
+    def test_terrain_tiles_no_legend_shape(self) -> None:
+        """地形 tile 不設 legend_shape（繼續用 BRAILLE_TEXTURES）。"""
+        assert WALL_TILE.legend_shape == ""
+        assert FLOOR_TILE.legend_shape == ""
+        for tile in TERRAIN_TILES.values():
+            assert tile.legend_shape == ""

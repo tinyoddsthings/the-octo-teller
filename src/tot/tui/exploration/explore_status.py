@@ -68,7 +68,9 @@ class ExploreStatusWidget(Static):
             hd_str = f"  [dim]HD:{char.hit_dice_remaining}/{char.hit_dice_total}[/]"
 
             lines.append(f"  [bold]{char.name}[/] ({char.char_class} Lv{char.level})  AC {char.ac}")
-            lines.append(f"    [{bar_color}]{bar}[/] {hp_str}{hd_str}{slot_str}")
-            lines.append("")  # 行距補償（iTerm2 零行距模式）
+            lines.append(f"    [{bar_color}]{bar}[/] {hp_str}{hd_str}")
+            if slot_str:
+                lines.append(slot_str)
+            lines.append("")  # 角色間空行
 
         return "\n".join(lines)
