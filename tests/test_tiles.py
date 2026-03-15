@@ -10,6 +10,7 @@ from tot.tui.tiles import (
     TERRAIN_TILES,
     WALL_TILE,
     braille_sample,
+    braille_wide_sample,
     build_legend_lines,
     grid_to_world,
     resolve_actor_tile,
@@ -169,13 +170,16 @@ class TestBuildLegendLines:
     """build_legend_lines() 自動圖例生成。"""
 
     def test_contains_all_labeled(self) -> None:
-        """所有有 legend_label 的 tile 都出現在圖例文字中。"""
+        """所有有 legend_label 的 tile（含 prop）都出現在圖例文字中。"""
         lines = build_legend_lines()
         combined = "".join(text for segs in lines for text, _ in segs)
         for tile in [WALL_TILE, FLOOR_TILE, PARTY_TILE]:
             if tile.legend_label:
                 assert tile.legend_label in combined, f"{tile.legend_label} 未出現在圖例"
         for tile in TERRAIN_TILES.values():
+            if tile.legend_label:
+                assert tile.legend_label in combined, f"{tile.legend_label} 未出現在圖例"
+        for tile in PROP_TILES.values():
             if tile.legend_label:
                 assert tile.legend_label in combined, f"{tile.legend_label} 未出現在圖例"
 
@@ -201,6 +205,89 @@ class TestBuildLegendLines:
         wall_sample = braille_sample(WALL_TILE)
         wall_seg = [(t, s) for t, s in all_segs if t == wall_sample]
         assert any(s == WALL_TILE.fg for _, s in wall_seg)
-        # 隊伍 @ 應該用 bold bright_green
-        party_seg = [(t, s) for t, s in all_segs if t == PARTY_TILE.char]
-        assert any(s == PARTY_TILE.fg for _, s in party_seg)
+        # 隊伍段落應該用 bold bright_green
+        party_seg = [(t, s) for t, s in all_segs if s == PARTY_TILE.fg]
+        assert len(party_seg) > 0
+
+    def test_dynamic_filters_by_present_tiles(self) -> None:
+        """present_tiles 參數只顯示畫面上存在的 tile。"""
+        lines = build_legend_lines(present_tiles={WALL_TILE, FLOOR_TILE})
+        combined = "".join(text for segs in lines for text, _ in segs)
+        assert "牆壁" in combined
+        assert "地板" in combined
+        assert "碎石" not in combined
+        assert "水域" not in combined
+
+    def test_no_monsters_when_absent(self) -> None:
+        """has_monsters=False 時不顯示怪物。"""
+        lines = build_legend_lines(has_monsters=False)
+        combined = "".join(text for segs in lines for text, _ in segs)
+        assert "怪物" not in combined
+
+    def test_monsters_shown_when_present(self) -> None:
+        """has_monsters=True 時顯示怪物。"""
+        lines = build_legend_lines(has_monsters=True)
+        combined = "".join(text for segs in lines for text, _ in segs)
+        assert "怪物" in combined
+
+    def test_party_uses_wide_braille_icon(self) -> None:
+        """隊伍圖例用 4×2 wide braille 圓圈，不是 @ 或單字元。"""
+        lines = build_legend_lines(has_party=True)
+        all_segs = [(text, style) for segs in lines for text, style in segs]
+        # 不應有 @ 字元
+        assert not any(t == "@" for t, _ in all_segs)
+        # 應有多字元 braille 段落且 style 是 party 顏色
+        party_icons = [
+            t
+            for t, s in all_segs
+            if s == PARTY_TILE.fg and len(t) > 1 and any("\u2800" <= ch <= "\u28ff" for ch in t)
+        ]
+        assert len(party_icons) > 0, "隊伍圖例應有 wide braille icon"
+
+    def test_wide_sample_returns_correct_dimensions(self) -> None:
+        """braille_wide_sample 回傳正確的行數和寬度。"""
+        for tile in PROP_TILES.values():
+            icon_lines = braille_wide_sample(tile)
+            assert len(icon_lines) == 2, f"{tile.legend_label} wide sample 應有 2 行"
+            for line in icon_lines:
+                assert len(line) == 4, f"{tile.legend_label} wide sample 每行應 4 字元"
+
+    def test_prop_wide_icons_use_two_lines_in_legend(self) -> None:
+        """Prop 圖例佔 2 行（icon 上半 + 下半）。"""
+        lines = build_legend_lines()
+        combined = "".join(text for segs in lines for text, _ in segs)
+        # 每個 prop 標籤只出現在第 1 行（不在第 2 行重複）
+        for tile in PROP_TILES.values():
+            if tile.legend_label:
+                assert combined.count(tile.legend_label) == 1
+
+    def test_all_props_have_legend_label(self) -> None:
+        """所有 PROP_TILES 都有 legend_label。"""
+        for key, tile in PROP_TILES.items():
+            assert tile.legend_label, f"PROP_TILES[{key!r}] 缺少 legend_label"
+
+    def test_prop_colors_distinct_from_walls(self) -> None:
+        """門顏色不應與牆壁相同。"""
+        wall_fg = WALL_TILE.fg
+        assert PROP_TILES["door_open"].fg != wall_fg
+        assert PROP_TILES["door_blocked"].fg != wall_fg
+
+    def test_legend_contains_props(self) -> None:
+        """全圖例（無過濾）包含所有 prop 標籤。"""
+        lines = build_legend_lines()
+        combined = "".join(text for segs in lines for text, _ in segs)
+        for tile in PROP_TILES.values():
+            if tile.legend_label:
+                assert tile.legend_label in combined, f"{tile.legend_label} 未出現在圖例"
+
+    def test_dynamic_legend_filters_props(self) -> None:
+        """present_props 過濾正確：只顯示傳入的 prop tile。"""
+        door_open = PROP_TILES["door_open"]
+        lines = build_legend_lines(
+            present_tiles={WALL_TILE},
+            present_props={door_open},
+        )
+        combined = "".join(text for segs in lines for text, _ in segs)
+        assert "門（開）" in combined
+        assert "門（鎖）" not in combined
+        assert "物品" not in combined

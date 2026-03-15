@@ -15,6 +15,7 @@ from uuid import UUID
 from tot.models.enums import ShapeType, Size
 from tot.models.map import Actor, MapState, Prop
 from tot.models.shapes import BoundingShape
+from tot.tui.tiles import resolve_prop_tile
 
 
 class RenderLayer(IntEnum):
@@ -62,7 +63,8 @@ _DEFAULT_PROP_BOUNDS = BoundingShape.rect(1.5, 1.5)
 def _prop_texture(prop: Prop) -> TextureType:
     """依 prop 的形狀和阻擋屬性決定紋理。"""
     is_circle = prop.bounds is not None and prop.bounds.shape_type == ShapeType.CIRCLE
-    if prop.is_blocking:
+    # 門一律用 FILL，確保碰撞外框始終繪製（開門/鎖門只靠顏色區分）
+    if prop.prop_type == "door" or prop.is_blocking:
         return TextureType.CIRCLE_FILL if is_circle else TextureType.FILL
     return TextureType.CIRCLE_OUTLINE if is_circle else TextureType.OUTLINE
 
@@ -154,7 +156,9 @@ class RenderBuffer:
                     center_y=prop.y,
                     bounds=bounds,
                     texture=_prop_texture(prop),
-                    style="cyan" if is_terrain else "yellow",
+                    style="cyan"
+                    if is_terrain
+                    else resolve_prop_tile(prop.prop_type, prop.is_blocking, prop.interactable).fg,
                 )
             )
 

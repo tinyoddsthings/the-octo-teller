@@ -22,6 +22,7 @@ from tot.tui.render_buffer import RenderBuffer, RenderItem, RenderLayer
 from tot.tui.tiles import (
     CELL_SIZE_M,
     FLOOR_TILE,
+    PROP_TILES,
     TERRAIN_TILES,
     WALL_TILE,
     TileVisual,
@@ -76,10 +77,8 @@ def _pad_to_width(s: str, width: int) -> str:
     return s
 
 
-_LEGEND_LINES = build_legend_lines()
-_LEGEND_WIDTH = (
-    max(sum(_display_width(s) for s, _ in segs) for segs in _LEGEND_LINES) + 2
-)  # 終端欄位寬度
+_FALLBACK_LEGEND = build_legend_lines()
+_LEGEND_WIDTH_MIN = max(sum(_display_width(s) for s, _ in segs) for segs in _FALLBACK_LEGEND) + 2
 
 
 class TileMapCanvas(Widget):
@@ -198,15 +197,53 @@ class TileMapCanvas(Widget):
         grid_w: int,
         grid_h: int,
     ) -> None:
-        """Prop：中心點所在格子。"""
+        """Prop：中心點所在格子。門跳過（只靠 step 7b 碰撞外框渲染）。"""
+        prop = prop_lookup.get(item.entity_id)
+        if prop and prop.prop_type == "door":
+            return  # 門只用碰撞外框，不畫 grid tile
         gx, gy = world_to_grid(item.center_x, item.center_y)
         if 0 <= gx < grid_w and 0 <= gy < grid_h:
-            prop = prop_lookup.get(item.entity_id)
             if prop:
                 tile = resolve_prop_tile(prop.prop_type, prop.is_blocking, prop.interactable)
             else:
                 tile = TileVisual(char="?", fg="magenta")
             grid[gy][gx] = tile
+
+    # ------------------------------------------------------------------
+    # 動態圖例
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _build_dynamic_legend(
+        grid: list[list[TileVisual]], buf: RenderBuffer | None
+    ) -> list[list[tuple[str, str]]]:
+        """掃描 grid + RenderBuffer，只顯示畫面上存在的項目。"""
+        present: set[TileVisual] = set()
+        present_props: set[TileVisual] = set()
+        prop_tile_set = set(PROP_TILES.values())
+        for row in grid:
+            for tile in row:
+                if tile in prop_tile_set:
+                    present_props.add(tile)
+                else:
+                    present.add(tile)
+
+        has_party = False
+        has_monsters = False
+        if buf:
+            for item in buf.items:
+                if item.layer == RenderLayer.ACTOR:
+                    if item.style and "green" in item.style:
+                        has_party = True
+                    else:
+                        has_monsters = True
+
+        return build_legend_lines(
+            present_tiles=present,
+            present_props=present_props,
+            has_party=has_party,
+            has_monsters=has_monsters,
+        )
 
     # ------------------------------------------------------------------
     # 渲染
@@ -425,17 +462,28 @@ class TileMapCanvas(Widget):
                 last_end = pos + len(label) + 1
         result.append("".join(x_axis).rstrip(), style="dim")
 
-        # 12. 圖例疊加到右上角
-        result = self._overlay_legend(result, w)
+        # 12. 圖例疊加到右上角（動態：只顯示畫面上存在的項目）
+        legend = self._build_dynamic_legend(grid, buf)
+        result = self._overlay_legend(result, w, legend)
 
         return result
 
     @staticmethod
-    def _overlay_legend(text: Text, widget_w: int) -> Text:
+    def _overlay_legend(
+        text: Text, widget_w: int, legend_lines: list[list[tuple[str, str]]]
+    ) -> Text:
         """在 Rich Text 的右上角疊加圖例。"""
         lines = text.plain.split("\n")
-        if len(lines) < len(_LEGEND_LINES) + 1:
+        if len(lines) < len(legend_lines) + 1:
             return text
+
+        legend_width = (
+            max(
+                (sum(_display_width(s) for s, _ in segs) for segs in legend_lines),
+                default=_LEGEND_WIDTH_MIN,
+            )
+            + 2
+        )
 
         # 重建 Text，在前幾行右側覆寫圖例
         result = Text()
@@ -446,10 +494,10 @@ class TileMapCanvas(Widget):
                 result.append("\n")
 
             legend_idx = i - 1  # 從第 2 行開始疊加（跳過第一行座標）
-            if 0 <= legend_idx < len(_LEGEND_LINES):
+            if 0 <= legend_idx < len(legend_lines):
                 plain = line_text.plain
                 # 圖例放在行尾——用終端顯示寬度計算起始位置
-                legend_start = widget_w - _LEGEND_WIDTH
+                legend_start = widget_w - legend_width
                 if legend_start > 0 and _display_width(plain) >= legend_start:
                     # 依顯示寬度截斷行的前半部分
                     cut = 0
@@ -465,14 +513,14 @@ class TileMapCanvas(Widget):
                     if dw < legend_start:
                         result.append(" " * (legend_start - dw))
                     # 疊加圖例：逐段 append，每段用自己的顏色 + 深色背景
-                    legend_segs = _LEGEND_LINES[legend_idx]
+                    legend_segs = legend_lines[legend_idx]
                     for seg_text, seg_style in legend_segs:
                         bg_style = f"{seg_style} on #1a1a2e" if seg_style else "on #1a1a2e"
                         result.append(seg_text, style=bg_style)
-                    # 補齊到 _LEGEND_WIDTH
+                    # 補齊到 legend_width
                     seg_total = sum(_display_width(s) for s, _ in legend_segs)
-                    if seg_total < _LEGEND_WIDTH:
-                        result.append(" " * (_LEGEND_WIDTH - seg_total), style="on #1a1a2e")
+                    if seg_total < legend_width:
+                        result.append(" " * (legend_width - seg_total), style="on #1a1a2e")
                 else:
                     result.append_text(line_text)
             else:

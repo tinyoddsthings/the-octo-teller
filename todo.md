@@ -261,6 +261,22 @@
 - [x] conftest.py — 共用 fixtures（std_fighter/wizard/cleric + goblin/skeleton/ogre + rng42）
 - [x] test_dice.py — 表達式解析/擲骰/優劣勢/kh/kl/便利函式（39 tests）
 
+### 2-XC: 圖例完整化 + Prop 視覺區分 ✅
+> 圖例動態化完成後的視覺改善：Prop 元素加入圖例、各類型元素顏色可區分
+- [x] PROP_TILES 加 legend_label + 改顏色（門黃/紅、物品紫、障礙物/裝飾 cyan）
+- [x] build_legend_lines() 加 present_props 參數，圖例動態顯示 prop
+- [x] render_buffer.py _add_props() style 改用 resolve_prop_tile().fg（不再硬編碼 yellow）
+- [x] tile_canvas.py _build_dynamic_legend() 分離 prop tiles 掃描
+- [x] 門渲染簡化 — 移除十字/豎線紋理，統一用碰撞體積矩形外框（開門黃/鎖門紅，同形狀換色）
+  - [x] render_buffer.py 門一律 FILL texture（開門也畫碰撞外框）
+  - [x] tile_canvas.py _fill_prop() 跳過 door（不畫 grid tile）
+  - [x] tiles.py _tex_door() 統一矩形外框紋理
+- [x] 圖例多字元圖標 — Prop/Actor 改用 4×2 chars wide braille icon（形狀可辨識）
+  - [x] braille_wide_sample() + _braille_circle_wide() + _braille_diamond_wide()
+  - [x] build_legend_lines() 支援 _append_wide_entries（2 行高 icon）
+  - [x] 修復 BRAILLE_TEXTURES key mismatch（decoration_blocking/nonblocking 未註冊）
+- [x] 測試更新（562 tests 全過）
+
 ### 低優先備忘（空間幾何 ADR）
 > 📄 完整分析：[`docs/spatial-combat-design.md`](docs/spatial-combat-design.md)
 - [ ] Braille 長寬比驗證 — 目視確認 3m×3m 正方形房間渲染為正方形（📄 §5 ADR-3）

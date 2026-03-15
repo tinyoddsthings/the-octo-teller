@@ -12,7 +12,7 @@ from tot.models.enums import Size
 from tot.models.map import Actor, MapManifest, MapState, Prop, Wall
 from tot.models.shapes import BoundingShape
 from tot.tui.render_buffer import RenderBuffer
-from tot.tui.tile_canvas import _LEGEND_WIDTH, TileMapCanvas, _display_width
+from tot.tui.tile_canvas import _LEGEND_WIDTH_MIN, TileMapCanvas, _display_width
 from tot.tui.tiles import FLOOR_TILE, TERRAIN_TILES, WALL_TILE
 
 # ---------------------------------------------------------------------------
@@ -165,8 +165,8 @@ class TestPropFill:
         # (2.25, 2.25) → grid (1, 1)
         assert grid[1][1].char == "!"
 
-    def test_blocking_door_shows_filled(self) -> None:
-        """阻擋型門顯示為 +。"""
+    def test_door_skips_grid(self) -> None:
+        """門不進 grid（由 step 7b 碰撞外框渲染），保持地板。"""
         ms = _make_empty_map(6.0, 6.0)
         ms.manifest.props.append(
             Prop(
@@ -179,7 +179,7 @@ class TestPropFill:
             )
         )
         grid = _build(ms)
-        assert grid[0][0].char == "+"
+        assert grid[0][0] is FLOOR_TILE
 
 
 # ---------------------------------------------------------------------------
@@ -319,7 +319,7 @@ class TestRender:
         text = canvas.render()
         plain = text.plain
         # 排除右側圖例區域（用計算後的終端寬度）
-        legend_w = _LEGEND_WIDTH
+        legend_w = _LEGEND_WIDTH_MIN
         for line in plain.split("\n"):
             map_part = line[: max(0, len(line) - legend_w)]
             for ch in map_part:
