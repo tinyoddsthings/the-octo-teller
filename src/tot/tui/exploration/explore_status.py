@@ -69,5 +69,6 @@ class ExploreStatusWidget(Static):
 
             lines.append(f"  [bold]{char.name}[/] ({char.char_class} Lv{char.level})  AC {char.ac}")
             lines.append(f"    [{bar_color}]{bar}[/] {hp_str}{hd_str}{slot_str}")
+            lines.append("")  # 行距補償（iTerm2 零行距模式）
 
         return "\n".join(lines)

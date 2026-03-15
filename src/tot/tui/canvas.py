@@ -129,6 +129,9 @@ class BrailleMapCanvas(Widget):
         # 快取渲染尺寸
         self._last_width: int = 0
         self._last_height: int = 0
+        # 置中偏移量（像素）
+        self._px_offset_x: int = 0
+        self._px_offset_y: int = 0
 
     # ----- 座標轉換 -----
 
@@ -157,43 +160,11 @@ class BrailleMapCanvas(Widget):
 
         遊戲 Y=0 在底部，braille Y=0 在頂部。
         """
-        px_x = int(x * scale)
-        px_y = canvas_h - 1 - int(y * scale)
+        px_x = int(x * scale) + self._px_offset_x
+        px_y = canvas_h - 1 - int(y * scale) - self._px_offset_y
         return px_x, px_y
 
     # ----- 繪製方法 -----
-
-    def _draw_scale_lines(
-        self,
-        canvas: Canvas,
-        world_w: float,
-        world_h: float,
-        scale: float,
-        canvas_h: int,
-        interval: float = 1.5,
-    ) -> None:
-        """繪製公尺刻度線（虛線風格：每隔 2 dots 畫 1 dot）。"""
-        # 垂直線
-        mx = 0.0
-        while mx <= world_w + 1e-9:
-            for step in range(int(world_h * scale)):
-                if step % 3 == 0:  # 虛線
-                    my = step / scale
-                    px, py = self._meter_to_px(mx, my, scale, canvas_h)
-                    if px >= 0 and py >= 0:
-                        canvas.set(px, py)
-            mx += interval
-
-        # 水平線
-        my = 0.0
-        while my <= world_h + 1e-9:
-            for step in range(int(world_w * scale)):
-                if step % 3 == 0:
-                    mx_s = step / scale
-                    px, py = self._meter_to_px(mx_s, my, scale, canvas_h)
-                    if px >= 0 and py >= 0:
-                        canvas.set(px, py)
-            my += interval
 
     def _draw_props(
         self,
@@ -670,36 +641,48 @@ class BrailleMapCanvas(Widget):
         labels: list[tuple[int, int, str, str]] = []
         for actor in ms.actors:
             combatant = combatant_map.get(actor.combatant_id)
-            if not combatant:
-                continue
 
             px, py = self._meter_to_px(actor.x, actor.y, scale, canvas_h)
             # pixel → char 座標
             char_x = px // 2
             char_y = py // 4
 
-            # 標籤放在角色右側 +2 字元，加上 Y 軸偏移
-            label_x = char_x + 2 + x_offset
+            # 標籤放在角色右側 +1 字元，加上 Y 軸偏移
+            label_x = char_x + 1 + x_offset
 
-            # 標籤文字：名字首兩字
-            if isinstance(combatant, Monster):
-                name = (combatant.label or combatant.name)[:2]
-            else:
-                name = combatant.name[:2]
-
-            if not actor.is_alive:
-                style = "dim strike"
-                label = f"💀{name}"
-            elif actor.combatant_type == "character":
-                if isinstance(combatant, Character) and combatant.is_ai_controlled:
-                    style = "bold blue"
+            if combatant:
+                # 標籤文字：名字首兩字
+                if isinstance(combatant, Monster):
+                    name = (combatant.label or combatant.name)[:2]
                 else:
+                    name = combatant.name[:2]
+
+                if not actor.is_alive:
+                    style = "dim strike"
+                    label = f"💀{name}"
+                elif actor.combatant_type == "character":
+                    if isinstance(combatant, Character) and combatant.is_ai_controlled:
+                        style = "bold blue"
+                    else:
+                        style = "bold green"
+                    label = f"{name}"
+                else:
+                    style = "bold red"
+                    label = f"{name}"
+            elif actor.name:
+                # Fallback：無 combatant 對照的 actor（如探索模式隊伍 token）
+                name = actor.name[:2]
+                if not actor.is_alive:
+                    style = "dim strike"
+                    label = f"💀{name}"
+                elif actor.combatant_type == "character":
                     style = "bold green"
-                label = f"{name}"
+                    label = f"{name}"
+                else:
+                    style = "bold red"
+                    label = f"{name}"
             else:
-                # 怪物：顯示狀態描述
-                style = "bold red"
-                label = f"{name}"
+                continue
 
             # 邊界檢查
             if 0 <= label_x < widget_w and char_y >= 0:
@@ -737,54 +720,70 @@ class BrailleMapCanvas(Widget):
         scale = self._compute_scale(draw_w, draw_h, world_w, world_h)
         canvas_h = draw_h * 4
 
-        # 重建 canvas
-        canvas = Canvas()
+        # 置中偏移量（像素級）
+        used_px_w = int(world_w * scale)
+        used_px_h = int(world_h * scale)
+        self._px_offset_x = max(0, (draw_w * 2 - used_px_w) // 2)
+        self._px_offset_y = max(0, (draw_h * 4 - used_px_h) // 2)
 
-        # 1. 刻度線
-        self._draw_scale_lines(canvas, world_w, world_h, scale, canvas_h, interval)
-
-        # 2-4. 牆壁 / Props / 角色：優先用 RenderBuffer，否則 fallback
+        # 重建 canvas + 多色渲染
         cmap = self.combatant_map
         buf = self.render_buffer
+        color_frames: dict[str, tuple[list[str], int]] = {}
+
         if buf and buf.items:
+            # 多色路徑：merged canvas + 每個色彩群組一個 canvas
+            canvas = Canvas()
+            color_canvases: dict[str, tuple[Canvas, int]] = {}
             for item in buf.items:
+                color = item.style or "bright_white"
+                priority = item.layer.value
+                if color not in color_canvases:
+                    color_canvases[color] = (Canvas(), priority)
+                else:
+                    old_cvs, old_p = color_canvases[color]
+                    color_canvases[color] = (old_cvs, max(old_p, priority))
                 self._draw_render_item(canvas, item, scale, canvas_h)
+                self._draw_render_item(color_canvases[color][0], item, scale, canvas_h)
+            # AoE 覆蓋畫到 merged（白色）
+            if self.aoe_overlay:
+                self._draw_aoe(canvas, self.aoe_overlay, scale, canvas_h)
+            # 取各色 frame lines（min_x/min_y=0 確保所有 canvas 從同一起點開始，避免色彩錯位）
+            for color, (cvs, pri) in color_canvases.items():
+                cf = cvs.frame(min_x=0, min_y=0)
+                color_frames[color] = (cf.split("\n") if cf else [], pri)
         else:
+            # Legacy fallback（無 RenderBuffer）
+            canvas = Canvas()
             self._draw_walls(canvas, ms, scale, canvas_h)
             self._draw_props(canvas, ms, scale, canvas_h)
             for actor in ms.actors:
                 self._draw_actor_shape(canvas, actor, scale, canvas_h, cmap)
+            if self.aoe_overlay:
+                self._draw_aoe(canvas, self.aoe_overlay, scale, canvas_h)
 
-        # 5. AoE 覆蓋（仍由專用方法處理）
-        if self.aoe_overlay:
-            self._draw_aoe(canvas, self.aoe_overlay, scale, canvas_h)
-
-        # 6. 取得 braille frame
-        frame = canvas.frame()
+        # 取得 merged braille frame（min_x/min_y=0 與 color frames 對齊）
+        frame = canvas.frame(min_x=0, min_y=0)
         frame_lines = frame.split("\n") if frame else []
 
-        # 確保行數填滿繪圖區高度
         while len(frame_lines) < draw_h:
             frame_lines.append("")
-
-        # 裁切每行到繪圖區寬度
         for i in range(len(frame_lines)):
             if len(frame_lines[i]) > draw_w:
                 frame_lines[i] = frame_lines[i][:draw_w]
 
-        # 7. Y 軸標籤（公尺）
+        # Y 軸標籤（公尺）
         y_label_width = y_margin - 1
 
-        # 8. 建構 Rich.Text + 疊加彩色標籤 + Y 軸標籤
+        # 建構 Rich.Text + 多色 braille + 彩色標籤 + Y 軸標籤
         labels = self._compute_labels(ms, scale, canvas_h, w, cmap, x_offset=y_margin)
+        blank_chars = {" ", "\u2800"}
 
         result = Text()
         for row_idx in range(min(len(frame_lines), draw_h)):
-            # Y 軸標籤：計算此 char row 對應的公尺 Y
             pixel_y_center = row_idx * 4 + 2
             meter_y = (canvas_h - 1 - pixel_y_center) / scale
 
-            # 對齊到最近的刻度線
             snapped_y = round(meter_y / interval) * interval
             _, line_pixel_y = self._meter_to_px(0, snapped_y, scale, canvas_h)
             line_char_row = line_pixel_y // 4
@@ -795,38 +794,80 @@ class BrailleMapCanvas(Widget):
                 y_label = " " * y_margin
 
             line = frame_lines[row_idx]
-            padded = y_label + line.ljust(draw_w)
-            if len(padded) > w:
-                padded = padded[:w]
 
             # 找此行的標籤
             row_labels = [(lx, lt, ls) for lx, ly, lt, ls in labels if ly == row_idx]
 
-            if not row_labels:
-                result.append(padded + "\n", style="bright_white")
-            else:
-                line_text = Text(padded, style="bright_white")
+            if color_frames:
+                # 多色逐字元建構
+                line_text = Text()
+                # Y 軸標籤（dim）
+                line_text.append(y_label, style="dim")
+                # braille 區域逐字元套色
+                padded_line = line.ljust(draw_w)[:draw_w]
+                for col_idx, ch in enumerate(padded_line):
+                    if ch in blank_chars:
+                        line_text.append(ch)
+                        continue
+                    # 找此位置最高優先的色彩
+                    best_color = "bright_white"
+                    best_pri = -1
+                    for color, (frames, pri) in color_frames.items():
+                        if (
+                            row_idx < len(frames)
+                            and col_idx < len(frames[row_idx])
+                            and frames[row_idx][col_idx] not in blank_chars
+                            and pri > best_pri
+                        ):
+                            best_pri = pri
+                            best_color = color
+                    line_text.append(ch, style=best_color)
+                # 疊加角色標籤
                 for lx, lt, ls in sorted(row_labels, key=lambda x: x[0]):
                     if lx < w:
                         line_text = self._overlay_label(line_text, lx, lt, ls, w)
+                # 裁切到 widget 寬度
+                if len(line_text.plain) > w:
+                    line_text = line_text[:w]
                 result.append(line_text)
                 result.append("\n")
+            else:
+                # Legacy 全白路徑
+                padded = y_label + line.ljust(draw_w)
+                if len(padded) > w:
+                    padded = padded[:w]
+                if not row_labels:
+                    result.append(padded + "\n", style="bright_white")
+                else:
+                    line_text = Text(padded, style="bright_white")
+                    for lx, lt, ls in sorted(row_labels, key=lambda x: x[0]):
+                        if lx < w:
+                            line_text = self._overlay_label(line_text, lx, lt, ls, w)
+                    result.append(line_text)
+                    result.append("\n")
 
-        # 9. X 軸標籤行（公尺）
+        # 9. X 軸標籤行（公尺）——含碰撞檢測 + 置中偏移
+        h_char_offset = self._px_offset_x // 2  # pixel → char
         x_axis = " " * y_margin
+        last_end = -1
         mx = 0.0
         while mx <= world_w + 1e-9:
             line_px_x = int(mx * scale)
-            line_char_col = line_px_x // 2
+            line_char_col = line_px_x // 2 + h_char_offset
             label = f"{mx:.0f}"
             pos = line_char_col - len(label) // 2
-            while len(x_axis) < y_margin + pos + len(label):
-                x_axis += " "
-            if pos >= 0:
+            if pos >= 0 and y_margin + pos >= last_end:
+                while len(x_axis) < y_margin + pos + len(label):
+                    x_axis += " "
                 x_axis = x_axis[: y_margin + pos] + label + x_axis[y_margin + pos + len(label) :]
+                last_end = y_margin + pos + len(label) + 1
             mx += interval
         x_axis = x_axis[:w].rstrip()
         result.append(x_axis + "\n", style="dim")
+
+        # 重置偏移量（避免影響其他呼叫者）
+        self._px_offset_x = 0
+        self._px_offset_y = 0
 
         return result
 
@@ -909,9 +950,6 @@ def render_braille_map(
 
     canvas = Canvas()
 
-    # 刻度線
-    renderer._draw_scale_lines(canvas, world_w, world_h, scale, canvas_h, interval)
-
     # 牆壁 / Props / 角色：透過 RenderBuffer 統一繪製
     buf = RenderBuffer(world_w, world_h)
     buf.build(map_state, combatant_map)
@@ -971,18 +1009,20 @@ def render_braille_map(
 
         result_lines.append("".join(chars).rstrip())
 
-    # X 軸標籤行（公尺）
+    # X 軸標籤行（公尺）——含碰撞檢測
     x_axis = " " * y_margin
+    last_end = -1
     mx = 0.0
     while mx <= world_w + 1e-9:
         line_px_x = int(mx * scale)
         line_char_col = line_px_x // 2
         label = f"{mx:.0f}"
         pos = line_char_col - len(label) // 2
-        while len(x_axis) < y_margin + pos + len(label):
-            x_axis += " "
-        if pos >= 0:
+        if pos >= 0 and y_margin + pos >= last_end:
+            while len(x_axis) < y_margin + pos + len(label):
+                x_axis += " "
             x_axis = x_axis[: y_margin + pos] + label + x_axis[y_margin + pos + len(label) :]
+            last_end = y_margin + pos + len(label) + 1
         mx += interval
     result_lines.append(x_axis[:w].rstrip())
 

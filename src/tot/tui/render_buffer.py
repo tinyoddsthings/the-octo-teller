@@ -134,6 +134,7 @@ class RenderBuffer:
                     center_y=wall.y + wall.height / 2,
                     bounds=BoundingShape.rect(wall.width, wall.height),
                     texture=TextureType.FILL,
+                    style="bright_white",
                 )
             )
 
@@ -153,13 +154,25 @@ class RenderBuffer:
                     center_y=prop.y,
                     bounds=bounds,
                     texture=_prop_texture(prop),
+                    style="cyan" if is_terrain else "yellow",
                 )
             )
 
     def _add_actors(self, ms: MapState, combatant_map: dict[UUID, object]) -> None:
-        """加入角色圖元。"""
+        """加入角色圖元（含陣營色彩）。"""
         for actor in ms.actors:
             bounds = actor.bounds or BoundingShape.from_size(actor.size or Size.MEDIUM)
+            # 依陣營/狀態決定色彩
+            if not actor.is_alive:
+                style = "dim"
+            elif actor.combatant_type == "character":
+                combatant = combatant_map.get(actor.combatant_id)
+                if combatant and getattr(combatant, "is_ai_controlled", False):
+                    style = "bold blue"  # 隊友
+                else:
+                    style = "bold green"  # 主角
+            else:
+                style = "bold red"  # 怪物
             self.items.append(
                 RenderItem(
                     entity_id=actor.id,
@@ -168,5 +181,6 @@ class RenderBuffer:
                     center_y=actor.y,
                     bounds=bounds,
                     texture=_actor_texture(actor),
+                    style=style,
                 )
             )

@@ -206,12 +206,12 @@
 ### 2-XA: Area 自由探索（Pointcrawl + Area 混合模式）
 > 里程碑：進入 Pointcrawl 節點後可自由移動、搜索物件、拾取物品
 > 📄 計畫文件：[`.claude-personal/plans/parallel-nibbling-whale.md`](.claude-personal/plans/parallel-nibbling-whale.md)
-- [ ] Phase 1: 模型層擴展 — LootEntry + Prop 探索欄位 + AreaExploreState
-- [ ] Phase 2: bone_engine/area_explore.py — enter/exit/move/search/take/terrain
-- [ ] Phase 3: cave_explore.json 探索專用地圖（25×20m 洞穴）
-- [ ] Phase 4: TUI Area 模式 — BrailleMapCanvas 切換 + 座標移動 + XY 軸刻度
-- [ ] Phase 5: Prop 互動完整流程 — 搜索→發現→拾取→鑰匙開鎖
-- [ ] Phase 6: 地形效果 + tests/test_area_explore.py
+- [x] Phase 1: 模型層擴展 — LootEntry + Prop 探索欄位 + AreaExploreState
+- [x] Phase 2: bone_engine/area_explore.py — enter/exit/move/search/take/terrain
+- [x] Phase 3: cave_explore.json 探索專用地圖（25×20m 洞穴）
+- [x] Phase 4: TUI Area 模式 — BrailleMapCanvas 切換 + 座標移動 + XY 軸刻度
+- [x] Phase 5: Prop 互動完整流程 — 搜索→發現→拾取→鑰匙開鎖
+- [x] Phase 6: 地形效果 + tests/test_area_explore.py（23 + 18 = 41 tests）
 
 ### 2-X 延後（探索進階）
 > 📄 設計文件：[`docs/exploration-design.md`](docs/exploration-design.md)
