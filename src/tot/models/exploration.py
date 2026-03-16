@@ -6,6 +6,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
+from tot.models.adventure import EncounterDef
 from tot.models.enums import EncounterType, MapScale, NodeType
 from tot.models.map import LootEntry, MapState, Position
 from tot.models.time import GameClock
@@ -72,6 +73,9 @@ class ExplorationNode(BaseModel):
 
     # 可發現物品
     hidden_items: list[NodeItem] = Field(default_factory=list)
+
+    # 遭遇（地城節點）
+    encounter: EncounterDef | None = None
 
     # 海拔（公尺）——顯示用，正值=高處
     elevation_m: float = 0

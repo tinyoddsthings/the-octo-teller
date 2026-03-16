@@ -13,6 +13,40 @@ from __future__ import annotations
 
 from pydantic import BaseModel, Field
 
+# ── 遭遇定義 ──────────────────────────────────────────────
+
+
+class EnemyDef(BaseModel):
+    """遭遇中的敵人定義。"""
+
+    id: str
+    name: str
+    cr: str = "0"
+    description: str = ""
+    count: int = 1
+
+
+class RewardDef(BaseModel):
+    """遭遇獎勵。"""
+
+    id: str
+    name: str
+    reward_type: str = "item"  # item / xp
+    value_gp: int = 0
+    xp: int = 0
+
+
+class EncounterDef(BaseModel):
+    """節點內的遭遇定義。"""
+
+    enemies: list[EnemyDef] = Field(default_factory=list)
+    trigger: str = "enter_node"  # enter_node / interact / flag_set
+    narration: str = ""
+    outcome: str = "auto_win"  # auto_win / combat
+    rewards: list[RewardDef] = Field(default_factory=list)
+    sets_flag: str = ""
+
+
 # ── NPC 定義 ──────────────────────────────────────────────
 
 

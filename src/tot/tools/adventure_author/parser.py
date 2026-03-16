@@ -19,12 +19,15 @@ from tot.tools.adventure_author.ir import (
     ChoiceIR,
     DialogueIR,
     EdgeIR,
+    EncounterIR,
+    EnemyIR,
     EventIR,
     ItemIR,
     MapIR,
     NodeIR,
     NpcIR,
     PoiIR,
+    RewardIR,
 )
 
 
@@ -112,8 +115,28 @@ def parse_map(text: str) -> MapIR:
     current_edge: EdgeIR | None = None
     in_items = False
     in_pois = False
+    in_encounter = False
+    in_encounter_enemies = False
+    in_encounter_rewards = False
     current_item: ItemIR | None = None
     current_poi: PoiIR | None = None
+    current_encounter: EncounterIR | None = None
+    current_enemy: EnemyIR | None = None
+
+    def _reset_sub_blocks() -> None:
+        nonlocal in_items, in_pois, in_encounter, in_encounter_enemies, in_encounter_rewards
+        nonlocal current_item, current_poi, current_encounter, current_enemy
+        _flush_item(current_item, current_node)
+        _flush_poi(current_poi, current_node)
+        _flush_enemy(current_enemy, current_encounter)
+        current_item = None
+        current_poi = None
+        current_enemy = None
+        in_items = False
+        in_pois = False
+        in_encounter = False
+        in_encounter_enemies = False
+        in_encounter_rewards = False
 
     i = start
     while i < len(lines):
@@ -131,14 +154,11 @@ def parse_map(text: str) -> MapIR:
 
         # ## 節點
         if stripped.startswith("## ") and not stripped.startswith("### "):
-            _flush_item(current_item, current_node)
-            _flush_poi(current_poi, current_node)
+            _reset_sub_blocks()
+            _flush_encounter(current_encounter, current_node)
+            current_encounter = None
             _flush_edge(current_edge, current_node)
-            current_item = None
-            current_poi = None
             current_edge = None
-            in_items = False
-            in_pois = False
 
             heading = stripped[3:]
             name, eid = parse_heading_id(heading)
@@ -149,13 +169,10 @@ def parse_map(text: str) -> MapIR:
 
         # ### → 邊
         if stripped.startswith("### ") and "→" in stripped:
-            _flush_item(current_item, current_node)
-            _flush_poi(current_poi, current_node)
+            _reset_sub_blocks()
+            _flush_encounter(current_encounter, current_node)
+            current_encounter = None
             _flush_edge(current_edge, current_node)
-            current_item = None
-            current_poi = None
-            in_items = False
-            in_pois = False
 
             heading = stripped[4:]
             # 去掉 → 前綴
@@ -163,6 +180,88 @@ def parse_map(text: str) -> MapIR:
             edge_text = heading[arrow_idx + 1 :].strip()
             name, eid = parse_heading_id(edge_text)
             current_edge = EdgeIR(name=name, explicit_id=eid)
+            i += 1
+            continue
+
+        # encounter: 區塊開始
+        if stripped == "encounter:" and current_node:
+            _reset_sub_blocks()
+            current_encounter = EncounterIR()
+            in_encounter = True
+            i += 1
+            continue
+
+        # encounter 子區塊解析
+        if in_encounter and current_encounter and (line.startswith("  ") or line.startswith("\t")):
+            # enemies: 子區塊
+            if stripped == "enemies:":
+                in_encounter_enemies = True
+                in_encounter_rewards = False
+                i += 1
+                continue
+
+            # rewards: 子區塊
+            if stripped == "rewards:":
+                _flush_enemy(current_enemy, current_encounter)
+                current_enemy = None
+                in_encounter_enemies = False
+                in_encounter_rewards = True
+                i += 1
+                continue
+
+            # enemies 列表項
+            if in_encounter_enemies and stripped.startswith("- "):
+                _flush_enemy(current_enemy, current_encounter)
+                current_enemy = _parse_enemy_header(stripped[2:])
+                i += 1
+                continue
+
+            # enemy 描述/count（更深縮排：4+ 空格）
+            # 2 空格開頭 = 回到 encounter 頂層，不是 enemy 子項
+            indent = len(line) - len(line.lstrip())
+            if in_encounter_enemies and current_enemy and indent >= 4:
+                kv = _parse_kv(stripped)
+                if kv:
+                    key, val = kv
+                    if key == "count":
+                        current_enemy.count = int(val)
+                elif not stripped.startswith("<!--"):
+                    current_enemy.description = stripped
+                i += 1
+                continue
+
+            # 回到 encounter 頂層（indent <= 3），結束 enemies/rewards 子區塊
+            if in_encounter_enemies and indent < 4 and not stripped.startswith("- "):
+                _flush_enemy(current_enemy, current_encounter)
+                current_enemy = None
+                in_encounter_enemies = False
+
+            # rewards 列表項
+            if in_encounter_rewards and stripped.startswith("- "):
+                reward = _parse_reward_header(stripped[2:])
+                current_encounter.rewards.append(reward)
+                i += 1
+                continue
+
+            # encounter 頂層屬性
+            kv = _parse_kv(stripped)
+            if kv:
+                key, val = kv
+                if key == "trigger":
+                    current_encounter.trigger = val
+                elif key == "outcome":
+                    current_encounter.outcome = val
+                elif key == "sets_flag":
+                    current_encounter.sets_flag = val
+                elif key == "narration":
+                    current_encounter.narration = val
+            elif stripped.startswith("> "):
+                # > 多行 narration
+                narr_text = stripped[2:]
+                if current_encounter.narration:
+                    current_encounter.narration += "\n" + narr_text
+                else:
+                    current_encounter.narration = narr_text
             i += 1
             continue
 
@@ -258,6 +357,8 @@ def parse_map(text: str) -> MapIR:
     # 收尾
     _flush_item(current_item, current_node)
     _flush_poi(current_poi, current_node)
+    _flush_enemy(current_enemy, current_encounter)
+    _flush_encounter(current_encounter, current_node)
     _flush_edge(current_edge, current_node)
 
     return ir
@@ -276,6 +377,16 @@ def _flush_poi(poi: PoiIR | None, node: NodeIR | None) -> None:
 def _flush_edge(edge: EdgeIR | None, node: NodeIR | None) -> None:
     if edge and node:
         node.edges.append(edge)
+
+
+def _flush_encounter(encounter: EncounterIR | None, node: NodeIR | None) -> None:
+    if encounter and node:
+        node.encounter = encounter
+
+
+def _flush_enemy(enemy: EnemyIR | None, encounter: EncounterIR | None) -> None:
+    if enemy and encounter:
+        encounter.enemies.append(enemy)
 
 
 def _parse_item_header(text: str) -> ItemIR:
@@ -300,6 +411,38 @@ def _parse_poi_header(text: str) -> PoiIR:
     name_part = parts[0]
     name, eid = parse_heading_id(name_part)
     return PoiIR(name=name, explicit_id=eid)
+
+
+def _parse_enemy_header(text: str) -> EnemyIR:
+    """解析 enemies 列表項：名稱 #id | CR:N"""
+    parts = [p.strip() for p in text.split("|")]
+    name_part = parts[0]
+    name, eid = parse_heading_id(name_part)
+
+    enemy = EnemyIR(name=name, explicit_id=eid)
+    for part in parts[1:]:
+        part = part.strip()
+        if part.upper().startswith("CR:"):
+            enemy.cr = part[3:].strip()
+    return enemy
+
+
+def _parse_reward_header(text: str) -> RewardIR:
+    """解析 rewards 列表項：名稱 #id | value_gp:N 或 名稱 | xp:N"""
+    parts = [p.strip() for p in text.split("|")]
+    name_part = parts[0]
+    name, eid = parse_heading_id(name_part)
+
+    reward = RewardIR(name=name, explicit_id=eid)
+    for part in parts[1:]:
+        part = part.strip()
+        if part.startswith("value_gp:"):
+            reward.value_gp = int(part[9:].strip())
+            reward.reward_type = "item"
+        elif part.startswith("xp:"):
+            reward.xp = int(part[3:].strip())
+            reward.reward_type = "xp"
+    return reward
 
 
 # ── NPC 解析 ─────────────────────────────────────────────

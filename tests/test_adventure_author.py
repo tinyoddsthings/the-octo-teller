@@ -819,3 +819,169 @@ class TestCli:
     def test_no_command(self):
         ret = cli_main([])
         assert ret == 1
+
+
+# ── Encounter 解析 ──────────────────────────────────────
+
+
+SAMPLE_ENCOUNTER_MAP = """\
+---
+id: test_dungeon_enc
+name: 遭遇測試地城
+scale: dungeon
+entry: entrance
+---
+
+## 入口 #entrance
+type: room
+description: 一個空蕩蕩的房間。
+
+## 巢穴 #dragon_nest
+type: room
+description: 一個寬敞的洞室，中央有一堆閃亮的小物品圍成的窩。
+
+encounter:
+  enemies:
+  - 幼藍龍 #young_blue_dragon | CR:2
+    一隻藍色的小龍，蜷縮在窩裡。
+  - 冰凍蜥蜴 #ice_lizard | CR:1/4
+    兩隻結冰的蜥蜴，在角落嘶嘶作響。
+    count: 2
+  trigger: enter_node
+  narration: 幼龍猛然抬起頭，發出一聲低吼。
+  outcome: auto_win
+  rewards:
+  - 龍鱗碎片 #dragon_scale_piece | value_gp: 10
+  - 經驗值 #encounter_xp | xp: 450
+  sets_flag: dragon_defeated
+
+### → 巢穴 #to_nest
+to: dragon_nest
+from: entrance
+distance: 5min
+"""
+
+
+class TestParseEncounter:
+    def test_encounter_parsed(self):
+        ir = parse_map(SAMPLE_ENCOUNTER_MAP)
+        nest = ir.nodes[1]
+        assert nest.encounter is not None
+        assert nest.encounter.trigger == "enter_node"
+        assert nest.encounter.outcome == "auto_win"
+        assert nest.encounter.sets_flag == "dragon_defeated"
+
+    def test_encounter_enemies(self):
+        ir = parse_map(SAMPLE_ENCOUNTER_MAP)
+        enemies = ir.nodes[1].encounter.enemies
+        assert len(enemies) == 2
+        assert enemies[0].name == "幼藍龍"
+        assert enemies[0].explicit_id == "young_blue_dragon"
+        assert enemies[0].cr == "2"
+        assert enemies[0].description == "一隻藍色的小龍，蜷縮在窩裡。"
+        assert enemies[0].count == 1
+
+    def test_encounter_enemy_count(self):
+        ir = parse_map(SAMPLE_ENCOUNTER_MAP)
+        lizard = ir.nodes[1].encounter.enemies[1]
+        assert lizard.name == "冰凍蜥蜴"
+        assert lizard.cr == "1/4"
+        assert lizard.count == 2
+
+    def test_encounter_narration(self):
+        ir = parse_map(SAMPLE_ENCOUNTER_MAP)
+        assert "低吼" in ir.nodes[1].encounter.narration
+
+    def test_encounter_rewards(self):
+        ir = parse_map(SAMPLE_ENCOUNTER_MAP)
+        rewards = ir.nodes[1].encounter.rewards
+        assert len(rewards) == 2
+        assert rewards[0].name == "龍鱗碎片"
+        assert rewards[0].value_gp == 10
+        assert rewards[0].reward_type == "item"
+        assert rewards[1].xp == 450
+        assert rewards[1].reward_type == "xp"
+
+    def test_node_without_encounter(self):
+        ir = parse_map(SAMPLE_ENCOUNTER_MAP)
+        assert ir.nodes[0].encounter is None
+
+    def test_edges_still_parsed(self):
+        """encounter 不影響邊的解析。"""
+        ir = parse_map(SAMPLE_ENCOUNTER_MAP)
+        all_edges = []
+        for node in ir.nodes:
+            all_edges.extend(node.edges)
+        assert len(all_edges) == 1
+        assert all_edges[0].explicit_id == "to_nest"
+
+
+# ── Encounter Build ─────────────────────────────────────
+
+
+class TestBuildEncounter:
+    def test_encounter_in_map_dict(self):
+        ir = parse_map(SAMPLE_ENCOUNTER_MAP)
+        result = build_map_fn(ir)
+        nest = result["nodes"][1]
+        assert "encounter" in nest
+        enc = nest["encounter"]
+        assert enc["trigger"] == "enter_node"
+        assert enc["outcome"] == "auto_win"
+        assert enc["sets_flag"] == "dragon_defeated"
+
+    def test_encounter_enemies_in_dict(self):
+        ir = parse_map(SAMPLE_ENCOUNTER_MAP)
+        result = build_map_fn(ir)
+        enemies = result["nodes"][1]["encounter"]["enemies"]
+        assert len(enemies) == 2
+        assert enemies[0]["id"] == "young_blue_dragon"
+        assert enemies[0]["cr"] == "2"
+        assert enemies[1]["count"] == 2
+
+    def test_encounter_rewards_in_dict(self):
+        ir = parse_map(SAMPLE_ENCOUNTER_MAP)
+        result = build_map_fn(ir)
+        rewards = result["nodes"][1]["encounter"]["rewards"]
+        assert len(rewards) == 2
+        assert rewards[0]["value_gp"] == 10
+        assert rewards[1]["xp"] == 450
+
+    def test_pydantic_validation_with_encounter(self):
+        from tot.models.exploration import ExplorationMap
+
+        ir = parse_map(SAMPLE_ENCOUNTER_MAP)
+        result = build_map_fn(ir)
+        m = ExplorationMap.model_validate(result)
+        assert m.nodes[1].encounter is not None
+        assert m.nodes[1].encounter.sets_flag == "dragon_defeated"
+        assert len(m.nodes[1].encounter.enemies) == 2
+
+    def test_encounter_generates_script_event(self):
+        """encounter auto_win 會自動生成對應的 ScriptEvent。"""
+        from tot.models.adventure import AdventureScript
+
+        meta_md = """\
+---
+id: enc_test
+name: 遭遇測試
+---
+"""
+        meta_dict, flags = parse_meta(meta_md)
+        map_ir = parse_map(SAMPLE_ENCOUNTER_MAP)
+        result = build_script(meta_dict, flags, [], [], maps=[map_ir])
+        script = AdventureScript.model_validate(result)
+
+        # 應有一個自動生成的遭遇事件
+        enc_events = [e for e in script.events if e.id == "encounter_dragon_nest"]
+        assert len(enc_events) == 1
+        event = enc_events[0]
+        assert event.trigger.type == "enter_node"
+        assert event.trigger.node_id == "dragon_nest"
+        # 應有 narrate + set_flag + add_item actions
+        action_types = [a.type for a in event.actions]
+        assert "narrate" in action_types
+        assert "set_flag" in action_types
+        assert "add_item" in action_types
+        # 條件：not:dragon_defeated（避免重複觸發）
+        assert event.condition == "not:dragon_defeated"

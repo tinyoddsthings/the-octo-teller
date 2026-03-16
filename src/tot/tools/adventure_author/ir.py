@@ -8,6 +8,43 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+# ── 遭遇 IR ─────────────────────────────────────────────
+
+
+@dataclass
+class EnemyIR:
+    """遭遇中的敵人。"""
+
+    name: str
+    explicit_id: str | None = None
+    cr: str = "0"  # Challenge Rating（如 "2", "1/4"）
+    description: str = ""
+    count: int = 1
+
+
+@dataclass
+class RewardIR:
+    """遭遇獎勵（物品或經驗值）。"""
+
+    name: str
+    explicit_id: str | None = None
+    reward_type: str = "item"  # item / xp
+    value_gp: int = 0
+    xp: int = 0
+
+
+@dataclass
+class EncounterIR:
+    """節點內的遭遇區塊。"""
+
+    enemies: list[EnemyIR] = field(default_factory=list)
+    trigger: str = "enter_node"  # enter_node / interact / flag_set
+    narration: str = ""
+    outcome: str = "auto_win"  # auto_win / combat
+    rewards: list[RewardIR] = field(default_factory=list)
+    sets_flag: str = ""
+
+
 # ── 地圖 IR ──────────────────────────────────────────────
 
 
@@ -62,6 +99,7 @@ class NodeIR:
     combat_map: str | None = None
     sub_map: str | None = None
     npcs: list[str] = field(default_factory=list)
+    encounter: EncounterIR | None = None
 
 
 @dataclass

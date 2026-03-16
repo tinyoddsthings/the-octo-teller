@@ -10,7 +10,9 @@ from tot.tools.adventure_author.ir import (
     ChapterIR,
     ChoiceIR,
     DialogueIR,
+    EncounterIR,
     EventIR,
+    MapIR,
     NpcIR,
 )
 
@@ -20,14 +22,28 @@ def build_script(
     initial_flags: dict[str, int],
     npcs: list[NpcIR],
     chapters: list[ChapterIR],
+    maps: list[MapIR] | None = None,
 ) -> dict:
-    """將 meta + NPC + 章節合併為 AdventureScript JSON dict。"""
+    """將 meta + NPC + 章節 + 地圖遭遇合併為 AdventureScript JSON dict。"""
     npc_dict = {}
     for npc in npcs:
         npc_data = _build_npc(npc)
         npc_dict[npc_data["id"]] = npc_data
 
     events = []
+
+    # 從地圖遭遇自動生成事件
+    if maps:
+        for map_ir in maps:
+            for node in map_ir.nodes:
+                if node.encounter:
+                    node_id = name_to_id(node.name, node.explicit_id)
+                    encounter_events = _build_encounter_events(
+                        node.encounter,
+                        node_id,
+                    )
+                    events.extend(encounter_events)
+
     for chapter in chapters:
         for event_ir in chapter.events:
             event = _build_event(event_ir, chapter.chapter)
@@ -139,6 +155,49 @@ def _combine_condition(condition: str, chapter: str) -> str:
     if len(parts) == 1:
         return parts[0]
     return "all:" + ",".join(parts)
+
+
+def _build_encounter_events(
+    encounter: EncounterIR,
+    node_id: str,
+) -> list[dict]:
+    """從 EncounterIR 自動生成 enter_node 事件（auto_win 模式）。
+
+    產出一個事件：進入節點 → 旁白 → set_flag → add_item（獎勵）。
+    """
+    event_id = f"encounter_{node_id}"
+    actions: list[dict] = []
+
+    # 旁白
+    if encounter.narration:
+        actions.append({"type": "narrate", "text": encounter.narration})
+
+    # 設定 flag
+    if encounter.sets_flag:
+        actions.append({"type": "set_flag", "flag": encounter.sets_flag})
+
+    # 獎勵物品
+    for reward in encounter.rewards:
+        if reward.reward_type == "item":
+            rid = name_to_id(reward.name, reward.explicit_id)
+            actions.append({"type": "add_item", "item_id": rid})
+
+    # 觸發器
+    trigger: dict = {"type": encounter.trigger}
+    if encounter.trigger == "enter_node":
+        trigger["node_id"] = node_id
+
+    result: dict = {
+        "id": event_id,
+        "trigger": trigger,
+        "actions": actions,
+    }
+
+    # auto_win 遭遇只觸發一次
+    if encounter.sets_flag:
+        result["condition"] = f"not:{encounter.sets_flag}"
+
+    return [result]
 
 
 def _build_event(event_ir: EventIR, chapter_num: str) -> dict:

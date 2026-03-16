@@ -113,7 +113,8 @@ def _cmd_build(args: argparse.Namespace) -> int:
         meta_dict, initial_flags = _load_meta(adv_dir)
         npcs = _load_npcs(adv_dir)
         chapters = _load_chapters(adv_dir)
-        result = build_script(meta_dict, initial_flags, npcs, chapters)
+        map_irs = _load_map_irs(adv_dir)
+        result = build_script(meta_dict, initial_flags, npcs, chapters, maps=map_irs)
         out_path = output_dir / f"{result['id']}.json"
         out_path.write_text(
             json.dumps(result, ensure_ascii=False, indent=2),
@@ -190,7 +191,8 @@ def _cmd_validate(args: argparse.Namespace) -> int:
         meta_dict, initial_flags = _load_meta(adv_dir)
         npcs = _load_npcs(adv_dir)
         chapters = _load_chapters(adv_dir)
-        result = build_script(meta_dict, initial_flags, npcs, chapters)
+        map_irs = _load_map_irs(adv_dir)
+        result = build_script(meta_dict, initial_flags, npcs, chapters, maps=map_irs)
         AdventureScript.model_validate(result)
         print(f"  ✅ 劇本：{meta_dict.get('id', '?')}")
     except Exception as e:
@@ -223,6 +225,19 @@ def _load_npcs(adv_dir: Path) -> list:
         for md_file in sorted(npcs_dir.glob("*.md")):
             npc = parse_npc(md_file.read_text(encoding="utf-8"))
             result.append(npc)
+    return result
+
+
+def _load_map_irs(adv_dir: Path) -> list:
+    """載入所有地圖的 IR（用於提取 encounter 生成事件）。"""
+    from tot.tools.adventure_author.ir import MapIR
+
+    maps_dir = adv_dir / "maps"
+    result: list[MapIR] = []
+    if maps_dir.is_dir():
+        for md_file in sorted(maps_dir.glob("*.md")):
+            ir = parse_map(md_file.read_text(encoding="utf-8"))
+            result.append(ir)
     return result
 
 

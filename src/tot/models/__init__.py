@@ -22,9 +22,12 @@ from tot.models.adventure import (
     AdventureScript,
     AdventureState,
     DialogueLine,
+    EncounterDef,
+    EnemyDef,
     EventAction,
     EventTrigger,
     NpcDef,
+    RewardDef,
     ScriptEvent,
 )
 from tot.models.combat_state import (
@@ -181,9 +184,12 @@ __all__ = [
     "AdventureScript",
     "AdventureState",
     "DialogueLine",
+    "EncounterDef",
+    "EnemyDef",
     "EventAction",
     "EventTrigger",
     "NpcDef",
+    "RewardDef",
     "ScriptEvent",
     # exploration
     "AreaExploreState",
