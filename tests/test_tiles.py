@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+import importlib.util
+
+import pytest
+
 from tot.tui.tiles import (
     CELL_SIZE_M,
     FLOOR_TILE,
@@ -17,6 +21,9 @@ from tot.tui.tiles import (
     resolve_prop_tile,
     world_to_grid,
 )
+
+_has_drawille = importlib.util.find_spec("drawille") is not None
+needs_drawille = pytest.mark.skipif(not _has_drawille, reason="drawille not installed")
 
 # ---------------------------------------------------------------------------
 # 座標轉換
@@ -149,6 +156,7 @@ class TestActorTiles:
 # ---------------------------------------------------------------------------
 
 
+@needs_drawille
 class TestBrailleSample:
     """braille_sample() 從紋理函數實際取樣。"""
 
@@ -166,6 +174,7 @@ class TestBrailleSample:
         assert s != "\u2800"
 
 
+@needs_drawille
 class TestBuildLegendLines:
     """build_legend_lines() 自動圖例生成。"""
 
@@ -299,6 +308,7 @@ class TestBuildLegendLines:
 # ---------------------------------------------------------------------------
 
 
+@needs_drawille
 class TestLegendShape:
     """legend_shape 統一圖例形狀測試。"""
 
