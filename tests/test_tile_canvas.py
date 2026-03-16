@@ -6,6 +6,10 @@
 
 from __future__ import annotations
 
+import pytest
+
+pytest.importorskip("drawille", reason="drawille not installed (optional tui dependency)")
+
 from uuid import uuid4
 
 from tot.models.enums import Size

@@ -6,6 +6,10 @@
 
 from __future__ import annotations
 
+import pytest
+
+pytest.importorskip("textual", reason="textual not installed (optional tui dependency)")
+
 import time
 from unittest.mock import MagicMock
 
