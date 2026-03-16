@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 
+import copy
 import json
 from pathlib import Path
 from typing import Any
@@ -34,6 +35,28 @@ def _resolve_map_path(name: str) -> Path:
 
     msg = f"找不到地圖：{name}（在 {_MAPS_DIR} 及其子資料夾中）"
     raise FileNotFoundError(msg)
+
+
+def _expand_props(raw_props: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """將 prefab_id 展開為完整 prop dict。
+
+    深拷貝模板後以實例欄位覆蓋，無 prefab_id 的 prop 原樣傳遞（向後相容）。
+    """
+    from tot.data.prop_defs import PROP_PREFABS
+
+    expanded: list[dict[str, Any]] = []
+    for entry in raw_props:
+        prefab_id = entry.pop("prefab_id", None)
+        if prefab_id:
+            if prefab_id not in PROP_PREFABS:
+                msg = f"未知的 prefab_id：{prefab_id}"
+                raise ValueError(msg)
+            template = copy.deepcopy(PROP_PREFABS[prefab_id])
+            template.update(entry)
+            expanded.append(template)
+        else:
+            expanded.append(entry)
+    return expanded
 
 
 def load_map_manifest(
@@ -65,6 +88,9 @@ def load_map_manifest(
     for key, points in raw_spawns.items():
         parsed_spawns[key] = [Position(x=p["x"], y=p["y"]) for p in points]
     raw["spawn_points"] = parsed_spawns
+
+    # Prefab 展開：prefab_id → 深拷貝模板 + 實例覆蓋
+    raw["props"] = _expand_props(raw.get("props", []))
 
     manifest = MapManifest(**raw)
 

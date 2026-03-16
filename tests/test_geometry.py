@@ -168,7 +168,7 @@ class TestExtractStaticObstacles:
         assert obs[0].min_y == pytest.approx(3.0)
 
     def test_blocking_prop(self):
-        """阻擋 Prop → 產生 AABB（以 prop 位置為中心的 1.5m × 1.5m）。"""
+        """阻擋 Prop → 產生 AABB（以 prop 位置為中心的 1.0m × 1.0m）。"""
         prop = Prop(
             id="w1",
             x=3.75,
@@ -180,8 +180,8 @@ class TestExtractStaticObstacles:
         ms = MapState(manifest=manifest)
         obs = extract_static_obstacles(ms)
         assert len(obs) == 1
-        assert obs[0].min_x == pytest.approx(3.0)
-        assert obs[0].min_y == pytest.approx(3.0)
+        assert obs[0].min_x == pytest.approx(3.25)
+        assert obs[0].min_y == pytest.approx(3.25)
 
     def test_deduplication(self):
         """manifest.walls 和 map_state.walls 相同位置 → 去重後只有一個。"""

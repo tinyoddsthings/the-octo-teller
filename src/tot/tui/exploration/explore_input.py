@@ -10,6 +10,17 @@ from collections.abc import Callable
 from enum import StrEnum
 from typing import TYPE_CHECKING
 
+from tot.gremlins.bone_engine.area_explore import (
+    check_terrain_at,
+    enter_area,
+    exit_area,
+    explore_move,
+    get_nearby_props,
+    get_party_position,
+    reset_movement,
+    search_prop,
+    take_prop_loot,
+)
 from tot.gremlins.bone_engine.checks import (
     ability_check,
     best_passive_perception,
@@ -34,10 +45,12 @@ from tot.gremlins.bone_engine.exploration import (
 from tot.gremlins.bone_engine.rest import long_rest, short_rest
 from tot.models import (
     Ability,
+    AreaExploreState,
     Character,
     ExplorationEdge,
     ExplorationMap,
     ExplorationState,
+    Prop,
     Skill,
 )
 
@@ -56,6 +69,11 @@ class ExplorePhase(StrEnum):
     REST_SELECT = "rest_select"
     TAKE_SELECT = "take_select"
     LOCKED = "locked"
+    # Area 自由探索模式
+    AREA_MAIN = "area_main"
+    AREA_SEARCH_PROP = "area_search_prop"
+    AREA_SEARCH_CHAR = "area_search_char"
+    AREA_TAKE = "area_take"
 
 
 class ExploreInputHandler:
@@ -69,6 +87,10 @@ class ExploreInputHandler:
         self._pending_action: str = ""  # "lockpick" | "force" | "search" | "jump"
         self._collected_keys: set[str] = set()
         self.noise_alert: bool = False
+        # Area 探索模式
+        self.area_state: AreaExploreState | None = None
+        self._current_node_has_area: bool = False
+        self._pending_search_prop: Prop | None = None
 
     # -----------------------------------------------------------------
     # 主選單
@@ -77,7 +99,7 @@ class ExploreInputHandler:
     def show_main_menu(self, log: RichLog) -> None:
         """顯示主選單。"""
         self.phase = ExplorePhase.MAIN
-        log.write(
+        menu_text = (
             "\n[bold white]可用指令：[/]\n"
             "  [cyan]1.[/] 查看（look）\n"
             "  [cyan]2.[/] 移動（move）\n"
@@ -90,6 +112,9 @@ class ExploreInputHandler:
             "  [cyan]9.[/] 說明（help）\n"
             "  [cyan]0.[/] 離開（quit）"
         )
+        if self._current_node_has_area:
+            menu_text += "\n  [bold magenta]explore[/] — 進入區域探索"
+        log.write(menu_text)
         self.menu_options = [
             "look",
             "move",
@@ -118,6 +143,12 @@ class ExploreInputHandler:
     ) -> bool:
         """處理指令。回傳 True 表示要退出。"""
         cmd_lower = cmd.lower().strip()
+
+        # Area 模式：所有指令路由到 area handlers
+        if self.area_state is not None:
+            return self._handle_area_command(
+                cmd, cmd_lower, characters, exp_map, state, log, refresh_fn
+            )
 
         # 數字選單
         if cmd.isdigit():
@@ -230,6 +261,8 @@ class ExploreInputHandler:
         elif cmd == "map":
             refresh_fn()
             log.write("[dim]地圖已重新渲染。[/]")
+        elif cmd == "explore":
+            self._enter_area_mode(characters, exp_map, state, log, refresh_fn)
         elif cmd == "help":
             self._do_help(log)
         else:
@@ -359,13 +392,14 @@ class ExploreInputHandler:
             log.write(f"\n[green]{result.message}[/]")
             log.write(f"[dim]（{format_time(result.elapsed_seconds)}）[/]")
 
-            # 進入新節點：自動被動感知 + 描述
-            self._on_enter_node(characters, exp_map, state, log)
+            # 進入新節點：自動被動感知 + 描述 + 自動 area
+            self._on_enter_node(characters, exp_map, state, log, refresh_fn)
             refresh_fn()
         else:
             log.write(f"[red]{result.message}[/]")
 
-        self.show_main_menu(log)
+        if self.area_state is None:
+            self.show_main_menu(log)
         return False
 
     def _on_enter_node(
@@ -374,9 +408,20 @@ class ExploreInputHandler:
         exp_map: ExplorationMap,
         state: ExplorationState,
         log: RichLog,
+        refresh_fn: Callable | None = None,
     ) -> None:
-        """進入新節點時觸發被動感知 + 顯示描述。"""
+        """進入新節點時觸發被動感知 + 顯示描述。
+
+        若節點有 combat_map 且提供 refresh_fn，自動進入 area 探索模式。
+        """
         node_id = state.current_node_id
+
+        # 檢查此節點是否有 area 地圖
+        self._current_node_has_area = False
+        for n in exp_map.nodes:
+            if n.id == node_id:
+                self._current_node_has_area = bool(n.combat_map)
+                break
         best_pp = best_passive_perception(characters)
 
         # 被動感知自動發現隱藏通道
@@ -386,6 +431,10 @@ class ExploreInputHandler:
 
         # 顯示節點描述
         self._do_look(exp_map, state, log)
+
+        # 自動進入 area 探索模式
+        if self._current_node_has_area and refresh_fn:
+            self._enter_area_mode(characters, exp_map, state, log, refresh_fn)
 
     # -----------------------------------------------------------------
     # door
@@ -515,7 +564,7 @@ class ExploreInputHandler:
         if result.success:
             log.write(f"[green]✅ {result.message}[/]")
             log.write(f"[dim]（{format_time(result.elapsed_seconds)}）[/]")
-            self._on_enter_node(characters, exp_map, state, log)
+            self._on_enter_node(characters, exp_map, state, log, refresh_fn)
             refresh_fn()
         elif result.fall_damage_total > 0:
             # 墜落受傷但仍到達
@@ -526,18 +575,19 @@ class ExploreInputHandler:
                 f" → {char.hp_current}[/]"
             )
             log.write(f"[dim]（{format_time(result.elapsed_seconds)}）[/]")
-            self._on_enter_node(characters, exp_map, state, log)
+            self._on_enter_node(characters, exp_map, state, log, refresh_fn)
             refresh_fn()
         elif result.node is not None and result.fall_damage_dice:
             # fall_damage_on_fail=True 但骰到 0（理論上不會）
             log.write(f"[yellow]❌ {result.message}[/]")
-            self._on_enter_node(characters, exp_map, state, log)
+            self._on_enter_node(characters, exp_map, state, log, refresh_fn)
             refresh_fn()
         else:
             # 失敗，原地不動
             log.write(f"[yellow]❌ {result.message}[/]")
 
-        self.show_main_menu(log)
+        if self.area_state is None:
+            self.show_main_menu(log)
         return False
 
     # -----------------------------------------------------------------
@@ -921,6 +971,7 @@ class ExploreInputHandler:
             "  [cyan]rest[/]     — 短休或長休回復 HP\n"
             "  [cyan]status[/]   — 查看隊伍狀態\n"
             "  [cyan]map[/]      — 重新渲染地圖\n"
+            "  [cyan]explore[/]  — 進入區域探索（僅在有地圖的節點可用）\n"
             "  [cyan]help[/]     — 顯示此說明\n"
             "  [cyan]quit[/]     — 離開探索\n"
             "\n"
@@ -928,6 +979,399 @@ class ExploreInputHandler:
             "  [dim]切換地圖：load ruins / load dungeon / load town / load wilderness[/]"
         )
         self.show_main_menu(log)
+
+    # -----------------------------------------------------------------
+    # Area 自由探索模式
+    # -----------------------------------------------------------------
+
+    def _enter_area_mode(
+        self,
+        characters: list[Character],
+        exp_map: ExplorationMap,
+        state: ExplorationState,
+        log: RichLog,
+        refresh_fn: Callable,
+    ) -> None:
+        """進入 area 探索模式。"""
+        node_id = state.current_node_id
+        area_state = enter_area(exp_map, node_id, characters)
+        if area_state is None:
+            log.write("[red]此節點無法進入區域探索。[/]")
+            self.show_main_menu(log)
+            return
+
+        self.area_state = area_state
+        pos = get_party_position(area_state)
+        manifest = area_state.map_state.manifest
+        log.write("\n[bold magenta]🗺️ 進入區域探索模式[/]")
+        log.write(f"[dim]地圖：{manifest.name}（{manifest.width}×{manifest.height}m）[/]")
+        if pos:
+            log.write(f"[dim]起始位置：({pos.x:.1f}, {pos.y:.1f})[/]")
+        refresh_fn()
+        self._show_area_menu(log)
+
+    def _exit_area_mode(
+        self,
+        log: RichLog,
+        refresh_fn: Callable,
+    ) -> None:
+        """離開 area 探索模式。"""
+        if self.area_state is None:
+            return
+        result = exit_area(self.area_state)
+        if result.collected_items:
+            log.write("\n[bold green]收集的物品：[/]")
+            for item in result.collected_items:
+                gp = f" ({item.value_gp} gp)" if item.value_gp else ""
+                log.write(f"  • {item.name}{gp}")
+
+        self.area_state = None
+        log.write("\n[bold magenta]📍 返回 Pointcrawl 模式[/]")
+        refresh_fn()
+        self.show_main_menu(log)
+
+    def _show_area_menu(self, log: RichLog) -> None:
+        """顯示 area 模式主選單。"""
+        self.phase = ExplorePhase.AREA_MAIN
+        pos = get_party_position(self.area_state)
+        pos_str = f"({pos.x:.1f}, {pos.y:.1f})" if pos else "(?)"
+        speed_str = f"{self.area_state.speed_remaining:.1f}/{self.area_state.speed_per_turn:.1f}m"
+        log.write(f"\n[bold white]Area 探索[/] — {pos_str}  移動力 {speed_str}")
+        self.menu_options = [
+            "look",
+            "move",
+            "search",
+            "take",
+            "terrain",
+            "reset",
+            "map",
+            "exit",
+        ]
+
+    def _handle_area_command(
+        self,
+        cmd: str,
+        cmd_lower: str,
+        characters: list[Character],
+        exp_map: ExplorationMap,
+        state: ExplorationState,
+        log: RichLog,
+        refresh_fn: Callable,
+    ) -> bool:
+        """Area 模式指令分派。"""
+        # 數字輸入
+        if cmd.isdigit():
+            num = int(cmd)
+            if self.phase == ExplorePhase.AREA_MAIN:
+                area_cmd_map = {
+                    1: "look",
+                    2: "move",
+                    3: "search",
+                    4: "take",
+                    5: "terrain",
+                    6: "reset",
+                    7: "map",
+                    0: "exit",
+                }
+                resolved = area_cmd_map.get(num)
+                if resolved:
+                    return self._handle_area_main(
+                        resolved, characters, exp_map, state, log, refresh_fn
+                    )
+                log.write(f"[red]無效選項：{num}[/]")
+                return False
+            # 選擇 phase：0 返回
+            if num == 0:
+                self._show_area_menu(log)
+                return False
+            if num < 1 or num > len(self.menu_options):
+                log.write(f"[red]無效選項：{num}[/]")
+                return False
+            option = self.menu_options[num - 1]
+            if self.phase == ExplorePhase.AREA_SEARCH_PROP:
+                return self._area_do_search_prop(option, characters, log, refresh_fn)
+            if self.phase == ExplorePhase.AREA_SEARCH_CHAR:
+                return self._area_do_search_exec(option, log, refresh_fn)
+            if self.phase == ExplorePhase.AREA_TAKE:
+                return self._area_do_take_exec(option, log, refresh_fn)
+            return False
+
+        # 文字輸入
+        if self.phase == ExplorePhase.AREA_MAIN:
+            return self._handle_area_main(cmd_lower, characters, exp_map, state, log, refresh_fn)
+
+        # 選擇 phase 中的文字輸入
+        if cmd_lower in ("0", "back"):
+            self._show_area_menu(log)
+            return False
+        log.write("[red]請輸入有效的編號，或 0 返回。[/]")
+        return False
+
+    def _handle_area_main(
+        self,
+        cmd: str,
+        characters: list[Character],
+        exp_map: ExplorationMap,
+        state: ExplorationState,
+        log: RichLog,
+        refresh_fn: Callable,
+    ) -> bool:
+        """Area 主選單指令處理。"""
+        if cmd == "exit":
+            self._exit_area_mode(log, refresh_fn)
+            return False
+        if cmd == "look":
+            self._area_do_look(log)
+        elif cmd.startswith("move"):
+            self._area_do_move(cmd, log, refresh_fn)
+        elif cmd == "search":
+            self._area_show_search_prop(characters, log)
+        elif cmd == "take":
+            self._area_show_take(log)
+        elif cmd == "terrain":
+            self._area_do_terrain(log)
+        elif cmd == "reset":
+            self._area_do_reset(log)
+        elif cmd == "map":
+            refresh_fn()
+            log.write("[dim]地圖已重新渲染。[/]")
+            self._show_area_menu(log)
+        elif cmd == "help":
+            log.write(
+                "\n[bold white]Area 指令說明：[/]\n"
+                "  [cyan]WASD[/]    — 方向移動\n"
+                "  [cyan]look[/]    — 查看附近物件\n"
+                "  [cyan]search[/]  — 搜索隱藏物品\n"
+                "  [cyan]take[/]    — 拾取物品\n"
+                "  [cyan]terrain[/] — 查看地形\n"
+                "  [cyan]reset[/]   — 重置移動力\n"
+                "  [cyan]map[/]     — 重新渲染地圖\n"
+                "  [cyan]exit[/]    — 離開區域"
+            )
+            self._show_area_menu(log)
+        else:
+            log.write(f"[red]未知指令：{cmd}[/]")
+            self._show_area_menu(log)
+        return False
+
+    def _area_do_look(self, log: RichLog) -> None:
+        """查看附近可互動物件。"""
+        from tot.gremlins.bone_engine.area_explore import INTERACT_RADIUS_M
+
+        props = get_nearby_props(self.area_state)
+        pos = get_party_position(self.area_state)
+
+        if pos:
+            log.write(f"\n[bold white]📍 隊伍位置：({pos.x:.1f}, {pos.y:.1f})[/]")
+
+        terrain = check_terrain_at(self.area_state)
+        if terrain.terrain_type:
+            log.write(f"[yellow]地形：{terrain.description}[/]")
+            if terrain.is_difficult:
+                log.write("[yellow]⚠ 困難地形——移動消耗加倍[/]")
+
+        if not props:
+            log.write(f"[dim]附近 {INTERACT_RADIUS_M}m 內沒有可互動物件。[/]")
+        else:
+            log.write(f"\n[bold white]附近物件（{INTERACT_RADIUS_M}m 內）：[/]")
+            for prop in props:
+                status = ""
+                if prop.is_looted:
+                    status = " [dim](已拾取)[/]"
+                elif prop.is_searched:
+                    status = " [dim](已搜索)[/]"
+                dist_str = ""
+                if pos:
+                    from tot.gremlins.bone_engine.spatial import distance as calc_dist
+                    from tot.models import Position
+
+                    dist = calc_dist(pos, Position(x=prop.x, y=prop.y))
+                    dist_str = f" [{dist:.1f}m]"
+                log.write(
+                    f"  • {prop.name or prop.id} ({prop.x:.1f}, {prop.y:.1f}){dist_str}{status}"
+                )
+
+        self._show_area_menu(log)
+
+    def _area_do_move(
+        self,
+        cmd: str,
+        log: RichLog,
+        refresh_fn: Callable,
+    ) -> None:
+        """移動隊伍到指定座標。"""
+        parts = cmd.split()
+        if len(parts) < 3:
+            log.write("[yellow]用法：move x y（例：move 5.0 3.0）[/]")
+            self._show_area_menu(log)
+            return
+        try:
+            tx, ty = float(parts[1]), float(parts[2])
+        except ValueError:
+            log.write("[red]座標必須是數字。[/]")
+            self._show_area_menu(log)
+            return
+
+        result = explore_move(self.area_state, tx, ty)
+        if result.success:
+            log.write(f"[green]移動成功[/] — 剩餘移動力 {result.speed_remaining:.1f}m")
+            if result.terrain and result.terrain.terrain_type:
+                log.write(f"[yellow]地形：{result.message}[/]")
+                if result.terrain.is_difficult:
+                    log.write("[yellow]⚠ 困難地形——移動消耗加倍[/]")
+            refresh_fn()
+        else:
+            log.write(f"[red]{result.message or '移動失敗——可能超出移動力或有障礙物'}[/]")
+        self._show_area_menu(log)
+
+    def _area_show_search_prop(
+        self,
+        characters: list[Character],
+        log: RichLog,
+    ) -> None:
+        """顯示附近可搜索的 Prop 清單。"""
+        props = get_nearby_props(self.area_state)
+        searchable = [p for p in props if not p.is_looted]
+
+        if not searchable:
+            log.write("[yellow]附近沒有可搜索的物件。[/]")
+            self._show_area_menu(log)
+            return
+
+        self.phase = ExplorePhase.AREA_SEARCH_PROP
+        self.menu_options = searchable
+
+        log.write("\n[bold white]選擇要搜索的物件：[/]")
+        for i, prop in enumerate(searchable, 1):
+            status = " [dim](已搜索)[/]" if prop.is_searched else ""
+            log.write(f"  [cyan]{i}.[/] {prop.name or prop.id}{status}")
+        log.write("  [dim]0. ← 返回[/]")
+
+    def _area_do_search_prop(
+        self,
+        prop: Prop,
+        characters: list[Character],
+        log: RichLog,
+        refresh_fn: Callable,
+    ) -> bool:
+        """選定 prop 後，顯示角色選擇。"""
+        self._pending_search_prop = prop
+        self.phase = ExplorePhase.AREA_SEARCH_CHAR
+        self.menu_options = characters
+
+        log.write(f"\n[bold white]選擇誰來搜索「{prop.name or prop.id}」：[/]")
+        for i, char in enumerate(characters, 1):
+            bonus = char.skill_bonus(Skill.INVESTIGATION)
+            log.write(f"  [cyan]{i}.[/] {char.name} (Investigation {bonus:+d})")
+        log.write("  [dim]0. ← 返回[/]")
+        return False
+
+    def _area_do_search_exec(
+        self,
+        char: Character,
+        log: RichLog,
+        refresh_fn: Callable,
+    ) -> bool:
+        """執行搜索。"""
+        prop = self._pending_search_prop
+        if not prop or not self.area_state:
+            self._show_area_menu(log)
+            return False
+
+        result = search_prop(self.area_state, prop.id, char)
+
+        if result.success:
+            log.write(f"[green]✅ {result.message}[/]")
+            if result.loot_available:
+                log.write("[cyan]💰 此物件內有物品可拾取！[/]")
+                # 自動進入拿取流程——直接提示拿取剛搜索到的物件
+                searched_prop = prop
+                self._pending_search_prop = None
+                refresh_fn()
+                self.phase = ExplorePhase.AREA_TAKE
+                self.menu_options = [searched_prop]
+                items_str = ", ".join(item.name for item in searched_prop.loot_items)
+                log.write("\n[bold white]拾取物品：[/]")
+                log.write(f"  [cyan]1.[/] {searched_prop.name or searched_prop.id} — {items_str}")
+                log.write("  [dim]0. ← 返回[/]")
+                return False
+        else:
+            log.write(f"[red]❌ {result.message}[/]")
+
+        self._pending_search_prop = None
+        refresh_fn()
+        self._show_area_menu(log)
+        return False
+
+    def _area_show_take(self, log: RichLog) -> None:
+        """顯示可拾取的 Prop 清單。"""
+        props = get_nearby_props(self.area_state)
+        lootable = [p for p in props if p.is_searched and not p.is_looted and p.loot_items]
+
+        if not lootable:
+            log.write("[yellow]附近沒有可拾取物品的物件。（需先搜索）[/]")
+            self._show_area_menu(log)
+            return
+
+        self.phase = ExplorePhase.AREA_TAKE
+        self.menu_options = lootable
+
+        log.write("\n[bold white]選擇要拾取物品的物件：[/]")
+        for i, prop in enumerate(lootable, 1):
+            items_str = ", ".join(item.name for item in prop.loot_items)
+            log.write(f"  [cyan]{i}.[/] {prop.name or prop.id} — {items_str}")
+        log.write("  [dim]0. ← 返回[/]")
+
+    def _area_do_take_exec(
+        self,
+        prop: Prop,
+        log: RichLog,
+        refresh_fn: Callable,
+    ) -> bool:
+        """拾取 Prop 內的物品。"""
+        if not self.area_state:
+            self._show_area_menu(log)
+            return False
+
+        items = take_prop_loot(self.area_state, prop.id)
+        if items:
+            log.write("[green]✅ 拾取了：[/]")
+            for item in items:
+                gp = f" ({item.value_gp} gp)" if item.value_gp else ""
+                log.write(f"  • {item.name}{gp}")
+                if item.grants_key:
+                    self._collected_keys.add(item.grants_key)
+                    log.write(f"[cyan]🔑 獲得鑰匙！（{item.grants_key}）[/]")
+        else:
+            log.write("[yellow]沒有可拾取的物品。[/]")
+
+        refresh_fn()
+        self._show_area_menu(log)
+        return False
+
+    def _area_do_terrain(self, log: RichLog) -> None:
+        """查看當前位置的地形資訊。"""
+        terrain = check_terrain_at(self.area_state)
+        pos = get_party_position(self.area_state)
+
+        if pos:
+            log.write(f"\n[bold white]位置：({pos.x:.1f}, {pos.y:.1f})[/]")
+        if terrain.terrain_type:
+            log.write(f"[yellow]地形：{terrain.description}[/]")
+            log.write(f"  類型：{terrain.terrain_type}")
+            log.write(f"  海拔：{terrain.elevation_m:.1f}m")
+            if terrain.is_difficult:
+                log.write("[yellow]⚠ 困難地形——移動消耗加倍[/]")
+        else:
+            log.write("[dim]此處為普通平地。[/]")
+
+        self._show_area_menu(log)
+
+    def _area_do_reset(self, log: RichLog) -> None:
+        """重置移動速度（新回合）。"""
+        reset_movement(self.area_state)
+        log.write(f"[green]移動力已重置：{self.area_state.speed_per_turn:.1f}m[/]")
+        self._show_area_menu(log)
 
     # -----------------------------------------------------------------
     # 工具

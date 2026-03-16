@@ -129,6 +129,7 @@ class Prop(Entity):
     hp_current: int = 0
     object_ac: int = 15
     damage_immunities: list[DamageType] = Field(default_factory=list)
+    damage_resistances: list[DamageType] = Field(default_factory=list)
     damage_threshold: int = 0
     bounds: BoundingShape | None = None  # None = 沿用 _PROP_HALF AABB
     # ── 探索互動屬性 ──

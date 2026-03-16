@@ -328,14 +328,14 @@ class TestGetNearbyProps:
         assert len(props) == 0
 
     def test_nearby_mushroom(self):
-        """移動到蘑菇附近可偵測。"""
+        """移動到蘑菇附近可偵測（邊緣距離 ≤ 0.5m）。"""
         exp_map = _make_map()
         state = enter_area(exp_map, "cave", [_rogue()])
         assert state is not None
-        # 蘑菇在 (3.0, 8.0)，先移動靠近
+        # 蘑菇在 (3.0, 8.0)，移動到緊鄰位置
         explore_move(state, 4.0, 2.5)
         reset_movement(state)
-        explore_move(state, 4.0, 7.0)
+        explore_move(state, 3.0, 7.0)
         props = get_nearby_props(state)
         assert any(p.id == "mushrooms" for p in props)
 

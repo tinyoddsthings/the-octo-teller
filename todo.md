@@ -115,7 +115,14 @@
 > 📄 設計文件：[`docs/bone-engine-v2-design.md`](docs/bone-engine-v2-design.md) §4~§5
 
 - [ ] `move_entity()` 強制位移路徑檢測 — `forced=True` 時用 Liang-Barsky 掃描路徑，碰牆停在牆前 📄 [`docs/spatial-combat-design.md`](docs/spatial-combat-design.md) §4 ADR-2.5
-- [ ] 2-V A-3: 資料模型擴充 `models.py` — Position.z + TerrainTile.height_m + Actor.size/z/bounds + Material/Fragility 列舉 + Prop 可摧毀欄位+bounds + ShapeType（5種：CIRCLE/RECTANGLE/CONE/LINE/CYLINDER）+ BoundingShape（含方向欄位 direction_deg/angle_deg/length_m/height_m + intersects_line）+ SurfaceEffect（改用 bounds）+ MapState.surfaces + CoverResult
+- [ ] 2-V A-3: 資料模型擴充 `models.py`
+  - [x] Material/Fragility 列舉
+  - [x] ShapeType（5種：CIRCLE/RECTANGLE/CONE/LINE/CYLINDER）+ BoundingShape（含 intersects_line）
+  - [x] Prop 可摧毀欄位 + bounds + damage_resistances
+  - [ ] Position.z + TerrainTile.height_m
+  - [ ] Actor.size/z/bounds
+  - [ ] SurfaceEffect（改用 bounds）+ MapState.surfaces
+  - [ ] CoverResult
 - [ ] 2-V A-4: 材質系統 `bone_engine/materials.py` — MATERIAL_AC 查表 + roll_object_hp + apply_object_damage
 - [ ] 2-V A-5 (partial): `test_materials.py`（AC/HP/傷害/摧毀）
 - [ ] 2-V Phase E: Actor.size + bounds 全面傳播
@@ -188,30 +195,31 @@
 > 里程碑：MapState → RenderBuffer → BrailleMapCanvas 三層分離；地圖 JSON prefab 化；entity.symbol 移除
 > **前置：** 2-XA Phase 1~3 已完成
 
-- [ ] **Phase 0a**: `models/map.py` — Entity / Wall 移除 symbol 欄位
-- [ ] **Phase 0b**: bone_engine 四處 — aoe.py / deployment.py / spatial.py / area_explore.py 移除 symbol=
-- [ ] **Phase 0c**: TUI emoji_map — demo.py 回傳 emoji_map；app.py 新增 `_emoji_map`；stats_panel / input_handler 改用 emoji_map 參數
-- [ ] **Phase 0d**: 刪除 `src/tot/visuals/map_renderer.py`；combat_logger.py 改用 `render_braille_map()`
-- [ ] **Phase 0e**: tests 移除 symbol=（test_aoe / test_geometry / test_spatial）
-- [ ] **Phase 1a**: 新建 `src/tot/data/prop_defs/`（structural / interactive / terrain prefab）
-- [ ] **Phase 1b**: `loader.py` 新增 `_expand_props()` — prefab 展開邏輯
-- [ ] **Phase 1c**: `cave_explore.json` / `tutorial_room.json` — props 改用 prefab，移除 symbol
-- [ ] **Phase 2a**: 新建 `src/tot/tui/render_buffer.py`（RenderLayer / TextureType / RenderItem / RenderBuffer）
-- [ ] **Phase 2b**: `canvas.py` — 改用 RenderBuffer 驅動渲染，新增 _fill_circle / _outline_circle
-- [ ] **Phase 2c**: `app.py` — `_refresh_map()` 改建 RenderBuffer 傳給 canvas
-- [ ] **Phase 2d**: `geometry.py` — `extract_static_obstacles()` 改用 prop.bounds 計算 AABB
-- [ ] **Phase 3**: `render_braille_map()` / `render_to_plain()` 改用 RenderBuffer
-- [ ] **Phase 4**: 新增 `tests/test_prop_prefab.py` / `tests/test_render_buffer.py`；全測試通過
+- [x] **Phase 0a**: `models/map.py` — Entity / Wall 移除 symbol 欄位
+- [x] **Phase 0b**: bone_engine 四處 — aoe.py / deployment.py / spatial.py / area_explore.py 移除 symbol=
+- [x] **Phase 0c**: TUI emoji_map — demo.py 移除 emoji_map；app.py / stats_panel / input_handler 改用 combatant_marker()
+- [x] **Phase 0d**: 刪除 `src/tot/visuals/map_renderer.py`；combat_logger.py 改用 `render_braille_map()`
+- [x] **Phase 0e**: tests 移除 symbol=（test_aoe / test_geometry / test_spatial）
+- [x] **Phase 1a**: 新建 `src/tot/data/prop_defs/`（structural / interactive / terrain prefab）
+- [x] **Phase 1b**: `loader.py` 新增 `_expand_props()` — prefab 展開邏輯
+- [x] **Phase 1c**: `cave_explore.json` / `tutorial_room.json` — props 改用 prefab，移除 symbol
+- [x] **Phase 2a**: 新建 `src/tot/tui/render_buffer.py`（RenderLayer / TextureType / RenderItem / RenderBuffer）
+- [x] **Phase 2b**: `canvas.py` — 改用 RenderBuffer 驅動渲染，新增 _fill_circle / _outline_circle
+- [x] **Phase 2c**: `app.py` — `_refresh_map()` 改建 RenderBuffer 傳給 canvas
+- [x] **Phase 2d**: `geometry.py` — `extract_static_obstacles()` 改用 prop.bounds 計算 AABB
+- [x] **Phase 3**: `render_braille_map()` / `render_to_plain()` 改用 RenderBuffer
+- [x] **Phase 4**: 新增 `tests/test_prop_prefab.py`（14 tests）/ `tests/test_render_buffer.py`（17 tests）；全測試通過
+- [x] **Bug**: Actor 靠近牆壁/Prop 時 braille dots 吃圖 — tile_canvas.py 字元級 winner-take-all 以少量 actor dots 取代整格牆壁 dots（修復：改為 bitwise OR 合併 dots + 最高 priority 上色，與 canvas.py 一致）
 
 ### 2-XA: Area 自由探索（Pointcrawl + Area 混合模式）
 > 里程碑：進入 Pointcrawl 節點後可自由移動、搜索物件、拾取物品
 > 📄 計畫文件：[`.claude-personal/plans/parallel-nibbling-whale.md`](.claude-personal/plans/parallel-nibbling-whale.md)
-- [ ] Phase 1: 模型層擴展 — LootEntry + Prop 探索欄位 + AreaExploreState
-- [ ] Phase 2: bone_engine/area_explore.py — enter/exit/move/search/take/terrain
-- [ ] Phase 3: cave_explore.json 探索專用地圖（25×20m 洞穴）
-- [ ] Phase 4: TUI Area 模式 — BrailleMapCanvas 切換 + 座標移動 + XY 軸刻度
-- [ ] Phase 5: Prop 互動完整流程 — 搜索→發現→拾取→鑰匙開鎖
-- [ ] Phase 6: 地形效果 + tests/test_area_explore.py
+- [x] Phase 1: 模型層擴展 — LootEntry + Prop 探索欄位 + AreaExploreState
+- [x] Phase 2: bone_engine/area_explore.py — enter/exit/move/search/take/terrain
+- [x] Phase 3: cave_explore.json 探索專用地圖（25×20m 洞穴）
+- [x] Phase 4: TUI Area 模式 — BrailleMapCanvas 切換 + 座標移動 + XY 軸刻度
+- [x] Phase 5: Prop 互動完整流程 — 搜索→發現→拾取→鑰匙開鎖
+- [x] Phase 6: 地形效果 + tests/test_area_explore.py（23 + 18 = 41 tests）
 
 ### 2-X 延後（探索進階）
 > 📄 設計文件：[`docs/exploration-design.md`](docs/exploration-design.md)
@@ -260,6 +268,34 @@
 ### 2-E: Phase 1 已完成模組的測試補齊（剩餘項目已併入跨階段測試）
 - [x] conftest.py — 共用 fixtures（std_fighter/wizard/cleric + goblin/skeleton/ogre + rng42）
 - [x] test_dice.py — 表達式解析/擲骰/優劣勢/kh/kl/便利函式（39 tests）
+
+### 2-XC: 圖例完整化 + Prop 視覺區分 ✅
+> 圖例動態化完成後的視覺改善：Prop 元素加入圖例、各類型元素顏色可區分
+- [x] PROP_TILES 加 legend_label + 改顏色（門黃/紅、物品紫、障礙物/裝飾 cyan）
+- [x] build_legend_lines() 加 present_props 參數，圖例動態顯示 prop
+- [x] render_buffer.py _add_props() style 改用 resolve_prop_tile().fg（不再硬編碼 yellow）
+- [x] tile_canvas.py _build_dynamic_legend() 分離 prop tiles 掃描
+- [x] 門渲染簡化 — 移除十字/豎線紋理，統一用碰撞體積矩形外框（開門黃/鎖門紅，同形狀換色）
+  - [x] render_buffer.py 門一律 FILL texture（開門也畫碰撞外框）
+  - [x] tile_canvas.py _fill_prop() 跳過 door（不畫 grid tile）
+  - [x] tiles.py _tex_door() 統一矩形外框紋理
+- [x] 圖例多字元圖標 — Prop/Actor 改用 4×2 chars wide braille icon（形狀可辨識）
+  - [x] braille_wide_sample() + _braille_circle_wide() + _braille_diamond_wide()
+  - [x] build_legend_lines() 支援 _append_wide_entries（2 行高 icon）
+  - [x] 修復 BRAILLE_TEXTURES key mismatch（decoration_blocking/nonblocking 未註冊）
+- [x] 測試更新（562 tests 全過）
+
+### 2-XD: Prop 碰撞體積 + 物件免疫/抗性 + 互動距離 ✅
+> Prop bounds 系統完整化 + D&D 2024 物件規則 + 邊緣距離互動
+- [x] `models/map.py` — Prop 新增 `damage_resistances` 欄位
+- [x] `structural.py` — 全 prefab 補 D&D 物件免疫（Poison, Psychic）+ 材質抗性
+- [x] `interactive.py` — stone_chest 加 bounds(0.9×0.6) + is_blocking；glowing_mushrooms 加 TINY size、無碰撞
+- [x] `render_buffer.py` — 移除 `_size_to_render_bounds()`，統一 fallback `_INLINE_PROP_FALLBACK_BOUNDS`(1.0×1.0m)
+- [x] `geometry.py` — `_PROP_HALF` 0.75→0.5 對齊 1.0m fallback
+- [x] `area_explore.py` — `INTERACT_RADIUS_M = 0.5`（邊緣距離）、`_edge_gap()` 函式
+- [x] `tiles.py` — `_shape_rect_narrow()` 門圖例 + 物品改 marker
+- [x] `enums.py` — `RESILIENT` HP 倍率 2→3
+- [x] 測試：新增 TestObjectImmunityAndResistance / TestExplicitBounds / TestInlinePropFallbackBounds
 
 ### 低優先備忘（空間幾何 ADR）
 > 📄 完整分析：[`docs/spatial-combat-design.md`](docs/spatial-combat-design.md)

@@ -57,6 +57,7 @@ from tot.tui.combat_bridge import (
 from tot.tui.input_handler import InputHandler, MenuPhase
 from tot.tui.log_manager import LogManager
 from tot.tui.npc_ai import ai_character_turn, monster_turn
+from tot.tui.render_buffer import RenderBuffer
 from tot.tui.stats_panel import StatsPanel
 
 
@@ -125,8 +126,17 @@ class CombatTUI(App):
             combatant = self._combatant_map.get(actor.combatant_id)
             if combatant:
                 actor.is_alive = combatant.is_alive
+
+        # 建構 RenderBuffer（中介層）
+        buf = RenderBuffer(
+            self.map_state.manifest.width,
+            self.map_state.manifest.height,
+        )
+        buf.build(self.map_state, self._combatant_map)
+
         canvas = self.query_one("#map-panel", BrailleMapCanvas)
         canvas.combatant_map = dict(self._combatant_map)
+        canvas.render_buffer = buf
         canvas.map_state = self.map_state
         canvas.refresh()
 
