@@ -49,6 +49,26 @@ class NodeItem(BaseModel):
 - `wilderness_trail.json`：5 節點野外地圖（林道→岔路→溪谷→營地→洞穴）
 - `starter_town.json`：城鎮 POI（酒館/鐵匠鋪/神殿）
 
+### 2-XA Area 自由探索
+- `models/exploration.py`：AreaExploreState（map_state/party/speed/discovered/looted/collected）
+- `bone_engine/area_explore.py`：enter_area/exit_area/explore_move/reset_movement/search_prop/take_prop_loot/check_terrain_at/get_nearby_props/get_party_position
+- Prop Prefab 系統：structural/interactive/terrain 三類 prefab
+- RenderBuffer → BrailleMapCanvas 渲染管線
+
+### 2-XE 背包 + 鑰匙/門（Stage 1-3）
+- `models/map.py` Prop 新增 `is_locked/lock_dc/key_item` 鎖定欄位
+- `models/exploration.py` AreaExploreState 新增 `collected_keys` 鑰匙追蹤
+- `bone_engine/area_explore.py` 新增函式：
+  - `loot_to_item()`：LootEntry → Item 轉換
+  - `transfer_loot_to_inventory()`：離開 Area 時物品轉入 Character.inventory
+  - `unlock_area_prop()`：Area 門開鎖（鑰匙 / 檢定）
+  - `get_nearby_doors()`：取得附近門 Prop
+  - `take_prop_loot()` 改動：自動註冊 grants_key 到 collected_keys
+- TUI `explore_input.py` 新增：
+  - `AREA_USE_PROP/AREA_USE_ACTION/AREA_USE_CHAR` 三階段 use 指令
+  - `_exit_area_mode()` 離開時同步鑰匙 + 轉移背包
+- Prefab：`iron_gate_locked` 預設 `is_locked=True, interactable=True`
+
 ---
 
 ## 延後功能設計規格

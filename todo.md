@@ -221,6 +221,98 @@
 - [x] Phase 5: Prop 互動完整流程 — 搜索→發現→拾取→鑰匙開鎖
 - [x] Phase 6: 地形效果 + tests/test_area_explore.py（23 + 18 = 41 tests）
 
+### 2-XE: 危在松溪教學冒險 — 系統功能搭建
+> 以官方入門冒險「危在松溪」為劇本，邊搭建缺失的系統功能
+> 📄 計畫文件：[`.claude-personal/plans/`](.claude-personal/plans/)
+
+**Stage 1-3: 背包 + 鑰匙/門 + TUI use 指令** ✅
+- [x] `models/map.py` — Prop 新增 `is_locked/lock_dc/key_item` 鎖定欄位
+- [x] `models/exploration.py` — AreaExploreState 新增 `collected_keys`
+- [x] `structural.py` — iron_gate_locked 加 `is_locked=True, interactable=True`
+- [x] `cave_explore.json` — exit_north 加 `is_locked/lock_dc/key_item`
+- [x] `area_explore.py` — 新增 `loot_to_item/transfer_loot_to_inventory/unlock_area_prop/get_nearby_doors` + `take_prop_loot` 鑰匙自動註冊
+- [x] `explore_input.py` — 新增 `AREA_USE_PROP/ACTION/CHAR` 三階段 use 指令 + `_exit_area_mode` 背包轉移與鑰匙同步
+- [x] 測試：62 tests 全過（新增 14 tests）
+
+**Stage XE-A: 資料模型 + 條件評估器** ✅
+- [x] `models/adventure.py` — AdventureScript/State/NpcDef/DialogueLine/ScriptEvent/EventTrigger/EventAction
+- [x] `bone_engine/adventure.py` — evaluate_condition()（has/not/all/any/gte/lt/timer/within/elapsed）
+- [x] `models/__init__.py` — re-export 所有冒險模型
+- [x] `tests/test_adventure.py` — 41 tests（條件評估 + 序列化）
+
+**Stage XE-B: 事件引擎** ✅
+- [x] `bone_engine/adventure.py` — check_events() + execute_event()
+- [x] `tests/test_adventure.py` — 23 tests（觸發比對/once/條件/執行/state 不變性）
+
+**Stage XE-C: 對話引擎** ✅
+- [x] `bone_engine/adventure.py` — get_available_npcs/lines() + advance_dialogue()
+- [x] `tests/test_adventure.py` — 14 tests（NPC 位置/頂層/next_lines/條件分支/對話鏈）
+
+**Stage XE-D: 冒險載入器** ✅
+- [x] `data/adventures/test_adventure.json` — 測試用迷你冒險劇本
+- [x] `bone_engine/adventure.py` — load_adventure() + init_adventure_state()
+- [x] `tests/test_adventure.py` — 11 tests（檔名載入/NPC/事件/初始化/獨立性）
+
+**Stage XE-E: TUI 整合 — 事件鉤子** ✅
+- [x] `explore_input.py` — `_fire_events()` + `_process_event_actions()` 共用事件處理
+- [x] `_on_enter_node()` 鉤子呼叫 `check_events(trigger_type="enter_node")`
+- [x] `_handle_take_select()` 鉤子呼叫 `check_events(trigger_type="take_item")`
+- [x] 支援 action: narrate/tutorial/reveal_node/reveal_edge/add_item
+
+**Stage XE-F: TUI 整合 — talk 指令** ✅
+- [x] ExplorePhase 新增 `TALK_SELECT` / `DIALOGUE`
+- [x] `_show_talk_menu()` — NPC 列表（單一 NPC 自動開始）
+- [x] `_start_dialogue()` + `_show_dialogue_options()` + `_display_and_advance()`
+- [x] `_handle_dialogue()` — 選擇回應 + 自動推進無選擇對話
+- [x] `_end_dialogue()` — 清理 active_dialogue
+- [x] 主選單 + help 加入 talk 指令
+
+**Stage XE-Tool: 冒險劇本生成工具（Adventure Author）** ✅
+> Markdown → JSON 轉換工具，讓用戶用 MD 寫冒險、工具編譯成引擎可讀 JSON
+- [x] `ir.py` — MapIR/NodeIR/EdgeIR/ItemIR/NpcIR/DialogueIR/ChoiceIR/EventIR/ScriptIR
+- [x] `id_gen.py` — slugify() + name_to_id()
+- [x] `scaffold.py` — `adventure-author new` 建資料夾 + 範例 MD
+- [x] `parser.py` — parse_meta/map/npc/chapter（MD → IR）
+- [x] `map_builder.py` — MapIR → ExplorationMap dict（Pydantic 驗證通過）
+- [x] `script_builder.py` — ScriptIR → AdventureScript dict（Pydantic 驗證通過）
+- [x] `cli.py` — new/build/build-map/validate 四個指令
+- [x] 測試：89 tests 全過
+
+---
+
+#### 📝 冒險內容製作（用 Adventure Author 逐步產出）
+> 流程：用戶寫 MD → `adventure-author build` → JSON → 引擎載入
+> 資料夾：`adventures/peril_in_pinebrook/`
+
+**Stage 4: 松溪冒險 Markdown 內容**
+- [ ] `_meta.md` — 冒險基本資訊 + 初始 flags
+- [ ] `maps/pinebrook_village.md` — 松溪村城鎮地圖（town scale）
+- [ ] `maps/forest_trail.md` — 森林小徑世界地圖（world scale）
+- [ ] `maps/dragon_cave.md` — 幼龍洞穴地城地圖（dungeon scale）
+- [ ] `npcs/quinn.md` — 乖因（quest_giver，多場景對話）
+- [ ] `npcs/shopkeeper.md` — 雜貨鋪老闆（merchant，常態對話）
+- [ ] `chapters/01_arrival.md` — 第一章：抵達松溪
+- [ ] `chapters/02_investigation.md` — 第二章：調查巡邏
+- [ ] `chapters/03_cave_exploration.md` — 第三章：洞穴探索
+- [ ] `adventure-author build` 通過 + JSON 驗證
+
+**Stage 5: 洞穴 Area 戰鬥地圖**
+- [ ] `dragon_cave_battle.json` — 幼龍巢穴戰鬥地圖（Prop/Spawn/Wall）
+- [ ] cave_explore.json 風格的 Area 地圖（攀岩/冰滑道/龍蛋互動）
+
+**Stage 6: 地圖轉場**
+- [ ] `Prop.exit_to_node` 欄位
+- [ ] `enter_area()` 從 Pointcrawl 自動進入 Area
+- [ ] 靠近 exit Prop 時自動提示轉場
+
+**Stage 7: 洞穴場景整合測試**
+- [ ] `test_cave_full_scenario()` — 進入→搜索→拿鑰匙→開門→通過→離開
+
+**Stage 8（延後）: 探索→戰鬥銜接**
+- [ ] 節點/Area 觸發戰鬥條件
+- [ ] 戰鬥結束後回到探索
+- [ ] Living Icicles / Egg Thieves 怪物資料
+
 ### 2-X 延後（探索進階）
 > 📄 設計文件：[`docs/exploration-design.md`](docs/exploration-design.md)
 - [ ] 光照與視覺（LightLevel + Darkvision 感知修正）
