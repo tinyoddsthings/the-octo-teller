@@ -69,5 +69,7 @@ STRUCTURAL_PREFABS: dict[str, dict[str, Any]] = {
         "bounds": BoundingShape.rect(1.5, 0.3),
         "damage_immunities": [DamageType.POISON, DamageType.PSYCHIC],
         "damage_resistances": [DamageType.PIERCING, DamageType.SLASHING],
+        "is_locked": True,
+        "interactable": True,
     },
 }

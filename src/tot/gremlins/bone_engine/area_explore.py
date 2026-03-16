@@ -19,6 +19,7 @@ from tot.models import (
     AreaExploreState,
     Character,
     ExplorationMap,
+    Item,
     LootEntry,
     MapState,
     MoveResult,
@@ -321,6 +322,12 @@ def take_prop_loot(
     area_state.collected_items.extend(items)
     area_state.looted_props.add(prop_id)
     prop.is_looted = True
+
+    # 自動註冊鑰匙
+    for item in items:
+        if item.grants_key:
+            area_state.collected_keys.add(item.grants_key)
+
     return items
 
 
@@ -338,6 +345,114 @@ def get_party_position(area_state: AreaExploreState) -> Position | None:
     if actor is None:
         return None
     return Position(x=actor.x, y=actor.y)
+
+
+# ---------------------------------------------------------------------------
+# 背包系統
+# ---------------------------------------------------------------------------
+
+
+def loot_to_item(loot: LootEntry) -> Item:
+    """LootEntry → Item 轉換。"""
+    return Item(
+        name=loot.name,
+        description=loot.description,
+        quantity=loot.quantity,
+    )
+
+
+def transfer_loot_to_inventory(
+    area_state: AreaExploreState,
+    characters: list[Character],
+) -> list[Item]:
+    """離開 Area 時，將 collected_items 轉入第一個角色的 inventory。
+
+    回傳轉換後的 Item 列表。
+    """
+    if not area_state.collected_items or not characters:
+        return []
+
+    items = [loot_to_item(loot) for loot in area_state.collected_items]
+    characters[0].inventory.extend(items)
+    return items
+
+
+# ---------------------------------------------------------------------------
+# 鑰匙 / 門互動
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class UnlockResult:
+    """開鎖結果。"""
+
+    success: bool
+    prop_id: str
+    message: str
+
+
+def unlock_area_prop(
+    area_state: AreaExploreState,
+    prop_id: str,
+    *,
+    check_total: int = 0,
+    key_item_id: str | None = None,
+) -> UnlockResult:
+    """嘗試開鎖 Area 中的 Prop（門）。
+
+    可用鑰匙直接開鎖，或用開鎖檢定（check_total vs lock_dc）。
+    開鎖後 is_locked=False + is_blocking=False（門打開可通行）。
+    """
+    prop = _find_prop(area_state.map_state, prop_id)
+    if prop is None:
+        return UnlockResult(success=False, prop_id=prop_id, message="找不到該物件")
+
+    if not prop.is_locked:
+        return UnlockResult(success=True, prop_id=prop_id, message="這扇門沒有鎖")
+
+    # 鑰匙直接開鎖
+    if key_item_id and prop.key_item and key_item_id == prop.key_item:
+        prop.is_locked = False
+        prop.is_blocking = False
+        return UnlockResult(
+            success=True,
+            prop_id=prop_id,
+            message=f"用鑰匙打開了「{prop.name or prop_id}」",
+        )
+
+    # 檢定開鎖
+    if check_total >= prop.lock_dc:
+        prop.is_locked = False
+        prop.is_blocking = False
+        return UnlockResult(
+            success=True,
+            prop_id=prop_id,
+            message=f"成功撬開了「{prop.name or prop_id}」（DC {prop.lock_dc}）",
+        )
+
+    return UnlockResult(
+        success=False,
+        prop_id=prop_id,
+        message=f"開鎖失敗（{check_total} vs DC {prop.lock_dc}）",
+    )
+
+
+def get_nearby_doors(
+    area_state: AreaExploreState,
+    radius: float = INTERACT_RADIUS_M,
+) -> list[Prop]:
+    """取得隊伍附近的門 Prop（含上鎖的）。"""
+    actor = _get_party_actor(area_state)
+    if actor is None:
+        return []
+
+    result: list[Prop] = []
+    for prop in area_state.map_state.manifest.props:
+        if prop.prop_type != "door":
+            continue
+        if _edge_gap(actor, prop) <= radius:
+            result.append(prop)
+    return result
 
 
 # ---------------------------------------------------------------------------

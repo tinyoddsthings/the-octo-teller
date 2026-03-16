@@ -10,16 +10,26 @@ from collections.abc import Callable
 from enum import StrEnum
 from typing import TYPE_CHECKING
 
+from tot.gremlins.bone_engine.adventure import (
+    advance_dialogue,
+    check_events,
+    execute_event,
+    get_available_lines,
+    get_available_npcs,
+)
 from tot.gremlins.bone_engine.area_explore import (
     check_terrain_at,
     enter_area,
     exit_area,
     explore_move,
+    get_nearby_doors,
     get_nearby_props,
     get_party_position,
     reset_movement,
     search_prop,
     take_prop_loot,
+    transfer_loot_to_inventory,
+    unlock_area_prop,
 )
 from tot.gremlins.bone_engine.checks import (
     ability_check,
@@ -53,6 +63,13 @@ from tot.models import (
     Prop,
     Skill,
 )
+from tot.models.adventure import (
+    AdventureScript,
+    AdventureState,
+    DialogueLine,
+    EventAction,
+    NpcDef,
+)
 
 if TYPE_CHECKING:
     from textual.widgets import RichLog
@@ -74,6 +91,12 @@ class ExplorePhase(StrEnum):
     AREA_SEARCH_PROP = "area_search_prop"
     AREA_SEARCH_CHAR = "area_search_char"
     AREA_TAKE = "area_take"
+    AREA_USE_PROP = "area_use_prop"
+    AREA_USE_ACTION = "area_use_action"
+    AREA_USE_CHAR = "area_use_char"
+    # 對話模式
+    TALK_SELECT = "talk_select"
+    DIALOGUE = "dialogue"
 
 
 class ExploreInputHandler:
@@ -91,6 +114,11 @@ class ExploreInputHandler:
         self.area_state: AreaExploreState | None = None
         self._current_node_has_area: bool = False
         self._pending_search_prop: Prop | None = None
+        self._pending_use_prop: Prop | None = None
+        # 冒險劇本系統
+        self.adventure_script: AdventureScript | None = None
+        self.adventure_state: AdventureState | None = None
+        self._pending_talk_npc: NpcDef | None = None
 
     # -----------------------------------------------------------------
     # 主選單
@@ -114,6 +142,8 @@ class ExploreInputHandler:
         )
         if self._current_node_has_area:
             menu_text += "\n  [bold magenta]explore[/] — 進入區域探索"
+        if self.adventure_script and self.adventure_state:
+            menu_text += "\n  [bold yellow]talk[/] — 與 NPC 對話"
         log.write(menu_text)
         self.menu_options = [
             "look",
@@ -170,6 +200,10 @@ class ExploreInputHandler:
             return self._handle_rest_select(cmd_lower, characters, exp_map, state, log, refresh_fn)
         if self.phase == ExplorePhase.TAKE_SELECT:
             return self._handle_take_select(cmd_lower, characters, exp_map, state, log, refresh_fn)
+        if self.phase == ExplorePhase.TALK_SELECT:
+            return self._handle_talk_select(cmd_lower, state, log, refresh_fn)
+        if self.phase == ExplorePhase.DIALOGUE:
+            return self._handle_dialogue(cmd_lower, state, log, refresh_fn)
 
         log.write("[yellow]目前無法處理指令。[/]")
         return False
@@ -226,6 +260,10 @@ class ExploreInputHandler:
             return self._handle_rest_select(str(num), characters, exp_map, state, log, refresh_fn)
         if self.phase == ExplorePhase.TAKE_SELECT:
             return self._handle_take_select(str(num), characters, exp_map, state, log, refresh_fn)
+        if self.phase == ExplorePhase.TALK_SELECT:
+            return self._handle_talk_select(str(num), state, log, refresh_fn)
+        if self.phase == ExplorePhase.DIALOGUE:
+            return self._handle_dialogue(str(num), state, log, refresh_fn)
 
         return False
 
@@ -263,6 +301,8 @@ class ExploreInputHandler:
             log.write("[dim]地圖已重新渲染。[/]")
         elif cmd == "explore":
             self._enter_area_mode(characters, exp_map, state, log, refresh_fn)
+        elif cmd == "talk":
+            self._show_talk_menu(state, log)
         elif cmd == "help":
             self._do_help(log)
         else:
@@ -431,6 +471,9 @@ class ExploreInputHandler:
 
         # 顯示節點描述
         self._do_look(exp_map, state, log)
+
+        # 冒險劇本事件：enter_node
+        self._fire_events("enter_node", state, exp_map, log, refresh_fn, node_id=node_id)
 
         # 自動進入 area 探索模式
         if self._current_node_has_area and refresh_fn:
@@ -820,6 +863,15 @@ class ExploreInputHandler:
                         log.write(f"[cyan]🔑 獲得鑰匙！（{taken.grants_key}）[/]")
                     if taken.value_gp > 0:
                         log.write(f"[yellow]💰 價值 {taken.value_gp} gp[/]")
+                    # 冒險劇本事件：take_item
+                    self._fire_events(
+                        "take_item",
+                        state,
+                        exp_map,
+                        log,
+                        refresh_fn,
+                        item_id=taken.id,
+                    )
                 else:
                     log.write("[red]無法拿取此物品。[/]")
                 self.show_main_menu(log)
@@ -971,6 +1023,7 @@ class ExploreInputHandler:
             "  [cyan]rest[/]     — 短休或長休回復 HP\n"
             "  [cyan]status[/]   — 查看隊伍狀態\n"
             "  [cyan]map[/]      — 重新渲染地圖\n"
+            "  [cyan]talk[/]     — 與 NPC 對話（劇本模式可用）\n"
             "  [cyan]explore[/]  — 進入區域探索（僅在有地圖的節點可用）\n"
             "  [cyan]help[/]     — 顯示此說明\n"
             "  [cyan]quit[/]     — 離開探索\n"
@@ -978,6 +1031,230 @@ class ExploreInputHandler:
             "  也可以輸入數字選擇選單項目。\n"
             "  [dim]切換地圖：load ruins / load dungeon / load town / load wilderness[/]"
         )
+        self.show_main_menu(log)
+
+    # -----------------------------------------------------------------
+    # 冒險劇本：事件鉤子 + 對話
+    # -----------------------------------------------------------------
+
+    def _fire_events(
+        self,
+        trigger_type: str,
+        state: ExplorationState,
+        exp_map: ExplorationMap,
+        log: RichLog,
+        refresh_fn: Callable | None = None,
+        **kwargs: str,
+    ) -> None:
+        """觸發冒險劇本事件並處理 action。"""
+        if not self.adventure_script or not self.adventure_state:
+            return
+
+        elapsed = state.elapsed_minutes
+        matched = check_events(
+            self.adventure_script,
+            self.adventure_state,
+            trigger_type,
+            elapsed,
+            **kwargs,
+        )
+
+        for event in matched:
+            self.adventure_state, actions = execute_event(self.adventure_state, event, elapsed)
+            self._process_event_actions(actions, state, exp_map, log, refresh_fn)
+
+    def _process_event_actions(
+        self,
+        actions: list[EventAction],
+        state: ExplorationState,
+        exp_map: ExplorationMap,
+        log: RichLog,
+        refresh_fn: Callable | None = None,
+    ) -> None:
+        """處理事件 action 列表中的呈現類 action。"""
+        for action in actions:
+            if action.type == "narrate":
+                log.write(f"\n[italic]{action.text}[/]")
+            elif action.type == "tutorial":
+                log.write(f"\n[bold cyan]📖 {action.text}[/]")
+            elif action.type == "reveal_node":
+                state.discovered_nodes.add(action.node_id)
+                # 找節點名稱
+                node_name = action.node_id
+                for n in exp_map.nodes:
+                    if n.id == action.node_id:
+                        n.is_discovered = True
+                        node_name = n.name
+                        break
+                log.write(f"[magenta]🗺️ 發現新地點：{node_name}[/]")
+            elif action.type == "reveal_edge":
+                state.discovered_edges.add(action.edge_id)
+                for e in exp_map.edges:
+                    if e.id == action.edge_id:
+                        e.is_discovered = True
+                        break
+                if refresh_fn:
+                    refresh_fn()
+            elif action.type == "add_item":
+                # 加到當前節點的物品中
+                log.write(f"[green]✨ 獲得物品：{action.item_id}[/]")
+
+    def _show_talk_menu(
+        self,
+        state: ExplorationState,
+        log: RichLog,
+    ) -> None:
+        """顯示可對話的 NPC 列表。"""
+        if not self.adventure_script or not self.adventure_state:
+            log.write("[yellow]目前沒有劇本進行中。[/]")
+            self.show_main_menu(log)
+            return
+
+        npcs = get_available_npcs(
+            self.adventure_script,
+            self.adventure_state,
+            state.current_node_id,
+        )
+        if not npcs:
+            log.write("[yellow]此處沒有可對話的 NPC。[/]")
+            self.show_main_menu(log)
+            return
+
+        if len(npcs) == 1:
+            # 只有一個 NPC，直接開始對話
+            self._start_dialogue(npcs[0], state, log)
+            return
+
+        self.phase = ExplorePhase.TALK_SELECT
+        self.menu_options = npcs
+        log.write("\n[bold white]選擇要對話的 NPC：[/]")
+        for i, npc in enumerate(npcs, 1):
+            log.write(f"  [cyan]{i}.[/] {npc.name}")
+        log.write("  [dim]0. ← 返回[/]")
+
+    def _handle_talk_select(
+        self,
+        cmd: str,
+        state: ExplorationState,
+        log: RichLog,
+        refresh_fn: Callable,
+    ) -> bool:
+        """處理 NPC 選擇。"""
+        if cmd == "0":
+            self.show_main_menu(log)
+            return False
+
+        if cmd.isdigit():
+            idx = int(cmd) - 1
+            if 0 <= idx < len(self.menu_options):
+                npc = self.menu_options[idx]
+                self._start_dialogue(npc, state, log)
+                return False
+
+        log.write("[red]請選擇有效的 NPC 編號。[/]")
+        return False
+
+    def _start_dialogue(
+        self,
+        npc: NpcDef,
+        state: ExplorationState,
+        log: RichLog,
+    ) -> None:
+        """開始與 NPC 對話。"""
+        self._pending_talk_npc = npc
+        log.write(f"\n[bold yellow]💬 與{npc.name}對話[/]")
+        if npc.description:
+            log.write(f"[dim italic]{npc.description}[/]")
+
+        lines = get_available_lines(npc, self.adventure_state, state.elapsed_minutes)
+        if not lines:
+            log.write(f"[dim]{npc.name}沒有什麼想說的。[/]")
+            self._pending_talk_npc = None
+            self.show_main_menu(log)
+            return
+
+        self._show_dialogue_options(lines, log)
+
+    def _show_dialogue_options(
+        self,
+        lines: list[DialogueLine],
+        log: RichLog,
+    ) -> None:
+        """顯示對話選項。"""
+        self.phase = ExplorePhase.DIALOGUE
+        self.menu_options = lines
+
+        if len(lines) == 1 and not lines[0].choice_label:
+            # 沒有選擇，直接顯示（自動推進）
+            self._display_and_advance(lines[0], log)
+            return
+
+        for i, line in enumerate(lines, 1):
+            label = line.choice_label or line.text[:40]
+            log.write(f"  [cyan]{i}.[/] {label}")
+        log.write("  [dim]0. ← 結束對話[/]")
+
+    def _handle_dialogue(
+        self,
+        cmd: str,
+        state: ExplorationState,
+        log: RichLog,
+        refresh_fn: Callable,
+    ) -> bool:
+        """處理對話選擇。"""
+        if cmd == "0":
+            self._end_dialogue(log)
+            return False
+
+        if cmd.isdigit():
+            idx = int(cmd) - 1
+            if 0 <= idx < len(self.menu_options):
+                line = self.menu_options[idx]
+                self._display_and_advance(line, log)
+                return False
+
+        log.write("[red]請選擇有效的選項。[/]")
+        return False
+
+    def _display_and_advance(
+        self,
+        line: DialogueLine,
+        log: RichLog,
+    ) -> None:
+        """顯示對話行並推進。"""
+        npc = self._pending_talk_npc
+        if not npc or not self.adventure_state:
+            return
+
+        self.adventure_state, chosen, next_lines = advance_dialogue(
+            self.adventure_state, npc, line.id
+        )
+
+        # 顯示對話文字
+        if chosen.speaker == "dm":
+            log.write(f"\n[italic]{chosen.text}[/]")
+        else:
+            speaker_name = npc.name if chosen.speaker == npc.id else chosen.speaker
+            log.write(f"\n[bold yellow]{speaker_name}[/]：{chosen.text}")
+
+        if not next_lines:
+            self._end_dialogue(log)
+            return
+
+        self._show_dialogue_options(next_lines, log)
+
+    def _end_dialogue(self, log: RichLog) -> None:
+        """結束對話。"""
+        npc = self._pending_talk_npc
+        self._pending_talk_npc = None
+
+        if npc:
+            log.write(f"[dim]（與{npc.name}的對話結束）[/]")
+
+        # 清除 active_dialogue
+        if self.adventure_state:
+            self.adventure_state.active_dialogue = None
+
         self.show_main_menu(log)
 
     # -----------------------------------------------------------------
@@ -1012,12 +1289,24 @@ class ExploreInputHandler:
 
     def _exit_area_mode(
         self,
+        characters: list[Character],
         log: RichLog,
         refresh_fn: Callable,
     ) -> None:
         """離開 area 探索模式。"""
         if self.area_state is None:
             return
+
+        # 同步鑰匙：Area collected_keys → Pointcrawl _collected_keys
+        self._collected_keys.update(self.area_state.collected_keys)
+
+        # 轉移物品到角色 inventory
+        items = transfer_loot_to_inventory(self.area_state, characters)
+        if items:
+            log.write("\n[bold green]物品已轉入背包：[/]")
+            for item in items:
+                log.write(f"  • {item.name} ×{item.quantity}")
+
         result = exit_area(self.area_state)
         if result.collected_items:
             log.write("\n[bold green]收集的物品：[/]")
@@ -1042,6 +1331,7 @@ class ExploreInputHandler:
             "move",
             "search",
             "take",
+            "use",
             "terrain",
             "reset",
             "map",
@@ -1068,9 +1358,10 @@ class ExploreInputHandler:
                     2: "move",
                     3: "search",
                     4: "take",
-                    5: "terrain",
-                    6: "reset",
-                    7: "map",
+                    5: "use",
+                    6: "terrain",
+                    7: "reset",
+                    8: "map",
                     0: "exit",
                 }
                 resolved = area_cmd_map.get(num)
@@ -1094,6 +1385,12 @@ class ExploreInputHandler:
                 return self._area_do_search_exec(option, log, refresh_fn)
             if self.phase == ExplorePhase.AREA_TAKE:
                 return self._area_do_take_exec(option, log, refresh_fn)
+            if self.phase == ExplorePhase.AREA_USE_PROP:
+                return self._area_do_use_prop(option, characters, log, refresh_fn)
+            if self.phase == ExplorePhase.AREA_USE_ACTION:
+                return self._area_do_use_action(option, characters, exp_map, state, log, refresh_fn)
+            if self.phase == ExplorePhase.AREA_USE_CHAR:
+                return self._area_do_use_char(option, log, refresh_fn)
             return False
 
         # 文字輸入
@@ -1118,7 +1415,7 @@ class ExploreInputHandler:
     ) -> bool:
         """Area 主選單指令處理。"""
         if cmd == "exit":
-            self._exit_area_mode(log, refresh_fn)
+            self._exit_area_mode(characters, log, refresh_fn)
             return False
         if cmd == "look":
             self._area_do_look(log)
@@ -1128,6 +1425,8 @@ class ExploreInputHandler:
             self._area_show_search_prop(characters, log)
         elif cmd == "take":
             self._area_show_take(log)
+        elif cmd == "use":
+            self._area_show_use_prop(characters, log)
         elif cmd == "terrain":
             self._area_do_terrain(log)
         elif cmd == "reset":
@@ -1143,6 +1442,7 @@ class ExploreInputHandler:
                 "  [cyan]look[/]    — 查看附近物件\n"
                 "  [cyan]search[/]  — 搜索隱藏物品\n"
                 "  [cyan]take[/]    — 拾取物品\n"
+                "  [cyan]use[/]     — 使用（開鎖/互動門）\n"
                 "  [cyan]terrain[/] — 查看地形\n"
                 "  [cyan]reset[/]   — 重置移動力\n"
                 "  [cyan]map[/]     — 重新渲染地圖\n"
@@ -1345,6 +1645,144 @@ class ExploreInputHandler:
         else:
             log.write("[yellow]沒有可拾取的物品。[/]")
 
+        refresh_fn()
+        self._show_area_menu(log)
+        return False
+
+    # -----------------------------------------------------------------
+    # Area use（門互動 / 開鎖）
+    # -----------------------------------------------------------------
+
+    def _area_show_use_prop(
+        self,
+        characters: list[Character],
+        log: RichLog,
+    ) -> None:
+        """顯示附近可互動的門。"""
+        if not self.area_state:
+            self._show_area_menu(log)
+            return
+
+        doors = get_nearby_doors(self.area_state)
+        if not doors:
+            log.write("[yellow]附近沒有可使用的門或裝置。[/]")
+            self._show_area_menu(log)
+            return
+
+        self.phase = ExplorePhase.AREA_USE_PROP
+        self.menu_options = doors
+
+        log.write("\n[bold white]選擇要使用的物件：[/]")
+        for i, door in enumerate(doors, 1):
+            lock_str = " [red](上鎖)[/]" if door.is_locked else " [green](未鎖)[/]"
+            log.write(f"  [cyan]{i}.[/] {door.name or door.id}{lock_str}")
+        log.write("  [dim]0. ← 返回[/]")
+
+    def _area_do_use_prop(
+        self,
+        prop: Prop,
+        characters: list[Character],
+        log: RichLog,
+        refresh_fn: Callable,
+    ) -> bool:
+        """選定門 Prop 後，顯示動作選單。"""
+        if not prop.is_locked:
+            log.write(f"[green]「{prop.name or prop.id}」沒有上鎖。[/]")
+            self._show_area_menu(log)
+            return False
+
+        self._pending_use_prop = prop
+        self.phase = ExplorePhase.AREA_USE_ACTION
+        options: list[str] = []
+
+        # 檢查是否有鑰匙
+        all_keys = self._collected_keys | (
+            self.area_state.collected_keys if self.area_state else set()
+        )
+        if prop.key_item and prop.key_item in all_keys:
+            options.append("key")
+            log.write(f"\n[bold white]「{prop.name}」上鎖了（DC {prop.lock_dc}）[/]")
+            log.write("  [cyan]1.[/] 用鑰匙開門")
+        else:
+            log.write(f"\n[bold white]「{prop.name}」上鎖了（DC {prop.lock_dc}）[/]")
+
+        options.append("lockpick")
+        log.write(f"  [cyan]{len(options)}.[/] 開鎖（Sleight of Hand）")
+
+        options.append("back")
+        log.write("  [dim]0. ← 返回[/]")
+
+        self.menu_options = options
+        return False
+
+    def _area_do_use_action(
+        self,
+        action: str,
+        characters: list[Character],
+        exp_map: ExplorationMap,
+        state: ExplorationState,
+        log: RichLog,
+        refresh_fn: Callable,
+    ) -> bool:
+        """動作選擇後的處理。"""
+        if action == "back":
+            self._show_area_menu(log)
+            return False
+
+        prop = self._pending_use_prop
+        if not prop or not self.area_state:
+            self._show_area_menu(log)
+            return False
+
+        if action == "key":
+            # 鑰匙直接開鎖
+            result = unlock_area_prop(self.area_state, prop.id, key_item_id=prop.key_item)
+            if result.success:
+                log.write(f"[green]{result.message}[/]")
+            else:
+                log.write(f"[red]{result.message}[/]")
+            self._pending_use_prop = None
+            refresh_fn()
+            self._show_area_menu(log)
+            return False
+
+        if action == "lockpick":
+            # 需要選角色
+            self._pending_action = "lockpick"
+            self.phase = ExplorePhase.AREA_USE_CHAR
+            self.menu_options = characters
+            log.write(f"\n[bold white]選擇誰來開鎖「{prop.name}」：[/]")
+            for i, char in enumerate(characters, 1):
+                bonus = char.skill_bonus(Skill.SLEIGHT_OF_HAND)
+                log.write(f"  [cyan]{i}.[/] {char.name} (Sleight of Hand {bonus:+d})")
+            log.write("  [dim]0. ← 返回[/]")
+            return False
+
+        self._show_area_menu(log)
+        return False
+
+    def _area_do_use_char(
+        self,
+        char: Character,
+        log: RichLog,
+        refresh_fn: Callable,
+    ) -> bool:
+        """選定角色後執行開鎖。"""
+        prop = self._pending_use_prop
+        if not prop or not self.area_state:
+            self._show_area_menu(log)
+            return False
+
+        # 開鎖檢定
+        check = skill_check(char, Skill.SLEIGHT_OF_HAND, prop.lock_dc)
+        result = unlock_area_prop(self.area_state, prop.id, check_total=check.total)
+
+        if result.success:
+            log.write(f"[green]{char.name} 成功撬開了鎖！（{check.total} vs DC {prop.lock_dc}）[/]")
+        else:
+            log.write(f"[red]{char.name} 開鎖失敗（{check.total} vs DC {prop.lock_dc}）[/]")
+
+        self._pending_use_prop = None
         refresh_fn()
         self._show_area_menu(log)
         return False

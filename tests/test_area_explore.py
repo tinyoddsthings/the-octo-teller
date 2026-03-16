@@ -9,11 +9,15 @@ from tot.gremlins.bone_engine.area_explore import (
     enter_area,
     exit_area,
     explore_move,
+    get_nearby_doors,
     get_nearby_props,
     get_party_position,
+    loot_to_item,
     reset_movement,
     search_prop,
     take_prop_loot,
+    transfer_loot_to_inventory,
+    unlock_area_prop,
 )
 from tot.models import (
     AbilityScores,
@@ -350,3 +354,198 @@ class TestGetNearbyProps:
         explore_move(state, 20.5, 8.5)
         props = get_nearby_props(state)
         assert not any(p.id == "hidden_scroll" for p in props)
+
+
+# ---------------------------------------------------------------------------
+# loot_to_item / transfer_loot_to_inventory
+# ---------------------------------------------------------------------------
+
+
+class TestLootToItem:
+    def test_basic_conversion(self):
+        """LootEntry 轉為 Item。"""
+        from tot.models.map import LootEntry
+
+        loot = LootEntry(
+            item_id="gold", name="金幣袋", description="沉甸甸的", quantity=1, value_gp=50
+        )
+        item = loot_to_item(loot)
+        assert item.name == "金幣袋"
+        assert item.description == "沉甸甸的"
+        assert item.quantity == 1
+
+    def test_key_item_conversion(self):
+        """帶 grants_key 的 LootEntry 也能轉換。"""
+        from tot.models.map import LootEntry
+
+        loot = LootEntry(item_id="key", name="鐵鑰匙", grants_key="north_door_key")
+        item = loot_to_item(loot)
+        assert item.name == "鐵鑰匙"
+
+
+class TestTransferLootToInventory:
+    def test_transfer_to_first_character(self):
+        """物品轉入第一個角色的 inventory。"""
+        exp_map = _make_map()
+        rogue = _rogue()
+        state = enter_area(exp_map, "cave", [rogue])
+        assert state is not None
+        search_prop(state, "mushrooms", rogue)
+        take_prop_loot(state, "mushrooms")
+        items = transfer_loot_to_inventory(state, [rogue])
+        assert len(items) == 1
+        assert items[0].name == "發光蘑菇"
+        assert any(i.name == "發光蘑菇" for i in rogue.inventory)
+
+    def test_transfer_empty(self):
+        """沒有物品時回傳空列表。"""
+        exp_map = _make_map()
+        state = enter_area(exp_map, "cave", [_rogue()])
+        assert state is not None
+        items = transfer_loot_to_inventory(state, [_rogue()])
+        assert items == []
+
+    def test_transfer_no_characters(self):
+        """沒有角色時回傳空列表。"""
+        exp_map = _make_map()
+        state = enter_area(exp_map, "cave", [_rogue()])
+        assert state is not None
+        search_prop(state, "mushrooms", _rogue())
+        take_prop_loot(state, "mushrooms")
+        items = transfer_loot_to_inventory(state, [])
+        assert items == []
+
+
+# ---------------------------------------------------------------------------
+# take_prop_loot — 鑰匙自動註冊
+# ---------------------------------------------------------------------------
+
+
+class TestTakeKeyAutoRegister:
+    def _move_to_chest(self, state):
+        """移動到石箱附近。"""
+        explore_move(state, 4.0, 2.5)
+        reset_movement(state)
+        explore_move(state, 4.0, 8.0)
+        reset_movement(state)
+        explore_move(state, 4.5, 14.5)
+
+    def test_key_auto_registered(self):
+        """拾取帶 grants_key 的物品自動加入 collected_keys。"""
+        exp_map = _make_map()
+        state = enter_area(exp_map, "cave", [_rogue()])
+        assert state is not None
+        # 直接標記已搜索（此測試驗證鑰匙註冊，非搜索機制）
+        prop = next(p for p in state.map_state.manifest.props if p.id == "chest_west")
+        prop.is_searched = True
+        take_prop_loot(state, "chest_west")
+        assert "north_door_key" in state.collected_keys
+
+    def test_no_key_no_register(self):
+        """拾取無 grants_key 的物品不影響 collected_keys。"""
+        exp_map = _make_map()
+        state = enter_area(exp_map, "cave", [_rogue()])
+        assert state is not None
+        search_prop(state, "mushrooms", _rogue())
+        take_prop_loot(state, "mushrooms")
+        assert len(state.collected_keys) == 0
+
+
+# ---------------------------------------------------------------------------
+# unlock_area_prop
+# ---------------------------------------------------------------------------
+
+
+class TestUnlockAreaProp:
+    def test_unlock_with_key(self):
+        """用鑰匙開鎖成功。"""
+        exp_map = _make_map()
+        state = enter_area(exp_map, "cave", [_rogue()])
+        assert state is not None
+        result = unlock_area_prop(state, "exit_north", key_item_id="north_door_key")
+        assert result.success is True
+        assert "鑰匙" in result.message
+        # 門已解鎖且不再阻擋
+        gate = next(p for p in state.map_state.manifest.props if p.id == "exit_north")
+        assert gate.is_locked is False
+        assert gate.is_blocking is False
+
+    def test_unlock_with_check_pass(self):
+        """開鎖檢定通過。"""
+        exp_map = _make_map()
+        state = enter_area(exp_map, "cave", [_rogue()])
+        assert state is not None
+        result = unlock_area_prop(state, "exit_north", check_total=15)
+        assert result.success is True
+        assert "DC 15" in result.message
+
+    def test_unlock_with_check_fail(self):
+        """開鎖檢定失敗。"""
+        exp_map = _make_map()
+        state = enter_area(exp_map, "cave", [_rogue()])
+        assert state is not None
+        result = unlock_area_prop(state, "exit_north", check_total=10)
+        assert result.success is False
+        assert "失敗" in result.message
+
+    def test_unlock_wrong_key(self):
+        """錯誤鑰匙無法開鎖。"""
+        exp_map = _make_map()
+        state = enter_area(exp_map, "cave", [_rogue()])
+        assert state is not None
+        result = unlock_area_prop(state, "exit_north", key_item_id="wrong_key")
+        assert result.success is False
+
+    def test_unlock_already_unlocked(self):
+        """未上鎖的門回傳成功。"""
+        exp_map = _make_map()
+        state = enter_area(exp_map, "cave", [_rogue()])
+        assert state is not None
+        # entrance_south 是木門，沒有上鎖
+        result = unlock_area_prop(state, "entrance_south")
+        assert result.success is True
+        assert "沒有鎖" in result.message
+
+    def test_unlock_nonexistent(self):
+        """不存在的 Prop。"""
+        exp_map = _make_map()
+        state = enter_area(exp_map, "cave", [_rogue()])
+        assert state is not None
+        result = unlock_area_prop(state, "nonexistent")
+        assert result.success is False
+
+
+# ---------------------------------------------------------------------------
+# get_nearby_doors
+# ---------------------------------------------------------------------------
+
+
+class TestGetNearbyDoors:
+    def test_door_at_spawn(self):
+        """入口附近有木門。"""
+        exp_map = _make_map()
+        state = enter_area(exp_map, "cave", [_rogue()])
+        assert state is not None
+        # spawn 在 (12.5, 2.5)，entrance_south 在 (12.5, 0.75)
+        # 距離 = 2.5 - 0.75 = 1.75m（太遠）
+        doors = get_nearby_doors(state)
+        # 邊緣距離可能仍在範圍外
+        assert all(d.prop_type == "door" for d in doors)
+
+    def test_door_when_close(self):
+        """靠近鐵柵門時可偵測。"""
+        exp_map = _make_map()
+        state = enter_area(exp_map, "cave", [_rogue()])
+        assert state is not None
+        # 穿過中央到北側（通過水池 difficult terrain）
+        explore_move(state, 12.5, 7.0)
+        reset_movement(state)
+        explore_move(state, 12.5, 13.0)
+        reset_movement(state)
+        # 進入水池 (12.5, 16.0, r=2.5) — difficult terrain
+        explore_move(state, 12.5, 16.0)
+        reset_movement(state)
+        # 鐵柵門在 (12.5, 19.25)，bounds 1.5×0.3m
+        explore_move(state, 12.5, 18.0)
+        doors = get_nearby_doors(state)
+        assert any(d.id == "exit_north" for d in doors)

@@ -1,0 +1,75 @@
+{
+  "id": "test_adventure",
+  "name": "測試冒險",
+  "description": "用於單元測試的迷你冒險。",
+  "initial_flags": {
+    "tutorial_mode": 1
+  },
+  "npcs": {
+    "guard": {
+      "id": "guard",
+      "name": "守衛",
+      "description": "村口的守衛，穿著鏽蝕的鎧甲。",
+      "node_id": "gate",
+      "dialogue": [
+        {
+          "id": "g_greet",
+          "speaker": "guard",
+          "text": "站住！你是什麼人？",
+          "next_lines": ["g_answer_friend", "g_answer_stranger"]
+        },
+        {
+          "id": "g_answer_friend",
+          "speaker": "dm",
+          "text": "「我是村裡的人。」",
+          "choice_label": "友善回答",
+          "sets_flag": "guard_friendly"
+        },
+        {
+          "id": "g_answer_stranger",
+          "speaker": "dm",
+          "text": "「與你無關。」",
+          "choice_label": "冷淡回答",
+          "sets_flag": "guard_suspicious"
+        }
+      ]
+    }
+  },
+  "events": [
+    {
+      "id": "enter_gate",
+      "trigger": {
+        "type": "enter_node",
+        "node_id": "gate"
+      },
+      "actions": [
+        {
+          "type": "narrate",
+          "text": "你來到了村口大門前。"
+        },
+        {
+          "type": "set_flag",
+          "flag": "visited_gate"
+        }
+      ]
+    },
+    {
+      "id": "guard_lets_pass",
+      "trigger": {
+        "type": "flag_set",
+        "flag": "guard_friendly"
+      },
+      "condition": "has:visited_gate",
+      "actions": [
+        {
+          "type": "narrate",
+          "text": "守衛點了點頭，讓你通過。"
+        },
+        {
+          "type": "reveal_edge",
+          "edge_id": "gate_to_village"
+        }
+      ]
+    }
+  ]
+}

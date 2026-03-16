@@ -65,6 +65,12 @@ class TestPrefabRegistry:
         assert p["bounds"].radius_m == 2.5
         assert p["terrain_type"] == "water"
 
+    def test_iron_gate_locked_has_lock_fields(self) -> None:
+        """鐵柵門 prefab 預設上鎖 + 可互動。"""
+        p = PROP_PREFABS["iron_gate_locked"]
+        assert p["is_locked"] is True
+        assert p["interactable"] is True
+
 
 # ---------------------------------------------------------------------------
 # _expand_props 展開邏輯
@@ -171,6 +177,16 @@ class TestMapLoadIntegration:
         scroll = next(p for p in props if p.id == "hidden_scroll")
         assert scroll.hidden is True
         assert scroll.investigation_dc == 15
+
+    def test_cave_explore_lock_fields(self) -> None:
+        """cave_explore exit_north 有鎖定欄位。"""
+        from tot.data.loader import load_map_manifest
+
+        ms = load_map_manifest(name="cave_explore")
+        gate = next(p for p in ms.manifest.props if p.id == "exit_north")
+        assert gate.is_locked is True
+        assert gate.lock_dc == 15
+        assert gate.key_item == "north_door_key"
 
     def test_cave_explore_bounds_preserved(self) -> None:
         """cave_explore 的 bounds override 正確套用。"""
