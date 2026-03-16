@@ -13,10 +13,20 @@
                    CoverResult, MapManifest, MapState
 - combat_state.py ← TurnState, InitiativeEntry, CombatState, MoveEvent, MoveResult, AoePreview
 - exploration.py  ← Pointcrawl 探索系統
+- adventure.py   ← 固定劇本冒險系統
 """
 
 from __future__ import annotations
 
+from tot.models.adventure import (
+    AdventureScript,
+    AdventureState,
+    DialogueLine,
+    EventAction,
+    EventTrigger,
+    NpcDef,
+    ScriptEvent,
+)
 from tot.models.combat_state import (
     AoePreview,
     CombatantRef,
@@ -167,6 +177,14 @@ __all__ = [
     # time
     "GameClock",
     "format_seconds_human",
+    # adventure
+    "AdventureScript",
+    "AdventureState",
+    "DialogueLine",
+    "EventAction",
+    "EventTrigger",
+    "NpcDef",
+    "ScriptEvent",
     # exploration
     "AreaExploreState",
     "DeploymentState",
