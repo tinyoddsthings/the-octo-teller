@@ -139,6 +139,10 @@ class Prop(Entity):
     is_searched: bool = False  # 已被搜索過
     is_looted: bool = False  # 已被拾取過
     loot_items: list[LootEntry] = Field(default_factory=list)
+    # ── 鎖定屬性（門 Prop 用）──
+    is_locked: bool = False  # 上鎖（需要鑰匙或開鎖檢定）
+    lock_dc: int = 0  # 開鎖 DC（Thieves' Tools / STR 破門）
+    key_item: str | None = None  # 對應鑰匙的 grants_key id
     # ── 地形屬性 ──
     terrain_type: str = ""  # hill / crevice / water / rubble
     elevation_m: float = 0.0  # 地形高度（正=高地，負=低窪）

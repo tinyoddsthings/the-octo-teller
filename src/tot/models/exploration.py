@@ -163,3 +163,4 @@ class AreaExploreState(BaseModel):
     discovered_props: set[str] = Field(default_factory=set)  # 已發現的隱藏 Prop id
     looted_props: set[str] = Field(default_factory=set)  # 已拾取的 Prop id
     collected_items: list[LootEntry] = Field(default_factory=list)  # 已收集物品
+    collected_keys: set[str] = Field(default_factory=set)  # 已收集的鑰匙 id

@@ -23,7 +23,10 @@
       "x": 12.5, "y": 19.25,
       "name": "鐵柵門（上鎖）",
       "interactable": true,
-      "interact_message": "一扇生鏽的鐵柵門，需要鑰匙才能打開"
+      "interact_message": "一扇生鏽的鐵柵門，需要鑰匙才能打開",
+      "is_locked": true,
+      "lock_dc": 15,
+      "key_item": "north_door_key"
     },
     {
       "id": "torch_1", "prefab_id": "wall_torch",
