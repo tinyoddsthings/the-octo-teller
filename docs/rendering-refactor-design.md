@@ -421,6 +421,38 @@ uv run pytest
 
 ---
 
+## 九之一、Prop Bounds 完整化（Phase 2-XD）
+
+### Size/Bounds 分離
+
+**問題**：`_size_to_render_bounds(object_size)` 用 D&D 生物體型推導物件渲染尺寸，
+語意混淆且 3 段分支不直覺。
+
+**解法**：
+- 所有有 `material` 的 prefab 補上 explicit `bounds`
+- 移除 `_size_to_render_bounds()`
+- 無 bounds 的 inline prop 統一 fallback `_INLINE_PROP_FALLBACK_BOUNDS = BoundingShape.rect(1.0, 1.0)`
+- `geometry.py` `_PROP_HALF` 同步從 0.75→0.5（對齊 1.0m）
+
+### 物件免疫/抗性（D&D 2024 DMG）
+
+| 材質 | 免疫 | 抗性 |
+|------|------|------|
+| 所有（有 material） | Poison, Psychic | — |
+| STONE | Poison, Psychic | Piercing |
+| IRON | Poison, Psychic | Piercing, Slashing |
+| WOOD | Poison, Psychic | — |
+
+### 邊緣距離互動
+
+`INTERACT_RADIUS_M = 0.5`（邊緣到邊緣），取代舊的 3.0m 中心距離。
+`_edge_gap(actor, prop)` 依 prop bounds 類型計算：
+- 無 bounds → 點（center_dist - actor_r）
+- CIRCLE → center_dist - actor_r - prop_r
+- RECTANGLE → clamp 法找最近點 - actor_r
+
+---
+
 ## 十、未來擴充（此次不實作）
 
 | 功能 | 實作方式 |

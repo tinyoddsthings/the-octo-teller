@@ -299,6 +299,10 @@ class TileMapCanvas(Widget):
             dpm_x = total_dots_w / grid_world_w if grid_world_w > 0 else 1.0
             dpm_y = total_dots_h / grid_world_h if grid_world_h > 0 else 1.0
 
+            # 遮擋 dot 集合：牆壁 + 阻擋型 prop 佔據的 dot 位置
+            # Actor 繪製時跳過這些位置（牆壁是實體，不該被 actor 覆蓋）
+            occluding_dots: set[tuple[int, int]] = set()
+
             # 7a. 牆壁
             wall_canvas = _get_canvas("bright_white", priority=2)  # WALL 層
             for item in buf.items:
@@ -313,6 +317,7 @@ class TileMapCanvas(Widget):
                 for py in range(max(0, dy0), min(total_dots_h, dy1)):
                     for px in range(max(0, dx0), min(total_dots_w, dx1)):
                         wall_canvas.set(px, py)
+                        occluding_dots.add((px, py))
 
             # 7b. Prop：用實際碰撞體積繪製（dot 級精度）
             for item in buf.items:
@@ -359,6 +364,8 @@ class TileMapCanvas(Widget):
                             hit = hit or (tex == "circle_outline" and is_edge)
                             if hit:
                                 cvs.set(px, py)
+                                if tex == "circle_fill":
+                                    occluding_dots.add((px, py))
                 else:
                     # 矩形：fill = 填滿，outline = 外框
                     is_fill = tex == "fill"
@@ -366,6 +373,8 @@ class TileMapCanvas(Widget):
                         for px in range(max(0, dx0), min(total_dots_w, dx1)):
                             if is_fill or py == dy0 or py == dy1 - 1 or px == dx0 or px == dx1 - 1:
                                 cvs.set(px, py)
+                                if is_fill:
+                                    occluding_dots.add((px, py))
 
             # 7d. 掩體標記：收集 cover_label 位置（字元座標）
             cover_annotations: dict[tuple[int, int], tuple[str, str]] = {}
@@ -421,7 +430,7 @@ class TileMapCanvas(Widget):
                         elif tex == TextureType.ACTOR_X and nx * nx + ny * ny <= 1.0:
                             # X 形：兩條對角線，限橢圓範圍內
                             hit = abs(abs(nx) - abs(ny)) < 0.3
-                        if hit:
+                        if hit and (px, py) not in occluding_dots:
                             cvs.set(px, py)
 
         # 9. 取各 Canvas 的 braille frame，統一對齊（保留優先級）
@@ -462,7 +471,8 @@ class TileMapCanvas(Widget):
             if pad_left > 0:
                 result.append(" " * pad_left)
 
-            # braille 區域逐字元套色（winner-take-all：最高優先級整個字元取代）
+            # braille 區域逐字元套色（winner-take-all）
+            # 每字元格只顯示最高 priority 圖層的 dots，不做 OR 合併
             # cover_annotations 可能在此行覆蓋 braille 字元為掩體標記
             frame_row = adj_row  # frame 行 = adj_row（因為 frame 從 0 開始，對齊 tile 區域）
             for col_idx in range(used_w_chars):
@@ -472,6 +482,8 @@ class TileMapCanvas(Widget):
                     result.append(ann[0], style=ann[1])
                     continue
 
+                # winner-take-all：每字元格只顯示最高 priority 圖層的 dots
+                # 不做 OR 合併，避免 actor 與牆壁重疊時的顏色互滲
                 best_dots = 0
                 best_color = ""
                 best_pri = -1

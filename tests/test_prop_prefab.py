@@ -9,7 +9,7 @@ import pytest
 
 from tot.data.loader import _expand_props
 from tot.data.prop_defs import PROP_PREFABS
-from tot.models.enums import Material, ShapeType
+from tot.models.enums import DamageType, Material, ShapeType, Size
 
 # ---------------------------------------------------------------------------
 # Prefab 登錄表
@@ -189,3 +189,65 @@ class TestMapLoadIntegration:
         assert pool.bounds is not None
         assert pool.bounds.shape_type == ShapeType.CIRCLE
         assert pool.bounds.radius_m == 2.5
+
+
+# ---------------------------------------------------------------------------
+# 物件免疫 / 抗性 / bounds
+# ---------------------------------------------------------------------------
+
+
+class TestObjectImmunityAndResistance:
+    """D&D 2024 物件免疫（Poison, Psychic）與材質抗性。"""
+
+    def test_material_prefabs_immune_to_poison_psychic(self) -> None:
+        """所有有 material 的 prefab 必須有 Poison + Psychic 免疫。"""
+        for pid, data in PROP_PREFABS.items():
+            if data.get("material") is not None:
+                immunities = data.get("damage_immunities", [])
+                assert DamageType.POISON in immunities, f"{pid} 缺少 Poison 免疫"
+                assert DamageType.PSYCHIC in immunities, f"{pid} 缺少 Psychic 免疫"
+
+    def test_stone_prefabs_resist_piercing(self) -> None:
+        """石材 prefab 有 Piercing 抗性。"""
+        stone_ids = [
+            pid for pid, data in PROP_PREFABS.items() if data.get("material") == Material.STONE
+        ]
+        for pid in stone_ids:
+            resistances = PROP_PREFABS[pid].get("damage_resistances", [])
+            assert DamageType.PIERCING in resistances, f"{pid} 缺少 Piercing 抗性"
+
+    def test_iron_prefabs_resist_piercing_slashing(self) -> None:
+        """鐵材 prefab 有 Piercing + Slashing 抗性。"""
+        iron_ids = [
+            pid for pid, data in PROP_PREFABS.items() if data.get("material") == Material.IRON
+        ]
+        for pid in iron_ids:
+            resistances = PROP_PREFABS[pid].get("damage_resistances", [])
+            assert DamageType.PIERCING in resistances, f"{pid} 缺少 Piercing 抗性"
+            assert DamageType.SLASHING in resistances, f"{pid} 缺少 Slashing 抗性"
+
+
+class TestExplicitBounds:
+    """新增 explicit bounds 的 prefab 驗證。"""
+
+    def test_wall_torch_bounds(self) -> None:
+        """壁掛火把有 0.3×0.3m 矩形 bounds。"""
+        b = PROP_PREFABS["wall_torch"]["bounds"]
+        assert b.shape_type == ShapeType.RECTANGLE
+        assert b.half_width_m == 0.15
+        assert b.half_height_m == 0.15
+
+    def test_stone_chest_bounds(self) -> None:
+        """石箱有 0.9×0.6m 矩形 bounds。"""
+        b = PROP_PREFABS["stone_chest"]["bounds"]
+        assert b.shape_type == ShapeType.RECTANGLE
+        assert b.half_width_m == 0.45
+        assert b.half_height_m == 0.30
+
+    def test_glowing_mushrooms_no_bounds(self) -> None:
+        """發光蘑菇無碰撞 bounds（太小，人可踩過）。"""
+        assert "bounds" not in PROP_PREFABS["glowing_mushrooms"]
+
+    def test_glowing_mushrooms_tiny_size(self) -> None:
+        """發光蘑菇的 object_size 為 TINY。"""
+        assert PROP_PREFABS["glowing_mushrooms"]["object_size"] == Size.TINY

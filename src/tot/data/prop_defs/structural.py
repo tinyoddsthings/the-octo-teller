@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from tot.models.enums import Fragility, Material, Size
+from tot.models.enums import DamageType, Fragility, Material, Size
 from tot.models.shapes import BoundingShape
 
 STRUCTURAL_PREFABS: dict[str, dict[str, Any]] = {
@@ -23,6 +23,8 @@ STRUCTURAL_PREFABS: dict[str, dict[str, Any]] = {
         "hp_max": 27,
         "hp_current": 27,
         "bounds": BoundingShape.circle(0.5),
+        "damage_immunities": [DamageType.POISON, DamageType.PSYCHIC],
+        "damage_resistances": [DamageType.PIERCING],
     },
     "wall_torch": {
         "name": "壁掛火把",
@@ -35,6 +37,9 @@ STRUCTURAL_PREFABS: dict[str, dict[str, Any]] = {
         "fragility": Fragility.RESILIENT,
         "hp_max": 5,
         "hp_current": 5,
+        "bounds": BoundingShape.rect(0.3, 0.3),
+        "damage_immunities": [DamageType.POISON, DamageType.PSYCHIC],
+        "damage_resistances": [DamageType.PIERCING, DamageType.SLASHING],
     },
     "wooden_door": {
         "name": "木門",
@@ -48,6 +53,7 @@ STRUCTURAL_PREFABS: dict[str, dict[str, Any]] = {
         "hp_max": 18,
         "hp_current": 18,
         "bounds": BoundingShape.rect(1.5, 0.3),
+        "damage_immunities": [DamageType.POISON, DamageType.PSYCHIC],
     },
     "iron_gate_locked": {
         "name": "鐵柵門（鎖）",
@@ -61,5 +67,7 @@ STRUCTURAL_PREFABS: dict[str, dict[str, Any]] = {
         "hp_max": 0,  # 不可摧毀
         "hp_current": 0,
         "bounds": BoundingShape.rect(1.5, 0.3),
+        "damage_immunities": [DamageType.POISON, DamageType.PSYCHIC],
+        "damage_resistances": [DamageType.PIERCING, DamageType.SLASHING],
     },
 }

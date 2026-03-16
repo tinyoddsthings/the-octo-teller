@@ -6,6 +6,7 @@ Pointcrawl 節點 → 進入 area 地圖 → 自由移動 + 搜索/拾取 Prop�
 
 from __future__ import annotations
 
+import math
 import random
 from dataclasses import dataclass, field
 from uuid import uuid4
@@ -25,13 +26,13 @@ from tot.models import (
     Prop,
     Size,
 )
-from tot.models.enums import Skill
+from tot.models.enums import ShapeType, Skill
 
 # ---------------------------------------------------------------------------
 # 結果資料結構
 # ---------------------------------------------------------------------------
 
-NEARBY_RADIUS_M = 3.0  # look 指令的搜索半徑
+INTERACT_RADIUS_M = 0.5  # 互動半徑（邊緣到邊緣）
 
 
 @dataclass(frozen=True)
@@ -191,16 +192,42 @@ def reset_movement(area_state: AreaExploreState) -> None:
     area_state.speed_remaining = area_state.speed_per_turn
 
 
+def _edge_gap(actor: Actor, prop: Prop) -> float:
+    """Actor 邊緣到 Prop 邊緣的距離（公尺）。
+
+    負值表示重疊。Actor 一律視為圓形（from_size）。
+    Prop 無 bounds 時視為點（半徑 0）。
+    """
+    dx = actor.x - prop.x
+    dy = actor.y - prop.y
+    actor_r = actor.bounds.radius_m if actor.bounds else 0.75
+
+    if prop.bounds is None:
+        # 無碰撞的小物件（蘑菇、掉落物）→ 視為點
+        return math.sqrt(dx * dx + dy * dy) - actor_r
+
+    if prop.bounds.shape_type == ShapeType.CIRCLE:
+        return math.sqrt(dx * dx + dy * dy) - actor_r - prop.bounds.radius_m
+
+    # 矩形：找 prop 邊緣上離 actor 中心最近的點
+    hw = prop.bounds.half_width_m
+    hh = prop.bounds.half_height_m
+    nearest_x = max(prop.x - hw, min(actor.x, prop.x + hw))
+    nearest_y = max(prop.y - hh, min(actor.y, prop.y + hh))
+    ndx = actor.x - nearest_x
+    ndy = actor.y - nearest_y
+    return math.sqrt(ndx * ndx + ndy * ndy) - actor_r
+
+
 def get_nearby_props(
     area_state: AreaExploreState,
-    radius: float = NEARBY_RADIUS_M,
+    radius: float = INTERACT_RADIUS_M,
 ) -> list[Prop]:
-    """取得隊伍附近的可互動 Prop。"""
+    """取得隊伍附近的可互動 Prop（邊緣到邊緣距離）。"""
     actor = _get_party_actor(area_state)
     if actor is None:
         return []
 
-    party_pos = Position(x=actor.x, y=actor.y)
     result: list[Prop] = []
 
     for prop in area_state.map_state.manifest.props:
@@ -209,8 +236,7 @@ def get_nearby_props(
         # 隱藏且未發現 → 跳過
         if prop.hidden and prop.id not in area_state.discovered_props:
             continue
-        prop_pos = Position(x=prop.x, y=prop.y)
-        if distance(party_pos, prop_pos) <= radius:
+        if _edge_gap(actor, prop) <= radius:
             result.append(prop)
 
     return result

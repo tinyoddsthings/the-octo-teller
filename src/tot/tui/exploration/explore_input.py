@@ -1156,7 +1156,7 @@ class ExploreInputHandler:
 
     def _area_do_look(self, log: RichLog) -> None:
         """查看附近可互動物件。"""
-        from tot.gremlins.bone_engine.area_explore import NEARBY_RADIUS_M
+        from tot.gremlins.bone_engine.area_explore import INTERACT_RADIUS_M
 
         props = get_nearby_props(self.area_state)
         pos = get_party_position(self.area_state)
@@ -1171,9 +1171,9 @@ class ExploreInputHandler:
                 log.write("[yellow]⚠ 困難地形——移動消耗加倍[/]")
 
         if not props:
-            log.write(f"[dim]附近 {NEARBY_RADIUS_M}m 內沒有可互動物件。[/]")
+            log.write(f"[dim]附近 {INTERACT_RADIUS_M}m 內沒有可互動物件。[/]")
         else:
-            log.write(f"\n[bold white]附近物件（{NEARBY_RADIUS_M}m 內）：[/]")
+            log.write(f"\n[bold white]附近物件（{INTERACT_RADIUS_M}m 內）：[/]")
             for prop in props:
                 status = ""
                 if prop.is_looted:

@@ -307,25 +307,24 @@ class TestLegendShape:
         for key, tile in PROP_TILES.items():
             assert tile.legend_shape, f"PROP_TILES[{key!r}] 缺少 legend_shape"
 
-    def test_door_legend_is_filled(self) -> None:
-        """門圖例 = 填滿矩形（全 dot 亮起，非外框）。"""
+    def test_door_legend_is_narrow(self) -> None:
+        """門圖例 = 扁矩形（6 dots 寬 × 3 dots 高，非全填滿）。"""
         tile = PROP_TILES["door_open"]
         icon_lines = braille_wide_sample(tile)
-        # 填滿 = 所有字元都不是空白 braille
-        for line in icon_lines:
-            for ch in line:
-                assert ch != "\u2800", "門圖例不應有空白 braille（應為填滿矩形）"
+        all_chars = "".join(icon_lines)
+        total_dots = sum(bin(ord(ch) - 0x2800).count("1") for ch in all_chars)
+        # 6×3 = 18 dots，遠少於全填滿的 64 dots
+        assert 10 < total_dots < 30, f"門圖例 dot 數應在 10~30（實際 {total_dots}）"
 
-    def test_item_legend_is_cross(self) -> None:
-        """物品圖例 = 十字形（有中心行全亮 + 中心列全亮的特徵）。"""
+    def test_item_legend_is_marker(self) -> None:
+        """物品圖例 = 中心 2×2 dots（4 個點）。"""
         tile = PROP_TILES["item"]
         icon_lines = braille_wide_sample(tile)
-        # 十字形：非空白（有 dot），且不是全填滿（有空白位置）
         all_chars = "".join(icon_lines)
         has_dots = any(ch != "\u2800" for ch in all_chars)
         has_blanks = any(ch == "\u2800" for ch in all_chars)
-        assert has_dots, "物品圖例應有 dot（十字形）"
-        assert has_blanks, "物品圖例不應全填滿（應為十字，非填滿矩形）"
+        assert has_dots, "物品圖例應有 dot（marker）"
+        assert has_blanks, "物品圖例不應全填滿（應為小標記）"
 
     def test_terrain_tiles_no_legend_shape(self) -> None:
         """地形 tile 不設 legend_shape（繼續用 BRAILLE_TEXTURES）。"""

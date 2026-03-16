@@ -239,15 +239,15 @@ class TestAreaSearchTakeFlow:
     """area 搜索→拾取完整流程測試。"""
 
     def _enter_and_move_to_mushroom(self, handler, chars, exp_map, state):
-        """進入 area 並移動到蘑菇附近。"""
+        """進入 area 並移動到蘑菇附近（邊緣距離 ≤ 0.5m）。"""
         log = MagicMock()
         refresh = MagicMock()
         handler._on_enter_node(chars, exp_map, state, log)
         handler.handle_command("explore", chars, exp_map, state, log, refresh)
-        # 蘑菇在 (3.0, 8.0)，需多次移動
+        # 蘑菇在 (3.0, 8.0)，移動到緊鄰位置
         handler.handle_command("move 4.0 2.5", chars, exp_map, state, log, refresh)
         handler.handle_command("reset", chars, exp_map, state, log, refresh)
-        handler.handle_command("move 4.0 7.0", chars, exp_map, state, log, refresh)
+        handler.handle_command("move 3.0 7.0", chars, exp_map, state, log, refresh)
         return log, refresh
 
     def test_search_shows_prop_list(self) -> None:

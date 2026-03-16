@@ -64,10 +64,10 @@ WALL_TILE = TileVisual(char="#", fg="bright_white", legend_label="牆壁")
 
 PROP_TILES: dict[str, TileVisual] = {
     "door_open": TileVisual(
-        char="□", fg="bright_yellow", legend_label="門（開）", legend_shape="rect_fill"
+        char="□", fg="bright_yellow", legend_label="門（開）", legend_shape="rect_narrow"
     ),
     "door_blocked": TileVisual(
-        char="□", fg="bright_red", legend_label="門（鎖）", legend_shape="rect_fill"
+        char="□", fg="bright_red", legend_label="門（鎖）", legend_shape="rect_narrow"
     ),
     "decoration_blocking": TileVisual(
         char="O", fg="cyan", legend_label="障礙物", legend_shape="circle_fill"
@@ -75,7 +75,7 @@ PROP_TILES: dict[str, TileVisual] = {
     "decoration_nonblocking": TileVisual(
         char="o", fg="cyan", legend_label="裝飾", legend_shape="rect_outline"
     ),
-    "item": TileVisual(char="!", fg="bright_magenta", legend_label="物品", legend_shape="cross"),
+    "item": TileVisual(char="!", fg="bright_magenta", legend_label="物品", legend_shape="marker"),
 }
 
 
@@ -332,6 +332,16 @@ def _shape_circle_outline(canvas: Canvas, px0: int, py0: int, pw: int, ph: int) 
                 canvas.set(px0 + dx, py0 + dy)
 
 
+def _shape_rect_narrow(canvas: Canvas, px0: int, py0: int, pw: int, ph: int) -> None:
+    """扁填滿矩形（門圖例用，6 dots 寬 × 3 dots 高）。"""
+    nw, nh = 6, 3
+    sx = px0 + (pw - nw) // 2
+    sy = py0 + (ph - nh) // 2
+    for dy in range(nh):
+        for dx in range(nw):
+            canvas.set(sx + dx, sy + dy)
+
+
 def _shape_cross(canvas: Canvas, px0: int, py0: int, pw: int, ph: int) -> None:
     """十字（物品）。"""
     cx, cy = pw // 2, ph // 2
@@ -354,6 +364,7 @@ def _shape_marker(canvas: Canvas, px0: int, py0: int, pw: int, ph: int) -> None:
 
 _LEGEND_SHAPES: dict[str, Callable[..., None]] = {
     "rect_fill": _shape_rect_fill,
+    "rect_narrow": _shape_rect_narrow,
     "rect_outline": _shape_rect_outline,
     "circle_fill": _shape_circle_fill,
     "circle_outline": _shape_circle_outline,

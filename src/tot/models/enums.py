@@ -278,7 +278,7 @@ MATERIAL_AC: dict[Material, int] = {
 # 堅固程度 → HP 倍率
 FRAGILITY_HP_MULTIPLIER: dict[Fragility, int] = {
     Fragility.FRAGILE: 1,
-    Fragility.RESILIENT: 2,
+    Fragility.RESILIENT: 3,
 }
 
 # 體型 → 物件 HP 骰（D&D 2024 DMG）

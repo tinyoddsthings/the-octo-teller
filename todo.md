@@ -115,7 +115,14 @@
 > 📄 設計文件：[`docs/bone-engine-v2-design.md`](docs/bone-engine-v2-design.md) §4~§5
 
 - [ ] `move_entity()` 強制位移路徑檢測 — `forced=True` 時用 Liang-Barsky 掃描路徑，碰牆停在牆前 📄 [`docs/spatial-combat-design.md`](docs/spatial-combat-design.md) §4 ADR-2.5
-- [ ] 2-V A-3: 資料模型擴充 `models.py` — Position.z + TerrainTile.height_m + Actor.size/z/bounds + Material/Fragility 列舉 + Prop 可摧毀欄位+bounds + ShapeType（5種：CIRCLE/RECTANGLE/CONE/LINE/CYLINDER）+ BoundingShape（含方向欄位 direction_deg/angle_deg/length_m/height_m + intersects_line）+ SurfaceEffect（改用 bounds）+ MapState.surfaces + CoverResult
+- [ ] 2-V A-3: 資料模型擴充 `models.py`
+  - [x] Material/Fragility 列舉
+  - [x] ShapeType（5種：CIRCLE/RECTANGLE/CONE/LINE/CYLINDER）+ BoundingShape（含 intersects_line）
+  - [x] Prop 可摧毀欄位 + bounds + damage_resistances
+  - [ ] Position.z + TerrainTile.height_m
+  - [ ] Actor.size/z/bounds
+  - [ ] SurfaceEffect（改用 bounds）+ MapState.surfaces
+  - [ ] CoverResult
 - [ ] 2-V A-4: 材質系統 `bone_engine/materials.py` — MATERIAL_AC 查表 + roll_object_hp + apply_object_damage
 - [ ] 2-V A-5 (partial): `test_materials.py`（AC/HP/傷害/摧毀）
 - [ ] 2-V Phase E: Actor.size + bounds 全面傳播
@@ -202,6 +209,7 @@
 - [x] **Phase 2d**: `geometry.py` — `extract_static_obstacles()` 改用 prop.bounds 計算 AABB
 - [x] **Phase 3**: `render_braille_map()` / `render_to_plain()` 改用 RenderBuffer
 - [x] **Phase 4**: 新增 `tests/test_prop_prefab.py`（14 tests）/ `tests/test_render_buffer.py`（17 tests）；全測試通過
+- [x] **Bug**: Actor 靠近牆壁/Prop 時 braille dots 吃圖 — tile_canvas.py 字元級 winner-take-all 以少量 actor dots 取代整格牆壁 dots（修復：改為 bitwise OR 合併 dots + 最高 priority 上色，與 canvas.py 一致）
 
 ### 2-XA: Area 自由探索（Pointcrawl + Area 混合模式）
 > 里程碑：進入 Pointcrawl 節點後可自由移動、搜索物件、拾取物品
@@ -276,6 +284,18 @@
   - [x] build_legend_lines() 支援 _append_wide_entries（2 行高 icon）
   - [x] 修復 BRAILLE_TEXTURES key mismatch（decoration_blocking/nonblocking 未註冊）
 - [x] 測試更新（562 tests 全過）
+
+### 2-XD: Prop 碰撞體積 + 物件免疫/抗性 + 互動距離 ✅
+> Prop bounds 系統完整化 + D&D 2024 物件規則 + 邊緣距離互動
+- [x] `models/map.py` — Prop 新增 `damage_resistances` 欄位
+- [x] `structural.py` — 全 prefab 補 D&D 物件免疫（Poison, Psychic）+ 材質抗性
+- [x] `interactive.py` — stone_chest 加 bounds(0.9×0.6) + is_blocking；glowing_mushrooms 加 TINY size、無碰撞
+- [x] `render_buffer.py` — 移除 `_size_to_render_bounds()`，統一 fallback `_INLINE_PROP_FALLBACK_BOUNDS`(1.0×1.0m)
+- [x] `geometry.py` — `_PROP_HALF` 0.75→0.5 對齊 1.0m fallback
+- [x] `area_explore.py` — `INTERACT_RADIUS_M = 0.5`（邊緣距離）、`_edge_gap()` 函式
+- [x] `tiles.py` — `_shape_rect_narrow()` 門圖例 + 物品改 marker
+- [x] `enums.py` — `RESILIENT` HP 倍率 2→3
+- [x] 測試：新增 TestObjectImmunityAndResistance / TestExplicitBounds / TestInlinePropFallbackBounds
 
 ### 低優先備忘（空間幾何 ADR）
 > 📄 完整分析：[`docs/spatial-combat-design.md`](docs/spatial-combat-design.md)

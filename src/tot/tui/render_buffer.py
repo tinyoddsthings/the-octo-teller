@@ -58,18 +58,8 @@ class RenderItem:
     cover_label: str = ""  # 掩體標記（½ / ¾）
 
 
-# 預設 prop 碰撞 fallback（1.5×1.5m）
-_DEFAULT_PROP_BOUNDS = BoundingShape.rect(1.5, 1.5)
-
-
-def _size_to_render_bounds(size: Size) -> BoundingShape:
-    """依 object_size 推導無碰撞 prop 的渲染用 bounds。"""
-    if size == Size.TINY:
-        return BoundingShape.rect(0.75, 0.75)
-    if size in (Size.LARGE, Size.HUGE, Size.GARGANTUAN):
-        return BoundingShape.rect(3.0, 3.0)
-    # SMALL / MEDIUM fallback
-    return _DEFAULT_PROP_BOUNDS
+# 無 explicit bounds 的 inline prop fallback（1.0×1.0m）
+_INLINE_PROP_FALLBACK_BOUNDS = BoundingShape.rect(1.0, 1.0)
 
 
 def _prop_texture(prop: Prop) -> TextureType:
@@ -163,10 +153,7 @@ class RenderBuffer:
         for prop in all_props:
             if prop.hidden:
                 continue
-            if prop.bounds is not None:
-                bounds = prop.bounds
-            else:
-                bounds = _size_to_render_bounds(prop.object_size)
+            bounds = prop.bounds if prop.bounds is not None else _INLINE_PROP_FALLBACK_BOUNDS
             is_terrain = bool(prop.terrain_type)
             prop_tile = resolve_prop_tile(prop.prop_type, prop.is_blocking, prop.interactable)
             # 反查 PROP_TILES key 供圖例掃描用

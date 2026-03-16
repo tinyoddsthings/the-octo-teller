@@ -10,12 +10,12 @@ from uuid import uuid4
 from tot.models.map import Actor, MapManifest, MapState, Prop, Wall
 from tot.models.shapes import BoundingShape
 from tot.tui.render_buffer import (
+    _INLINE_PROP_FALLBACK_BOUNDS,
     RenderBuffer,
     RenderLayer,
     TextureType,
     _actor_texture,
     _prop_texture,
-    _size_to_render_bounds,
 )
 
 # ---------------------------------------------------------------------------
@@ -216,29 +216,13 @@ class TestRenderBufferBuild:
 # ---------------------------------------------------------------------------
 
 
-class TestSizeToRenderBounds:
-    """_size_to_render_bounds 測試。"""
+class TestInlinePropFallbackBounds:
+    """_INLINE_PROP_FALLBACK_BOUNDS 測試。"""
 
-    def test_tiny_bounds(self) -> None:
-        from tot.models.enums import Size
-
-        b = _size_to_render_bounds(Size.TINY)
-        assert b.half_width_m == 0.75 / 2
-        assert b.half_height_m == 0.75 / 2
-
-    def test_medium_bounds(self) -> None:
-        from tot.models.enums import Size
-
-        b = _size_to_render_bounds(Size.MEDIUM)
-        assert b.half_width_m == 1.5 / 2
-        assert b.half_height_m == 1.5 / 2
-
-    def test_large_bounds(self) -> None:
-        from tot.models.enums import Size
-
-        b = _size_to_render_bounds(Size.LARGE)
-        assert b.half_width_m == 3.0 / 2
-        assert b.half_height_m == 3.0 / 2
+    def test_fallback_is_1x1(self) -> None:
+        """fallback bounds 為 1.0×1.0m 矩形。"""
+        assert _INLINE_PROP_FALLBACK_BOUNDS.half_width_m == 0.5
+        assert _INLINE_PROP_FALLBACK_BOUNDS.half_height_m == 0.5
 
 
 # ---------------------------------------------------------------------------

@@ -86,7 +86,7 @@ def inflate_aabb(aabb: AABB, radius: float) -> AABB:
     )
 
 
-_PROP_HALF: float = 0.75  # 無 bounds 時的 fallback（1.5m 物件的一半）
+_PROP_HALF: float = 0.5  # 無 bounds 時的 fallback（1.0m 物件的一半）
 
 
 def _prop_to_aabb(p: Prop) -> AABB:
