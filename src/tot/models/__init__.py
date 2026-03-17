@@ -28,7 +28,10 @@ from tot.models.adventure import (
     EventTrigger,
     NpcDef,
     RewardDef,
+    SceneDef,
     ScriptEvent,
+    SkillCheckDef,
+    SpellAssistDef,
 )
 from tot.models.combat_state import (
     AoePreview,
@@ -190,7 +193,10 @@ __all__ = [
     "EventTrigger",
     "NpcDef",
     "RewardDef",
+    "SceneDef",
     "ScriptEvent",
+    "SkillCheckDef",
+    "SpellAssistDef",
     # exploration
     "AreaExploreState",
     "DeploymentState",

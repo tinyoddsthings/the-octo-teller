@@ -17,6 +17,9 @@ adventures/<adventure_id>/
 ├── npcs/                 # NPC（一個 NPC 一份）
 │   ├── quinn.md
 │   └── shopkeeper.md
+├── scenes/               # 場景（多角色互動對話）
+│   ├── encounter_intro.md
+│   └── group_discussion.md
 └── chapters/             # 章節（按順序編號）
     ├── 01_arrival.md
     └── 02_investigation.md
@@ -354,6 +357,55 @@ choices:
 - `→ next_dialogue_id`：選擇後跳到的對話 ID
 - `sets_flag`：選擇後設定的 flag
 
+### 4.4 技能檢定語法（`skill_check:`）
+
+對話中可嵌入技能檢定，取代 choices。檢定結果跳轉到不同對話。
+
+```markdown
+## 偵查 #scout_check
+speaker: dm
+
+> 你仔細觀察四周……
+
+skill_check:
+  skill: Perception
+  dc: 12
+  pass: scout_success
+  fail: scout_fail
+  hidden_dc: true
+  assists:
+  - 導引術 #guidance | evendorn | 1d4 | concentration
+```
+
+| 欄位 | 必填 | 說明 |
+|------|------|------|
+| `skill` | ✅ | 技能名稱（如 Perception, Nature, Survival） |
+| `dc` | ✅ | 難度等級 |
+| `pass` | ✅ | 成功跳轉的對話 ID |
+| `fail` | ✅ | 失敗跳轉的對話 ID |
+| `hidden_dc` | 選填 | `true` = 暗骰，不顯示 DC（預設 false） |
+| `assists` | 選填 | 輔助法術列表 |
+
+#### assists 語法
+```
+  - 法術名稱 #spell_id | source_npc | bonus_die_or_advantage | concentration
+```
+
+### 4.5 無選項串接語法（`next:`）
+
+對話段落可用 `next:` 直接串接到下一段對話，不需要 choices。
+
+```markdown
+## 旁白 #narration_01
+speaker: dm
+
+> 你們沿著小路來到洞穴口。
+
+next: narration_02
+```
+
+`next: dialogue_id` 可跨 NPC 和場景檔案引用。
+
 ---
 
 ## 5. `chapters/*.md` — 章節
@@ -429,6 +481,7 @@ once: true
 | `add_item` | `- add_item: item_id` | 給予物品 |
 | `start_timer` | `- start_timer: flag_name` | 開始計時 |
 | `clear_timer` | `- clear_timer: flag_name` | 清除計時 |
+| `start_scene` | `- start_scene: scene_id` | 啟動場景對話 |
 
 ### 5.5 條件表達式
 
@@ -466,7 +519,7 @@ once: true
 - 章節事件的 `trigger: enter_node node_id` 中的 `node_id` 必須存在於某張地圖
 - NPC 的 `location: node_id` 必須存在於某張地圖
 - 邊的 `to` / `from` 必須是同一地圖的節點 ID
-- 對話的 `→ next_dialogue_id` 必須是同一 NPC 的對話 ID
+- 對話的 `→ next_dialogue_id` 可跨 NPC 和場景檔案引用
 - `locked: key_id` 中的 `key_id` 應對應某個物品的 `grants_key`
 
 ### 6.4 編譯與驗證
@@ -480,4 +533,82 @@ uv run adventure-author build adventures/<id>/
 
 # 編譯單張地圖
 uv run adventure-author build-map adventures/<id>/maps/dungeon.md -o out.json
+```
+
+---
+
+## 7. `scenes/*.md` — 場景
+
+場景用於多角色互動對話，獨立於 NPC 檔案。適合：
+- 群體場景（開場白、戰鬥事件、團體討論）
+- DM 旁白搭配多角色反應
+- 需要 choices/skill_check 的互動場景
+
+### 7.1 Frontmatter
+
+```markdown
+---
+id: encounter_intro
+name: 洞穴遭遇開場
+trigger: enter_node cave_mouth
+condition: has:dragon_following
+once: true
+---
+```
+
+| 欄位 | 必填 | 說明 |
+|------|------|------|
+| `id` | ✅ | 場景唯一 ID（snake_case） |
+| `name` | ✅ | 場景名稱 |
+| `trigger` | 選填 | 自動觸發條件（格式同章節事件） |
+| `condition` | 選填 | 前置條件表達式 |
+| `once` | 選填 | 只觸發一次（預設 `true`） |
+
+有 `trigger` 的場景會自動生成 `start_scene` 事件。無 `trigger` 的場景需要由章節事件手動觸發（`- start_scene: scene_id`）。
+
+### 7.2 對話段落
+
+場景的對話語法與 NPC 相同，但**每段必須有 `speaker:`**（場景沒有預設說話人）。
+
+```markdown
+## 洞穴口旁白 #cave_narration
+speaker: dm
+
+> 你們沿著小路來到洞穴口。空氣中帶著刺骨寒意。
+
+next: cave_shalefire_react
+
+## 岩炎的反應 #cave_shalefire_react
+speaker: shalefire
+
+> 岩炎皺起眉頭：「這股冷氣……不對勁。」
+
+choices:
+- **「小心前進。」** #choice_careful → cave_entry
+- **「先偵查。」** #choice_scout → cave_scout_check
+```
+
+支援的語法：`> 引言`、`choices:`、`skill_check:`、`next:`、`sets_flag:`、`condition:`
+
+### 7.3 靜默節點（`silent: true`）
+
+靜默節點不顯示文字，執行 flag 後自動推進到 `next:` 目標。
+
+```markdown
+## 設定旗標 #cave_set_flags
+speaker: dm
+silent: true
+sets_flag: cave_entered
+next: cave_actual_entry
+```
+
+多個 silent 節點可連續串接，引擎會遞迴推進直到遇到非 silent 節點（上限 10 層）。
+
+### 7.4 檔案命名
+
+場景檔名用 scene ID 的 snake_case：
+```
+scenes/encounter_intro.md
+scenes/group_discussion.md
+scenes/dragon_egg_discovery.md
 ```

@@ -50,6 +50,28 @@ class EncounterDef(BaseModel):
 # ── NPC 定義 ──────────────────────────────────────────────
 
 
+class SpellAssistDef(BaseModel):
+    """技能檢定時的輔助法術定義。"""
+
+    name: str  # "導引術"
+    spell_id: str  # "guidance"
+    source_npc: str  # NPC ID（如 "evendorn"）
+    bonus_die: str = ""  # "1d4" — 加骰型輔助
+    advantage: bool = False  # True = 給予優勢
+    requires_concentration: bool = True
+
+
+class SkillCheckDef(BaseModel):
+    """對話中的技能檢定定義。"""
+
+    skill: str  # Skill enum value（如 "Perception"）
+    dc: int
+    pass_dialogue: str  # 成功時跳轉的對話 ID
+    fail_dialogue: str  # 失敗時跳轉的對話 ID
+    hidden_dc: bool = False  # True = 暗骰，不顯示 DC
+    assists: list[SpellAssistDef] = Field(default_factory=list)
+
+
 class DialogueLine(BaseModel):
     """單行對話（NPC 說的話、DM 旁白、或玩家選項）。"""
 
@@ -58,8 +80,10 @@ class DialogueLine(BaseModel):
     text: str
     condition: str = ""  # 條件表達式（空 = 永遠可用）
     sets_flag: str = ""  # 說完後設定的 flag（值 = 1）
+    silent: bool = False  # 靜默節點（不顯示文字，自動推進）
     next_lines: list[str] = []  # 後續對話 id（空 = 結束）
     choice_label: str = ""  # 選擇分支的選項文字
+    skill_check: SkillCheckDef | None = None  # 技能檢定（有時取代 choices）
 
 
 class NpcDef(BaseModel):
@@ -69,6 +93,17 @@ class NpcDef(BaseModel):
     name: str
     description: str = ""
     node_id: str | None = None  # 所在 Pointcrawl 節點
+    dialogue: list[DialogueLine] = Field(default_factory=list)
+
+
+# ── 場景定義 ──────────────────────────────────────────────
+
+
+class SceneDef(BaseModel):
+    """場景定義——多角色互動場景。"""
+
+    id: str
+    name: str
     dialogue: list[DialogueLine] = Field(default_factory=list)
 
 
@@ -99,6 +134,7 @@ class EventAction(BaseModel):
     node_id: str = ""  # move_npc/reveal_node 的目標節點
     edge_id: str = ""  # reveal_edge 的邊
     item_id: str = ""  # add_item 的物品
+    scene_id: str = ""  # start_scene 的場景 ID
 
 
 class ScriptEvent(BaseModel):
@@ -121,6 +157,7 @@ class AdventureScript(BaseModel):
     name: str  # "危在松溪"
     description: str = ""
     npcs: dict[str, NpcDef] = Field(default_factory=dict)  # npc_id → NpcDef
+    scenes: dict[str, SceneDef] = Field(default_factory=dict)  # scene_id → SceneDef
     events: list[ScriptEvent] = Field(default_factory=list)  # 按優先序排列
     initial_flags: dict[str, int] = Field(default_factory=dict)
 

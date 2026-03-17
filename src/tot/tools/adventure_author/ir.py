@@ -115,6 +115,30 @@ class MapIR:
 
 
 @dataclass
+class SpellAssistIR:
+    """技能檢定的輔助法術。"""
+
+    name: str  # "導引術"
+    spell_id: str = ""  # "guidance"
+    source_npc: str = ""  # "evendorn"
+    bonus_die: str = ""  # "1d4"
+    advantage: bool = False
+    requires_concentration: bool = True
+
+
+@dataclass
+class SkillCheckIR:
+    """對話中的技能檢定。"""
+
+    skill: str  # "Perception", "Nature" 等
+    dc: int = 10
+    pass_id: str = ""  # 成功跳轉的對話 ID
+    fail_id: str = ""  # 失敗跳轉的對話 ID
+    hidden_dc: bool = False
+    assists: list[SpellAssistIR] = field(default_factory=list)
+
+
+@dataclass
 class ChoiceIR:
     """對話中的玩家選項。"""
 
@@ -132,11 +156,27 @@ class DialogueIR:
     explicit_id: str | None = None
     speaker: str = ""
     text: str = ""
+    silent: bool = False
     condition: str = ""
     sets_flag: str = ""
     choices: list[ChoiceIR] = field(default_factory=list)
+    skill_check: SkillCheckIR | None = None  # 技能檢定（取代 choices）
+    next_id: str = ""  # 無選項時自動推進到下一段對話 ID
     map_id: str = ""  # 綁定地圖（選填）
     chapter: str = ""  # 語法糖，chapter: 02 → has:chapter_02
+
+
+@dataclass
+class SceneIR:
+    """場景定義——多角色互動場景。"""
+
+    name: str
+    explicit_id: str | None = None
+    trigger_type: str = ""  # enter_node / flag_set / etc.
+    trigger_target: str = ""
+    condition: str = ""
+    once: bool = True
+    dialogues: list[DialogueIR] = field(default_factory=list)
 
 
 @dataclass

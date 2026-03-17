@@ -2,13 +2,13 @@
 name: adventure-ingest
 description: >
   Convert natural language adventure content into structured Adventure Author
-  Markdown format. This skill should be used when the user says "ingest",
+  Markdown format. This skill should be used when the user says "adventure-ingest",
   "轉換冒險", "輸入劇本", "寫地圖", "寫NPC", "寫章節", or provides natural
   language adventure content to convert into structured Adventure Author
   Markdown format.
 ---
 
-# /ingest — 自然語言 → 結構化 Adventure Author MD
+# /adventure-ingest — 自然語言 → 結構化 Adventure Author MD
 
 ## 工作流程
 
@@ -32,6 +32,7 @@ uv run adventure-author new <id> --dir adventures
 ls adventures/<id>/maps/*.md 2>/dev/null
 ls adventures/<id>/npcs/*.md 2>/dev/null
 ls adventures/<id>/chapters/*.md 2>/dev/null
+ls adventures/<id>/scenes/*.md 2>/dev/null
 cat adventures/<id>/_meta.md 2>/dev/null
 ```
 
@@ -52,6 +53,7 @@ cat adventures/<id>/_meta.md 2>/dev/null
 | 冒險概述、整體設定 | `_meta.md` |
 | 地點、場景、地圖描述 | `maps/*.md`（自動判斷 scale：town/world/dungeon） |
 | 角色描述、NPC 設定 | `npcs/*.md` |
+| 多角色互動場景、戰鬥事件、群體對話 | `scenes/*.md` |
 | 故事事件、劇情推進 | `chapters/*.md` |
 
 ### 4. 轉換
@@ -70,6 +72,7 @@ cat adventures/<id>/_meta.md 2>/dev/null
 - `maps/` — 用地圖名稱的 snake_case（如 `pinebrook_village.md`）
 - `npcs/` — 用 NPC ID（如 `quinn.md`）
 - `chapters/` — 用 `NN_slug.md`（如 `01_arrival.md`）
+- `scenes/` — 用 scene ID 的 snake_case（如 `encounter_intro.md`）
 
 ### 6. 驗證
 
@@ -99,6 +102,14 @@ uv run adventure-author validate adventures/<id>/
 - 現階段用 `outcome: auto_win`（進入 → 旁白 → 自動獲勝 → 獎勵）
 - 未來 Phase 3 改為 `outcome: combat` 即可啟動真正戰鬥
 
+### 場景（Scene）
+- 多角色對話放 `scenes/*.md`，**不要**塞在某個 NPC 檔案裡
+- DM 旁白搭配多角色反應 → 場景
+- 場景每段對話**必須**有 `speaker:`（無預設說話人）
+- `silent: true` 靜默節點：不顯示文字，執行 flag 後自動推進
+- 有 `trigger` 的場景自動觸發；無 `trigger` 的場景由章節事件 `start_scene` 觸發
+- `next:` 可跨 NPC 和場景檔案引用
+
 ### 章節事件觸發類型
 - `enter_node <node_id>` — 進入節點
 - `take_item <item_id>` — 拿取物品
@@ -122,7 +133,8 @@ uv run adventure-author validate adventures/<id>/
 1. 概述（`_meta.md`）
 2. 地圖（一張一張，先大後小：world → town → dungeon）
 3. NPC（一個一個）
-4. 章節（一章一章）
+4. 場景（多角色互動場景）
+5. 章節（一章一章）
 
 每次 `/ingest` 先掃描已有 MD 檔案、建立 ID 索引，確保新內容能正確引用舊 ID。
 

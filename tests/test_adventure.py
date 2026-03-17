@@ -11,6 +11,7 @@ from tot.gremlins.bone_engine.adventure import (
     execute_event,
     get_available_lines,
     get_available_npcs,
+    get_scene_entry_lines,
     init_adventure_state,
     load_adventure,
 )
@@ -21,6 +22,7 @@ from tot.models.adventure import (
     EventAction,
     EventTrigger,
     NpcDef,
+    SceneDef,
     ScriptEvent,
 )
 
@@ -898,3 +900,176 @@ class TestInitAdventureState:
         state = init_adventure_state(script)
         state.story_flags["extra"] = 1
         assert "extra" not in script.initial_flags
+
+
+# ── 場景對話引擎 ─────────────────────────────────────────
+
+
+@pytest.fixture
+def sample_scene() -> SceneDef:
+    """測試用場景。"""
+    return SceneDef(
+        id="test_scene",
+        name="測試場景",
+        dialogue=[
+            DialogueLine(
+                id="scene_intro",
+                speaker="dm",
+                text="開場旁白。",
+                next_lines=["scene_npc_react"],
+            ),
+            DialogueLine(
+                id="scene_npc_react",
+                speaker="shalefire",
+                text="岩炎反應。",
+                next_lines=["scene_choice_a", "scene_choice_b"],
+            ),
+            DialogueLine(
+                id="scene_choice_a",
+                speaker="shalefire",
+                text="",
+                choice_label="選項A",
+            ),
+            DialogueLine(
+                id="scene_choice_b",
+                speaker="shalefire",
+                text="",
+                choice_label="選項B",
+            ),
+        ],
+    )
+
+
+@pytest.fixture
+def silent_scene() -> SceneDef:
+    """含 silent 節點的場景。"""
+    return SceneDef(
+        id="silent_scene",
+        name="靜默測試",
+        dialogue=[
+            DialogueLine(
+                id="silent_set_flag",
+                speaker="dm",
+                text="",
+                silent=True,
+                sets_flag="flag_set_by_silent",
+                next_lines=["silent_next"],
+            ),
+            DialogueLine(
+                id="silent_next",
+                speaker="dm",
+                text="靜默後的對話。",
+            ),
+        ],
+    )
+
+
+class TestSceneDialogue:
+    def test_scene_entry_lines(self, sample_scene: SceneDef) -> None:
+        """取得場景的入口對話行。"""
+        state = AdventureState(script_id="test")
+        lines = get_scene_entry_lines(sample_scene, state)
+        assert len(lines) == 1
+        assert lines[0].id == "scene_intro"
+
+    def test_advance_scene_dialogue(self, sample_scene: SceneDef) -> None:
+        """推進場景對話。"""
+        state = AdventureState(script_id="test")
+        new_state, chosen, next_lines = advance_dialogue(
+            state, scene=sample_scene, line_id="scene_npc_react"
+        )
+        assert chosen.speaker == "shalefire"
+        assert len(next_lines) == 2  # 兩個選項
+
+    def test_silent_auto_advance(self, silent_scene: SceneDef) -> None:
+        """silent 節點應自動推進到下一個非 silent 節點。"""
+        state = AdventureState(script_id="test")
+        new_state, chosen, next_lines = advance_dialogue(
+            state, scene=silent_scene, line_id="silent_set_flag"
+        )
+        # 應該跳過 silent 節點，返回 silent_next
+        assert chosen.id == "silent_next"
+        assert chosen.text == "靜默後的對話。"
+        # flag 應已設定
+        assert new_state.story_flags.get("flag_set_by_silent") == 1
+
+    def test_silent_chain(self) -> None:
+        """多個 silent 節點連續推進。"""
+        scene = SceneDef(
+            id="chain",
+            name="連鎖",
+            dialogue=[
+                DialogueLine(
+                    id="s1",
+                    speaker="dm",
+                    text="",
+                    silent=True,
+                    sets_flag="f1",
+                    next_lines=["s2"],
+                ),
+                DialogueLine(
+                    id="s2",
+                    speaker="dm",
+                    text="",
+                    silent=True,
+                    sets_flag="f2",
+                    next_lines=["s3"],
+                ),
+                DialogueLine(id="s3", speaker="dm", text="最終對話。"),
+            ],
+        )
+        state = AdventureState(script_id="test")
+        new_state, chosen, _ = advance_dialogue(state, scene=scene, line_id="s1")
+        assert chosen.id == "s3"
+        assert new_state.story_flags.get("f1") == 1
+        assert new_state.story_flags.get("f2") == 1
+
+    def test_scene_cross_npc_dialogue(self) -> None:
+        """場景對話可引用 NPC 的對話行。"""
+        script = AdventureScript(
+            id="test",
+            name="test",
+            npcs={
+                "guard": NpcDef(
+                    id="guard",
+                    name="衛兵",
+                    dialogue=[
+                        DialogueLine(id="guard_react", speaker="guard", text="衛兵反應。"),
+                    ],
+                )
+            },
+            scenes={
+                "cross": SceneDef(
+                    id="cross",
+                    name="跨引用",
+                    dialogue=[
+                        DialogueLine(
+                            id="scene_line",
+                            speaker="dm",
+                            text="引導。",
+                            next_lines=["guard_react"],
+                        ),
+                    ],
+                )
+            },
+        )
+        scene = script.scenes["cross"]
+        state = AdventureState(script_id="test")
+        new_state, chosen, next_lines = advance_dialogue(
+            state, scene=scene, line_id="scene_line", script=script
+        )
+        assert len(next_lines) == 1
+        assert next_lines[0].id == "guard_react"
+
+    def test_start_scene_event_execution(self) -> None:
+        """start_scene action 由 execute_event 回傳（不改 state）。"""
+        event = ScriptEvent(
+            id="ev1",
+            trigger=EventTrigger(type="enter_node", node_id="cave"),
+            actions=[EventAction(type="start_scene", scene_id="my_scene")],
+        )
+        state = AdventureState(script_id="test")
+        new_state, actions = execute_event(state, event)
+        assert len(actions) == 1
+        assert actions[0].type == "start_scene"
+        assert actions[0].scene_id == "my_scene"

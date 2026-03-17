@@ -16,6 +16,7 @@ from tot.gremlins.bone_engine.adventure import (
     execute_event,
     get_available_lines,
     get_available_npcs,
+    get_scene_entry_lines,
 )
 from tot.gremlins.bone_engine.area_explore import (
     check_terrain_at,
@@ -36,6 +37,8 @@ from tot.gremlins.bone_engine.checks import (
     best_passive_perception,
     skill_check,
 )
+from tot.gremlins.bone_engine.checks import skill_check as engine_skill_check
+from tot.gremlins.bone_engine.dice import RollType, roll
 from tot.gremlins.bone_engine.exploration import (
     attempt_jump,
     auto_passive_perception,
@@ -69,6 +72,8 @@ from tot.models.adventure import (
     DialogueLine,
     EventAction,
     NpcDef,
+    SceneDef,
+    SkillCheckDef,
 )
 
 if TYPE_CHECKING:
@@ -97,6 +102,7 @@ class ExplorePhase(StrEnum):
     # 對話模式
     TALK_SELECT = "talk_select"
     DIALOGUE = "dialogue"
+    SKILL_CHECK = "skill_check"
 
 
 class ExploreInputHandler:
@@ -119,6 +125,9 @@ class ExploreInputHandler:
         self.adventure_script: AdventureScript | None = None
         self.adventure_state: AdventureState | None = None
         self._pending_talk_npc: NpcDef | None = None
+        self._pending_scene: SceneDef | None = None
+        self._pending_skill_check: SkillCheckDef | None = None
+        self._characters: list[Character] = []
 
     # -----------------------------------------------------------------
     # 主選單
@@ -172,6 +181,7 @@ class ExploreInputHandler:
         refresh_fn: Callable,
     ) -> bool:
         """處理指令。回傳 True 表示要退出。"""
+        self._characters = characters
         cmd_lower = cmd.lower().strip()
 
         # Area 模式：所有指令路由到 area handlers
@@ -204,6 +214,8 @@ class ExploreInputHandler:
             return self._handle_talk_select(cmd_lower, state, log, refresh_fn)
         if self.phase == ExplorePhase.DIALOGUE:
             return self._handle_dialogue(cmd_lower, state, log, refresh_fn)
+        if self.phase == ExplorePhase.SKILL_CHECK:
+            return self._handle_skill_check_input(cmd_lower, characters, state, log, refresh_fn)
 
         log.write("[yellow]目前無法處理指令。[/]")
         return False
@@ -264,6 +276,8 @@ class ExploreInputHandler:
             return self._handle_talk_select(str(num), state, log, refresh_fn)
         if self.phase == ExplorePhase.DIALOGUE:
             return self._handle_dialogue(str(num), state, log, refresh_fn)
+        if self.phase == ExplorePhase.SKILL_CHECK:
+            return self._handle_skill_check_input(str(num), characters, state, log, refresh_fn)
 
         return False
 
@@ -1098,6 +1112,34 @@ class ExploreInputHandler:
             elif action.type == "add_item":
                 # 加到當前節點的物品中
                 log.write(f"[green]✨ 獲得物品：{action.item_id}[/]")
+            elif action.type == "start_scene":
+                self._start_scene(action.scene_id, state, log)
+
+    def _start_scene(
+        self,
+        scene_id: str,
+        state: ExplorationState,
+        log: RichLog,
+    ) -> None:
+        """啟動場景對話。"""
+        if not self.adventure_script or not self.adventure_state:
+            return
+
+        scene = self.adventure_script.scenes.get(scene_id)
+        if not scene:
+            log.write(f"[red]找不到場景：{scene_id}[/]")
+            return
+
+        self._pending_scene = scene
+        log.write(f"\n[bold magenta]🎬 {scene.name}[/]")
+
+        lines = get_scene_entry_lines(scene, self.adventure_state, state.elapsed_minutes)
+        if not lines:
+            log.write("[dim]（場景無對話）[/]")
+            self._pending_scene = None
+            return
+
+        self._show_dialogue_options(lines, log)
 
     def _show_talk_menu(
         self,
@@ -1223,19 +1265,32 @@ class ExploreInputHandler:
     ) -> None:
         """顯示對話行並推進。"""
         npc = self._pending_talk_npc
-        if not npc or not self.adventure_state:
+        scene = self._pending_scene
+        if not self.adventure_state:
+            return
+        if not npc and not scene:
             return
 
         self.adventure_state, chosen, next_lines = advance_dialogue(
-            self.adventure_state, npc, line.id
+            self.adventure_state,
+            npc=npc,
+            line_id=line.id,
+            script=self.adventure_script,
+            scene=scene,
         )
 
-        # 顯示對話文字
-        if chosen.speaker == "dm":
-            log.write(f"\n[italic]{chosen.text}[/]")
-        else:
-            speaker_name = npc.name if chosen.speaker == npc.id else chosen.speaker
-            log.write(f"\n[bold yellow]{speaker_name}[/]：{chosen.text}")
+        # silent 節點不顯示文字（advance_dialogue 已自動推進）
+        if not chosen.silent:
+            if chosen.speaker == "dm":
+                log.write(f"\n[italic]{chosen.text}[/]")
+            else:
+                speaker_name = self._resolve_speaker_name(chosen.speaker)
+                log.write(f"\n[bold yellow]{speaker_name}[/]：{chosen.text}")
+
+        # 技能檢定分支
+        if chosen.skill_check:
+            self._show_skill_check(chosen.skill_check, log)
+            return
 
         if not next_lines:
             self._end_dialogue(log)
@@ -1243,12 +1298,228 @@ class ExploreInputHandler:
 
         self._show_dialogue_options(next_lines, log)
 
+    # -----------------------------------------------------------------
+    # 技能檢定 UI
+    # -----------------------------------------------------------------
+
+    _SKILL_ZH: dict[str, str] = {
+        "Perception": "察覺",
+        "Nature": "自然",
+        "Survival": "生存",
+        "Animal Handling": "馴獸",
+        "Investigation": "調查",
+        "Insight": "洞察",
+        "Athletics": "運動",
+        "Acrobatics": "特技",
+        "Stealth": "隱匿",
+        "Arcana": "奧秘",
+        "History": "歷史",
+        "Religion": "宗教",
+        "Medicine": "醫療",
+        "Deception": "欺瞞",
+        "Intimidation": "威嚇",
+        "Performance": "表演",
+        "Persuasion": "說服",
+        "Sleight of Hand": "巧手",
+    }
+
+    def _show_skill_check(self, sc: SkillCheckDef, log: RichLog) -> None:
+        """顯示技能檢定提示，等待玩家確認擲骰。"""
+        self._pending_skill_check = sc
+        self._accepted_assists: list[int] = []  # 玩家接受的輔助索引
+        self.phase = ExplorePhase.SKILL_CHECK
+
+        skill_name = self._SKILL_ZH.get(sc.skill, sc.skill)
+
+        # 取主角的技能加值
+        bonus_str = ""
+        if self._characters:
+            char = self._characters[0]
+            try:
+                skill_enum = Skill(sc.skill)
+                bonus = char.skill_bonus(skill_enum)
+                bonus_str = f"+{bonus}" if bonus >= 0 else str(bonus)
+            except ValueError:
+                pass
+
+        log.write("")
+        log.write("[bold magenta]═══ 技能檢定 ═══[/]")
+        log.write(f"  技能：[bold]{skill_name}[/]（{sc.skill}）")
+        if bonus_str:
+            log.write(f"  你的加值：[bold cyan]{bonus_str}[/]")
+        if not sc.hidden_dc:
+            log.write(f"  難度：[bold]DC {sc.dc}[/]")
+        else:
+            log.write("  難度：[dim]???（暗骰）[/]")
+
+        # 顯示可用輔助
+        if sc.assists:
+            log.write("")
+            log.write("  [dim]可用輔助：[/]")
+            for idx, assist in enumerate(sc.assists):
+                npc_name = self._resolve_speaker_name(assist.source_npc)
+                effect = f"+{assist.bonus_die}" if assist.bonus_die else "優勢"
+                conc = " [yellow]⚠️專注[/]" if assist.requires_concentration else ""
+                log.write(
+                    f"  [cyan]{idx + 2}.[/] ✨ {assist.name}（來自{npc_name}）— {effect}{conc}"
+                )
+
+        log.write("[bold magenta]════════════════[/]")
+        log.write("")
+        log.write("[cyan]1.[/] 🎲 擲骰！")
+
+    def _handle_skill_check_input(
+        self,
+        cmd: str,
+        characters: list[Character],
+        state: ExplorationState,
+        log: RichLog,
+        refresh_fn: Callable,
+    ) -> bool:
+        """處理技能檢定擲骰或輔助選擇。"""
+        sc = self._pending_skill_check
+        if not sc:
+            return False
+
+        if not cmd.isdigit():
+            return False
+        choice = int(cmd)
+
+        # 選擇輔助法術（2, 3, ...）
+        if choice >= 2 and sc.assists:
+            assist_idx = choice - 2
+            if assist_idx < len(sc.assists):
+                assist = sc.assists[assist_idx]
+                if assist_idx in self._accepted_assists:
+                    log.write(f"  [dim]（已接受 {assist.name}）[/]")
+                    return False
+                self._accepted_assists.append(assist_idx)
+                npc_name = self._resolve_speaker_name(assist.source_npc)
+                log.write(f"  ✨ {npc_name}為你施放了{assist.name}！")
+                if assist.requires_concentration:
+                    log.write(f"  [dim]（{npc_name}開始專注）[/]")
+                log.write("")
+                log.write("[cyan]1.[/] 🎲 擲骰！")
+                return False
+
+        # 擲骰（1）
+        if choice != 1:
+            return False
+
+        self._pending_skill_check = None
+
+        if not characters:
+            log.write("[red]沒有可用的角色！[/]")
+            self._end_dialogue(log)
+            return False
+
+        char = characters[0]
+
+        try:
+            skill_enum = Skill(sc.skill)
+        except ValueError:
+            log.write(f"[red]未知技能：{sc.skill}[/]")
+            self._end_dialogue(log)
+            return False
+
+        # 判斷是否有優勢
+        has_advantage = any(sc.assists[i].advantage for i in self._accepted_assists)
+        roll_type = RollType.ADVANTAGE if has_advantage else RollType.NORMAL
+
+        # 執行檢定
+        result = engine_skill_check(char, skill_enum, sc.dc, roll_type=roll_type)
+
+        # 計算輔助加骰
+        assist_bonus = 0
+        assist_parts: list[str] = []
+        for i in self._accepted_assists:
+            assist = sc.assists[i]
+            if assist.bonus_die:
+                die_result = roll(assist.bonus_die)
+                assist_bonus += die_result.total
+                assist_parts.append(f"+{assist.bonus_die}({die_result.total})")
+
+        final_total = result.total + assist_bonus
+        success = final_total >= sc.dc
+
+        # 顯示結果
+        bonus = char.skill_bonus(skill_enum)
+        bonus_str = f"{bonus:+d}"
+
+        parts = [f"🎲 d20 = [bold]{result.natural}[/]", bonus_str]
+        if has_advantage:
+            parts.insert(1, "[dim]（優勢）[/]")
+        parts.extend(assist_parts)
+        parts.append(f"= [bold]{final_total}[/]")
+
+        log.write(f"  {' '.join(parts)}")
+
+        if success:
+            log.write(f"  [bold green]✓ 成功！[/]（DC {sc.dc}）")
+        else:
+            log.write(f"  [bold red]✗ 失敗[/]（DC {sc.dc}）")
+
+        # 跳轉到對應對話
+        target_id = sc.pass_dialogue if success else sc.fail_dialogue
+        if target_id:
+            dl = self._find_dialogue_line(target_id)
+            if dl:
+                self._display_and_advance(dl, log)
+                return False
+        self._end_dialogue(log)
+        return False
+
+    def _find_dialogue_line(self, line_id: str) -> DialogueLine | None:
+        """在場景、NPC 中查找對話行（支援跨檔案對話鏈）。"""
+        # 先查當前場景
+        scene = self._pending_scene
+        if scene:
+            for dl in scene.dialogue:
+                if dl.id == line_id:
+                    return dl
+        # 再查當前對話 NPC
+        npc = self._pending_talk_npc
+        if npc:
+            for dl in npc.dialogue:
+                if dl.id == line_id:
+                    return dl
+        # 再查其他 NPC 和場景
+        if self.adventure_script:
+            for other in self.adventure_script.npcs.values():
+                if npc and other.id == npc.id:
+                    continue
+                for dl in other.dialogue:
+                    if dl.id == line_id:
+                        return dl
+            for s in self.adventure_script.scenes.values():
+                if scene and s.id == scene.id:
+                    continue
+                for dl in s.dialogue:
+                    if dl.id == line_id:
+                        return dl
+        return None
+
+    def _resolve_speaker_name(self, speaker_id: str) -> str:
+        """解析 speaker ID 為顯示名稱（支援跨 NPC 對話）。"""
+        npc = self._pending_talk_npc
+        if npc and speaker_id == npc.id:
+            return npc.name
+        if self.adventure_script:
+            other = self.adventure_script.npcs.get(speaker_id)
+            if other:
+                return other.name
+        return speaker_id
+
     def _end_dialogue(self, log: RichLog) -> None:
         """結束對話。"""
         npc = self._pending_talk_npc
+        scene = self._pending_scene
         self._pending_talk_npc = None
+        self._pending_scene = None
 
-        if npc:
+        if scene:
+            log.write(f"[dim]（{scene.name}結束）[/]")
+        elif npc:
             log.write(f"[dim]（與{npc.name}的對話結束）[/]")
 
         # 清除 active_dialogue

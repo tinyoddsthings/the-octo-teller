@@ -292,6 +292,16 @@
 - [x] `README.md` — 開發工具/設計文件區塊
 - [x] 測試：101 tests 全過（新增 12 encounter 測試）
 
+**Stage XE-Scene: 場景對話系統（Scene Dialogue System）**
+> 多角色場景獨立存在、可自動觸發、可跨檔案引用
+> `scenes/*.md` 格式：frontmatter(id/name/trigger/condition/once) + ## 段落(speaker必填/silent/choices/skill_check)
+- [x] S-1: IR + Parser（SceneIR + parse_scene + _parse_dialogue_blocks 共用 helper）
+- [x] S-2: Builder + Model（SceneDef + DialogueLine.silent + build_script 擴充）
+- [x] S-3: Engine（_build_global_line_map + silent 自動推進 + start_scene action）
+- [x] S-4: TUI 整合（start_scene 處理 + silent 跳過 + 場景對話查找）
+- [x] S-5: Docs + Migration + Scaffold（md-format-spec + SKILL.md + scaffold 完成）
+- [ ] S-6: dm.md 場景式對話鏈遷移到 scenes/（獨立 commit）
+
 ---
 
 #### 📝 冒險內容製作（用 Adventure Author 逐步產出）
