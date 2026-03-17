@@ -300,7 +300,7 @@
 - [x] S-3: Engine（_build_global_line_map + silent 自動推進 + start_scene action）
 - [x] S-4: TUI 整合（start_scene 處理 + silent 跳過 + 場景對話查找）
 - [x] S-5: Docs + Migration + Scaffold（md-format-spec + SKILL.md + scaffold 完成）
-- [ ] S-6: dm.md 場景式對話鏈遷移到 scenes/（獨立 commit）
+- [x] S-6: dm.md 場景式對話鏈遷移到 scenes/（35 條對話 → 3 個場景檔）
 
 ---
 
