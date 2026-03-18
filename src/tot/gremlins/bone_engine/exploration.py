@@ -8,9 +8,10 @@ from __future__ import annotations
 
 import math
 import random
+from collections.abc import Callable
 from dataclasses import dataclass
 
-from tot.data.loader import load_map_manifest
+from tot.data.loader import load_exploration_map, load_map_manifest
 from tot.gremlins.bone_engine.dice import roll_damage
 from tot.gremlins.bone_engine.time_costs import (
     DUNGEON_MOVE_DEFAULT,
@@ -625,6 +626,97 @@ def exit_to_parent_map(state: ExplorationState) -> ExplorationState:
     state.current_node_id = parent.node_id
 
     return state
+
+
+# ---------------------------------------------------------------------------
+# MapRegistry — 已載入地圖的唯一登錄處
+# ---------------------------------------------------------------------------
+
+
+class MapRegistry:
+    """已載入地圖的唯一登錄處。
+
+    每個冒險建立獨立的 MapRegistry，天然隔離不同冒險的地圖。
+    """
+
+    def __init__(self) -> None:
+        self._maps: dict[str, ExplorationMap] = {}
+
+    def register(self, exp_map: ExplorationMap) -> None:
+        """註冊一張地圖。"""
+        self._maps[exp_map.id] = exp_map
+
+    def get(self, map_id: str) -> ExplorationMap | None:
+        """依 id 取得地圖，找不到回傳 None。"""
+        return self._maps.get(map_id)
+
+    def __contains__(self, map_id: str) -> bool:
+        return map_id in self._maps
+
+
+def register_map_tree(
+    registry: MapRegistry,
+    exp_map: ExplorationMap,
+    *,
+    loader: Callable[..., ExplorationMap] | None = None,
+) -> None:
+    """遞迴掃描節點的 sub_map 引用，載入並註冊到 registry。
+
+    loader 參數可注入冒險專用載入器（預設 load_exploration_map）。
+    """
+    if exp_map.id in registry:
+        return
+
+    registry.register(exp_map)
+    _loader = loader or (lambda *, name: load_exploration_map(name=name))
+
+    for node in exp_map.nodes:
+        if node.sub_map and node.sub_map not in registry:
+            try:
+                sub = _loader(name=node.sub_map)
+                register_map_tree(registry, sub, loader=_loader)
+            except FileNotFoundError:
+                pass  # 子地圖尚未 build 或不存在，跳過
+
+
+def check_sub_map_transition(
+    state: ExplorationState,
+    registry: MapRegistry,
+    exp_map: ExplorationMap,
+) -> ExplorationMap | None:
+    """檢查目前節點是否需要子地圖轉場。
+
+    若節點有 sub_map 且 registry 中有對應地圖，執行 enter_sub_map 並回傳子地圖。
+    否則回傳 None。
+    """
+    node_id = state.current_node_id
+    node = _get_node(exp_map, node_id)
+    if node is None or not node.sub_map:
+        return None
+
+    sub_map = registry.get(node.sub_map)
+    if sub_map is None:
+        return None
+
+    enter_sub_map(state, sub_map)
+    return sub_map
+
+
+def resolve_parent_map(
+    state: ExplorationState,
+    registry: MapRegistry,
+) -> ExplorationMap | None:
+    """返回上層地圖。
+
+    執行 exit_to_parent_map 並從 registry 取得父地圖。
+    若已在最頂層或找不到父地圖，回傳 None。
+    """
+    if not state.map_stack:
+        return None
+
+    parent_map_id = state.map_stack[-1].map_id
+    exit_to_parent_map(state)
+    return registry.get(parent_map_id)
 
 
 # ---------------------------------------------------------------------------

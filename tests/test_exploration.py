@@ -7,11 +7,15 @@ import random
 from tot.data.loader import load_exploration_map
 from tot.gremlins.bone_engine.deployment import resolve_encounter
 from tot.gremlins.bone_engine.exploration import (
+    MapRegistry,
     MoveResult,
     attempt_jump,
     calculate_fall_damage_dice,
+    check_sub_map_transition,
     force_open_edge,
     move_to_node,
+    register_map_tree,
+    resolve_parent_map,
     unlock_edge,
 )
 from tot.models import (
@@ -22,6 +26,7 @@ from tot.models import (
     ExplorationMap,
     ExplorationNode,
     ExplorationState,
+    MapStackEntry,
     Monster,
     Skill,
 )
@@ -439,3 +444,169 @@ class TestCliffRuinsMap:
         exp_map = load_exploration_map(name="cliff_ruins")
         elevations = {n.elevation_m for n in exp_map.nodes}
         assert len(elevations) >= 3
+
+
+# ---------------------------------------------------------------------------
+# MapRegistry + 轉場函式測試
+# ---------------------------------------------------------------------------
+
+
+def _make_sub_map() -> ExplorationMap:
+    """建立子地圖。"""
+    return ExplorationMap(
+        id="sub_dungeon",
+        name="子地城",
+        scale="dungeon",
+        entry_node_id="sub_room_a",
+        nodes=[
+            ExplorationNode(id="sub_room_a", name="子房間 A", node_type="room"),
+        ],
+        edges=[],
+    )
+
+
+def _make_parent_map_with_sub() -> ExplorationMap:
+    """建立含子地圖引用的父地圖。"""
+    return ExplorationMap(
+        id="parent_map",
+        name="父地圖",
+        scale="world",
+        entry_node_id="town",
+        nodes=[
+            ExplorationNode(id="town", name="城鎮", node_type="town"),
+            ExplorationNode(id="cave", name="洞穴入口", node_type="poi", sub_map="sub_dungeon"),
+        ],
+        edges=[
+            ExplorationEdge(
+                id="path_to_cave",
+                from_node_id="town",
+                to_node_id="cave",
+                name="前往洞穴",
+                distance_days=1,
+            ),
+        ],
+    )
+
+
+class TestMapRegistry:
+    """MapRegistry 基本操作。"""
+
+    def test_register_and_get(self):
+        """註冊後可取得地圖。"""
+        registry = MapRegistry()
+        exp_map = _make_map()
+        registry.register(exp_map)
+
+        assert "test_map" in registry
+        assert registry.get("test_map") is exp_map
+
+    def test_get_missing(self):
+        """取不存在的地圖回傳 None。"""
+        registry = MapRegistry()
+        assert registry.get("nonexistent") is None
+        assert "nonexistent" not in registry
+
+
+class TestCheckSubMapTransition:
+    """check_sub_map_transition() 測試。"""
+
+    def test_enters_sub_map(self):
+        """在有 sub_map 的節點自動進入子地圖。"""
+        parent = _make_parent_map_with_sub()
+        sub = _make_sub_map()
+        registry = MapRegistry()
+        registry.register(parent)
+        registry.register(sub)
+
+        state = ExplorationState(
+            current_map_id="parent_map",
+            current_node_id="cave",
+            discovered_nodes={"town", "cave"},
+        )
+
+        result = check_sub_map_transition(state, registry, parent)
+
+        assert result is sub
+        assert state.current_map_id == "sub_dungeon"
+        assert state.current_node_id == "sub_room_a"
+        assert len(state.map_stack) == 1
+        assert state.map_stack[0].map_id == "parent_map"
+        assert state.map_stack[0].node_id == "cave"
+
+    def test_no_sub_map(self):
+        """節點沒有 sub_map 時回傳 None。"""
+        parent = _make_parent_map_with_sub()
+        registry = MapRegistry()
+        registry.register(parent)
+
+        state = ExplorationState(
+            current_map_id="parent_map",
+            current_node_id="town",
+            discovered_nodes={"town"},
+        )
+
+        result = check_sub_map_transition(state, registry, parent)
+
+        assert result is None
+        assert state.current_map_id == "parent_map"
+        assert state.current_node_id == "town"
+
+
+class TestResolveParentMap:
+    """resolve_parent_map() 測試。"""
+
+    def test_resolve_parent(self):
+        """從子地圖返回父地圖。"""
+        parent = _make_parent_map_with_sub()
+        sub = _make_sub_map()
+        registry = MapRegistry()
+        registry.register(parent)
+        registry.register(sub)
+
+        state = ExplorationState(
+            current_map_id="sub_dungeon",
+            current_node_id="sub_room_a",
+            map_stack=[MapStackEntry(map_id="parent_map", node_id="cave")],
+        )
+
+        result = resolve_parent_map(state, registry)
+
+        assert result is parent
+        assert state.current_map_id == "parent_map"
+        assert state.current_node_id == "cave"
+        assert len(state.map_stack) == 0
+
+    def test_at_top_level(self):
+        """已在最頂層時回傳 None。"""
+        registry = MapRegistry()
+        state = ExplorationState(
+            current_map_id="parent_map",
+            current_node_id="town",
+        )
+
+        result = resolve_parent_map(state, registry)
+        assert result is None
+
+
+class TestRegisterMapTree:
+    """register_map_tree() 遞迴註冊測試。"""
+
+    def test_recursive_registration(self):
+        """遞迴掃描 sub_map 引用並載入。"""
+        parent = _make_parent_map_with_sub()
+        sub = _make_sub_map()
+        registry = MapRegistry()
+
+        # 注入假 loader：只認 sub_dungeon
+        def fake_loader(*, name: str) -> ExplorationMap:
+            if name == "sub_dungeon":
+                return sub
+            msg = f"找不到地圖：{name}"
+            raise FileNotFoundError(msg)
+
+        register_map_tree(registry, parent, loader=fake_loader)
+
+        assert "parent_map" in registry
+        assert "sub_dungeon" in registry
+        assert registry.get("parent_map") is parent
+        assert registry.get("sub_dungeon") is sub

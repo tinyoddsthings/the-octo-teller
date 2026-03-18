@@ -40,8 +40,10 @@ from tot.gremlins.bone_engine.checks import (
 from tot.gremlins.bone_engine.checks import skill_check as engine_skill_check
 from tot.gremlins.bone_engine.dice import RollType, roll
 from tot.gremlins.bone_engine.exploration import (
+    MapRegistry,
     attempt_jump,
     auto_passive_perception,
+    check_sub_map_transition,
     force_open_edge,
     format_time,
     get_available_exits,
@@ -49,6 +51,7 @@ from tot.gremlins.bone_engine.exploration import (
     get_visible_items,
     list_pois,
     move_to_node,
+    resolve_parent_map,
     search_items,
     search_room,
     take_item,
@@ -124,10 +127,14 @@ class ExploreInputHandler:
         # 冒險劇本系統
         self.adventure_script: AdventureScript | None = None
         self.adventure_state: AdventureState | None = None
+        # 子地圖管理
+        self.registry: MapRegistry | None = None
+        self._pending_map_change: ExplorationMap | None = None
         self._pending_talk_npc: NpcDef | None = None
         self._pending_scene: SceneDef | None = None
         self._pending_skill_check: SkillCheckDef | None = None
         self._characters: list[Character] = []
+        self._state: ExplorationState | None = None
 
     # -----------------------------------------------------------------
     # 主選單
@@ -153,6 +160,8 @@ class ExploreInputHandler:
             menu_text += "\n  [bold magenta]explore[/] — 進入區域探索"
         if self.adventure_script and self.adventure_state:
             menu_text += "\n  [bold yellow]talk[/] — 與 NPC 對話"
+        if self._state and self._state.map_stack:
+            menu_text += "\n  [bold red]back[/] — 返回上層地圖"
         log.write(menu_text)
         self.menu_options = [
             "look",
@@ -182,6 +191,7 @@ class ExploreInputHandler:
     ) -> bool:
         """處理指令。回傳 True 表示要退出。"""
         self._characters = characters
+        self._state = state
         cmd_lower = cmd.lower().strip()
 
         # Area 模式：所有指令路由到 area handlers
@@ -317,6 +327,8 @@ class ExploreInputHandler:
             self._enter_area_mode(characters, exp_map, state, log, refresh_fn)
         elif cmd == "talk":
             self._show_talk_menu(state, log)
+        elif cmd == "back" and state.map_stack:
+            self._handle_exit_sub_map(state, log)
         elif cmd == "help":
             self._do_help(log)
         else:
@@ -489,9 +501,42 @@ class ExploreInputHandler:
         # 冒險劇本事件：enter_node
         self._fire_events("enter_node", state, exp_map, log, refresh_fn, node_id=node_id)
 
+        # 子地圖轉場：節點有 sub_map 時自動進入
+        if self.registry is not None:
+            sub_map = check_sub_map_transition(state, self.registry, exp_map)
+            if sub_map is not None:
+                self._pending_map_change = sub_map
+                log.write(f"\n[bold green]進入：{sub_map.name}[/]")
+                return  # 後續由 app 完成子地圖的 _on_enter_node
+
         # 自動進入 area 探索模式
         if self._current_node_has_area and refresh_fn:
             self._enter_area_mode(characters, exp_map, state, log, refresh_fn)
+
+    # -----------------------------------------------------------------
+    # sub_map 返回上層
+    # -----------------------------------------------------------------
+
+    def _handle_exit_sub_map(
+        self,
+        state: ExplorationState,
+        log: RichLog,
+    ) -> None:
+        """返回上層地圖。"""
+        if not state.map_stack:
+            log.write("[yellow]已在最頂層地圖。[/]")
+            return
+
+        if self.registry is None:
+            log.write("[red]地圖 registry 未初始化。[/]")
+            return
+
+        parent_map = resolve_parent_map(state, self.registry)
+        if parent_map is not None:
+            self._pending_map_change = parent_map
+            log.write(f"\n[bold green]返回：{parent_map.name}[/]")
+        else:
+            log.write("[red]找不到上層地圖。[/]")
 
     # -----------------------------------------------------------------
     # door

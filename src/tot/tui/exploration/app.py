@@ -21,6 +21,7 @@ from tot.gremlins.bone_engine.area_explore import (
     get_party_position,
     reset_movement,
 )
+from tot.gremlins.bone_engine.exploration import MapRegistry, register_map_tree
 from tot.models import Character, ExplorationMap, ExplorationState
 from tot.tui.exploration.explore_demo import (
     AVAILABLE_MAPS,
@@ -70,6 +71,7 @@ class ExplorationTUI(App):
         self.exp_map: ExplorationMap | None = None
         self.state: ExplorationState | None = None
         self._handler = ExploreInputHandler()
+        self._registry = MapRegistry()
         self._input_mode = InputMode.TEXT
         self._last_move_time: float = 0.0
         self._log_mgr: ExploreLogManager | None = None
@@ -90,6 +92,10 @@ class ExplorationTUI(App):
         self.characters = chars
         self.exp_map = exp_map
         self.state = state
+
+        # 將初始地圖及其子地圖註冊到 registry
+        register_map_tree(self._registry, exp_map)
+        self._handler.registry = self._registry
 
         # 啟動遊戲時鐘（即時探索計時）
         state.game_clock.start_exploration()
@@ -354,6 +360,16 @@ class ExplorationTUI(App):
             self.exit()
             return
 
+        # 子地圖轉場：handler 偵測到 sub_map 後設定 _pending_map_change
+        if self._handler._pending_map_change is not None:
+            new_map = self._handler._pending_map_change
+            self._handler._pending_map_change = None
+            self.exp_map = new_map
+            # 觸發新地圖入口節點的事件
+            self._handler._on_enter_node(
+                self.characters, self.exp_map, self.state, log_target, self._refresh_all
+            )
+
         self._refresh_all()
 
         # 如果剛進入 area 且 handler 回到主選單，才切換到 WASD
@@ -391,6 +407,9 @@ class ExplorationTUI(App):
 
         # 重置 handler 狀態 + 啟動遊戲時鐘
         self._handler = ExploreInputHandler()
+        self._registry = MapRegistry()
+        register_map_tree(self._registry, exp_map)
+        self._handler.registry = self._registry
         self._input_mode = InputMode.TEXT
         self.state.game_clock.start_exploration()
 

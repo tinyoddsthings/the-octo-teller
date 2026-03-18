@@ -325,6 +325,7 @@
 - [ ] cave_explore.json 風格的 Area 地圖（攀岩/冰滑道/龍蛋互動）
 
 **Stage 6: 地圖轉場**
+- [x] sub_map 轉場邏輯重構：TUI → bone_engine（MapRegistry + check_sub_map_transition + resolve_parent_map + register_map_tree）
 - [ ] `Prop.exit_to_node` 欄位
 - [ ] `enter_area()` 從 Pointcrawl 自動進入 Area
 - [ ] 靠近 exit Prop 時自動提示轉場
