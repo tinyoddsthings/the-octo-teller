@@ -234,3 +234,49 @@ combat_ai/
 ```
 
 採用 Behavior Tree + GOAP 混合架構，讓怪物有「智能」而非只是隨機攻擊。
+
+---
+
+## 開發路線圖
+
+以「本地 TUI 跑通冒險劇本」為第一目標，分四階段推進：
+
+```
+Phase A: 本地 TUI 可玩版 — 跑通「危在松溪」
+  ├── GameSession 核心（狀態機 + GameClock + 存讀檔）
+  ├── 啟動與創角 TUI（Start Menu + 測試模式 + 角色建造）
+  ├── 三模式 TUI + 轉場（探索/劇情/戰鬥 UI 切換）
+  ├── 互動系統統一（E/I/R/T 選單）
+  ├── 探索→戰鬥銜接（共用 MapState + 位置保留）
+  ├── 戰鬥系統強化（步進式移動 + 回合制指令）
+  └── 端對端測試（啟動→創角→探索→對話→遭遇→戰鬥→休息→完結）
+
+Phase B: LLM 單人 TUI（Narrator + AI 隊友）
+  ├── LLM Client + Prompt 模板
+  ├── Narrator Gremlin（場景描述 + 戰鬥旁白 + NPC 對話）
+  ├── Mimic Gremlin（自然語言→結構化動作）
+  └── Companion Gremlin（AI 隊友自主決策）
+
+Phase C: LLM 多人 TUI（同裝置）
+  ├── 多角色輸入管理
+  └── 升級系統（level_up + 職業特性 + 經驗值）
+
+Phase D: Telegram / Discord 部署
+  ├── 記憶系統（Redis + PG + Qdrant）
+  ├── Telegram Bot（aiogram 3）
+  ├── 進階 Gremlin（Prep / Extension）
+  └── 生產化（Docker + CI/CD + 監控）
+
+Backlog: 不阻擋遊玩的強化功能
+  ├── 空間物理（Z 軸 / 表面效果 / 掩護 v2 / Actor size）
+  ├── 怪物 AI（Behavior Tree + GOAP）
+  └── 探索進階（光照 / 隊形 / 陷阱 / 天氣）
+```
+
+### 設計文件對應
+
+| 領域 | 設計文件 |
+|------|---------|
+| GameSession + 探索 + 時間 | [`game-session-design.md`](game-session-design.md) |
+| 空間引擎 + 事件 + ADR | [`spatial-engine-design.md`](spatial-engine-design.md) |
+| 冒險劇本工具 | [`adventure-author.md`](adventure-author.md) |
