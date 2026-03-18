@@ -60,15 +60,14 @@ encounter:
   sets_flag: icicles_defeated
 
 ### → 進入洞穴 #path_to_cave
-to: dragon_cave
+to: dragon_cave_entry
 from: mountain_approach
 distance: 0.1day
 terrain: 洞穴入口
 danger_level: 6
 
-## 龍之洞穴 #dragon_cave
-type: room
-description: 洞穴入口寬敞，陽光灑進前段。深入後迅速變得黑暗，空氣中瀰漫著一股金屬般的氣味和淡淡的硫磺味。
-ambient: 水滴聲在黑暗中迴盪。遠處似乎有微弱的呼吸聲。
-
-<!-- 遭遇3：危險的巢穴（待後續提供） -->
+## 龍之洞穴入口 #dragon_cave_entry
+type: dungeon
+description: 前方是一個寬敞的洞穴入口。陽光照亮了前段，但深處一片黑暗。一股冰冷的空氣從洞口湧出。
+ambient: 水滴聲從黑暗中傳來。空氣中帶著金屬般的氣味。
+sub_map: dragon_cave

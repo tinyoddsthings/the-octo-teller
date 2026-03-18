@@ -71,12 +71,12 @@ choices:
 - **「……呃，我什麼都沒帶。」** #choice_no_weapon → kole_give_weapon
 
 ## 科爾分配武器 #kole_give_weapon
-condition: has:equip_none
 
 > 科爾隊長翻了個白眼，嘆了口氣，從腰間解下一把短劍遞過來。
 > 「……拿著。別讓我後悔帶你出來。」
 
 sets_flag: equip_short_sword
+next: kole_ack_equipment
 
 ## 回應裝備 #kole_ack_equipment
 
@@ -346,3 +346,98 @@ skill_check:
 - tutorial: 準備好後，前進進入洞穴。
 
 sets_flag: ready_for_cave
+
+<!-- ═══════════════════════════════════════════ -->
+<!-- 遭遇 3：危險的巢穴 -->
+<!-- ═══════════════════════════════════════════ -->
+
+## 洞穴入口觀察 #e3_kole_cave_entrance
+condition: all:has:encounter3_started,not:e3_cave_explored
+next: e3_history_check
+
+> 科爾隊長舉起火把，照亮牆壁上的壁畫，湊近仔細端詳。
+> 「這些壁畫……畫的是巨大的生物在跳舞？看起來像是某種原始部落的儀式。」
+> 她皺起眉頭，回頭看向你們。
+> 「有人認得出這是什麼嗎？」
+
+## 科爾提醒火把 #e3_kole_torch
+condition: all:has:e3_cave_explored,not:e3_wall_climbed
+
+> 「火把別離手。這裡面比外面黑得多——一旦看不見路，在冰面上摔一跤可不是鬧著玩的。」
+
+## 攀爬指揮 #e3_kole_climb
+condition: all:has:e3_cave_explored,not:e3_wall_climbed
+next: e3_wall_description
+
+> 科爾隊長仰頭打量冰壁，用劍柄試探性地敲了敲岩面。
+> 「五十呎高。有些地方結了冰，但也有能抓的地方。」
+> 她看了大家一眼。
+> 「誰有攀爬工具？繩索也帶上。爬上去的人先把繩子放下來。」
+
+## 冰鏡觀察 #e3_kole_mirror
+condition: all:has:e3_wall_climbed,not:e3_mirror_passed
+next: e3_mirror_reflection
+
+> 科爾隊長看著冰鏡中變成銀龍的倒影，愣了好幾秒。
+> 「……這是什麼魔法？我們的倒影全變了。」
+> 她下意識地握緊了劍柄。
+
+## 謎題提示 #e3_kole_riddle_hint
+condition: all:has:e3_wall_climbed,not:e3_mirror_passed
+
+> 科爾隊長若有所思：「用正確的語言……牠說的是龍語嗎？」
+> 她突然拍了拍你的背包。
+> 「等等——我之前給你的那一頁！龍語翻譯書頁！翻翻看！」
+
+## 冰道指揮 #e3_kole_slides
+condition: all:has:e3_mirror_passed,not:e3_slides_done
+next: e3_slides_description
+
+> 科爾隊長站在峭壁邊緣，快速掃視了一遍下方的滑道。
+> 「沒時間猶豫了。先看清楚路線，然後一個一個跳。」
+> 她回頭嚴肅地看著你們。
+> 「盡量找最安全的那條。如果開始滑了就別想停——只能往前。」
+
+## 到達底部 #e3_kole_bottom
+condition: has:e3_slides_done
+
+> 科爾隊長拍了拍身上的冰渣，清點人數。
+> 「都到了？好。」
+> 她的目光投向前方微弱的光芒。
+> 「不管前面有什麼——我們一起面對。走。」
+
+<!-- ═══════════════════════════════════════════ -->
+<!-- 遭遇 4：龍蛋與灼目之銀 -->
+<!-- ═══════════════════════════════════════════ -->
+
+## 發現竊蛋獸 #e4_kole_spot
+condition: all:has:chapter_04_complete,not:e4_battle_won
+next: e4_cave_description
+
+> 科爾隊長的劍已經出鞘。她壓低聲音，目光死死盯著那兩個白色生物。
+> 「看到了嗎？那兩個東西——它們在攻擊龍蛋！」
+> 她咬緊牙關。
+> 「我們不能讓它們得逞。所有人——保護龍蛋！」
+
+## 戰鬥指揮 #e4_kole_battle
+condition: has:e4_battle_started
+next: e4_npc_shalefire
+
+> 科爾隊長的劍精準地劈向竊蛋獸的後腿，迫使它退離龍蛋。
+> 「別讓它們靠近蛋！分散它們的注意力！」
+
+## 勞恩反應 #e4_kole_rorn_reaction
+condition: all:has:e4_rorn_appeared,not:rorn_calmed
+
+> 科爾隊長下意識地後退一步，手中的劍微微顫抖。她的臉色蒼白，但聲音很穩。
+> 「所有人……放下武器。慢慢地。」
+> 她看了你一眼。
+> 「讓它知道我們不是敵人。」
+
+## 尾聲反應 #e4_kole_epilogue
+condition: has:rorn_calmed
+
+> 科爾隊長收起劍，深深地呼了一口氣。
+> 「銀龍的傳說……原來是真的。」
+> 她搖搖頭，嘴角露出一絲不可思議的笑容。
+> 「等回到村裡，沒人會相信我們的。」
