@@ -278,6 +278,30 @@
 - [x] `cli.py` — new/build/build-map/validate 四個指令
 - [x] 測試：89 tests 全過
 
+**Stage XE-Encounter: Encounter 語法 + /ingest Skill** ✅
+> 地城節點遭遇系統 + 自然語言→結構化 MD 轉換 Skill
+- [x] `ir.py` — EncounterIR/EnemyIR/RewardIR dataclass + NodeIR.encounter 欄位
+- [x] `parser.py` — encounter: 區塊解析（enemies/rewards/trigger/narration/outcome）
+- [x] `models/adventure.py` — EncounterDef/EnemyDef/RewardDef Pydantic 模型
+- [x] `models/exploration.py` — ExplorationNode.encounter 欄位
+- [x] `map_builder.py` — encounter IR → EncounterDef dict
+- [x] `script_builder.py` — encounter auto_win 自動生成 ScriptEvent
+- [x] `.claude/skills/adventure-ingest/SKILL.md` — /ingest Skill 工作流程
+- [x] `.claude/skills/adventure-ingest/references/md-format-spec.md` — 完整格式規格
+- [x] `docs/adventure-author.md` — 工具文件 + encounter 語法
+- [x] `README.md` — 開發工具/設計文件區塊
+- [x] 測試：101 tests 全過（新增 12 encounter 測試）
+
+**Stage XE-Scene: 場景對話系統（Scene Dialogue System）**
+> 多角色場景獨立存在、可自動觸發、可跨檔案引用
+> `scenes/*.md` 格式：frontmatter(id/name/trigger/condition/once) + ## 段落(speaker必填/silent/choices/skill_check)
+- [x] S-1: IR + Parser（SceneIR + parse_scene + _parse_dialogue_blocks 共用 helper）
+- [x] S-2: Builder + Model（SceneDef + DialogueLine.silent + build_script 擴充）
+- [x] S-3: Engine（_build_global_line_map + silent 自動推進 + start_scene action）
+- [x] S-4: TUI 整合（start_scene 處理 + silent 跳過 + 場景對話查找）
+- [x] S-5: Docs + Migration + Scaffold（md-format-spec + SKILL.md + scaffold 完成）
+- [x] S-6: dm.md 場景式對話鏈遷移到 scenes/（35 條對話 → 3 個場景檔）
+
 ---
 
 #### 📝 冒險內容製作（用 Adventure Author 逐步產出）
@@ -301,6 +325,7 @@
 - [ ] cave_explore.json 風格的 Area 地圖（攀岩/冰滑道/龍蛋互動）
 
 **Stage 6: 地圖轉場**
+- [x] sub_map 轉場邏輯重構：TUI → bone_engine（MapRegistry + check_sub_map_transition + resolve_parent_map + register_map_tree）
 - [ ] `Prop.exit_to_node` 欄位
 - [ ] `enter_area()` 從 Pointcrawl 自動進入 Area
 - [ ] 靠近 exit Prop 時自動提示轉場

@@ -8,7 +8,16 @@ from __future__ import annotations
 import re
 
 from tot.tools.adventure_author.id_gen import name_to_id
-from tot.tools.adventure_author.ir import EdgeIR, ItemIR, MapIR, NodeIR, PoiIR
+from tot.tools.adventure_author.ir import (
+    EdgeIR,
+    EncounterIR,
+    EnemyIR,
+    ItemIR,
+    MapIR,
+    NodeIR,
+    PoiIR,
+    RewardIR,
+)
 
 
 def build_map(ir: MapIR) -> dict:
@@ -60,6 +69,9 @@ def _build_node(node: NodeIR) -> dict:
     if node.items:
         result["hidden_items"] = [_build_item(item) for item in node.items]
 
+    if node.encounter:
+        result["encounter"] = _build_encounter(node.encounter)
+
     return result
 
 
@@ -93,6 +105,52 @@ def _build_item(item: ItemIR) -> dict:
         result["grants_key"] = item.grants_key
     if item.value_gp:
         result["value_gp"] = item.value_gp
+    return result
+
+
+def _build_encounter(encounter: EncounterIR) -> dict:
+    """將 EncounterIR 轉為 EncounterDef dict。"""
+    result: dict = {
+        "enemies": [_build_enemy(e) for e in encounter.enemies],
+        "trigger": encounter.trigger,
+        "outcome": encounter.outcome,
+    }
+    if encounter.narration:
+        result["narration"] = encounter.narration
+    if encounter.rewards:
+        result["rewards"] = [_build_reward(r) for r in encounter.rewards]
+    if encounter.sets_flag:
+        result["sets_flag"] = encounter.sets_flag
+    return result
+
+
+def _build_enemy(enemy: EnemyIR) -> dict:
+    """將 EnemyIR 轉為 EnemyDef dict。"""
+    eid = name_to_id(enemy.name, enemy.explicit_id)
+    result: dict = {
+        "id": eid,
+        "name": enemy.name,
+        "cr": enemy.cr,
+    }
+    if enemy.description:
+        result["description"] = enemy.description
+    if enemy.count > 1:
+        result["count"] = enemy.count
+    return result
+
+
+def _build_reward(reward: RewardIR) -> dict:
+    """將 RewardIR 轉為 RewardDef dict。"""
+    rid = name_to_id(reward.name, reward.explicit_id)
+    result: dict = {
+        "id": rid,
+        "name": reward.name,
+        "reward_type": reward.reward_type,
+    }
+    if reward.value_gp:
+        result["value_gp"] = reward.value_gp
+    if reward.xp:
+        result["xp"] = reward.xp
     return result
 
 

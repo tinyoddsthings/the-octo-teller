@@ -226,6 +226,46 @@ sets_flag: quest_accepted
 """
 
 
+_SCENE_TEMPLATE = """\
+---
+id: example_scene
+name: 範例場景
+trigger: enter_node town_center
+condition: has:arrived
+once: true
+---
+
+<!-- 場景格式：
+  每段對話必須有 speaker:（場景無預設說話人）
+  支援 choices: / skill_check: / next: / sets_flag:
+  silent: true — 靜默節點，不顯示文字，自動推進
+-->
+
+## 歡迎旁白 #scene_welcome
+speaker: dm
+
+> 你踏入廣場，幾個人圍過來。
+
+next: scene_guard_greet
+
+## 衛兵問候 #scene_guard_greet
+speaker: guard
+
+> 你好，外地人，來這裡有什麼事嗎？
+
+choices:
+- **「我在冒險。」** #scene_adventuring → scene_guard_nod
+- **「只是路過。」** #scene_passing → scene_guard_nod
+
+## 衛兵點頭 #scene_guard_nod
+speaker: guard
+
+> 嗯，小心點就好。
+
+sets_flag: scene_complete
+"""
+
+
 def create_adventure(
     base_dir: Path,
     adventure_id: str,
@@ -250,8 +290,9 @@ def create_adventure(
     chapters_dir = root / "chapters"
     maps_dir = root / "maps"
     npcs_dir = root / "npcs"
+    scenes_dir = root / "scenes"
 
-    for d in (chapters_dir, maps_dir, npcs_dir):
+    for d in (chapters_dir, maps_dir, npcs_dir, scenes_dir):
         d.mkdir(exist_ok=True)
 
     fmt = {"adventure_id": adventure_id, "adventure_name": adventure_name}
@@ -285,6 +326,12 @@ def create_adventure(
     # NPC 範例
     (npcs_dir / "guard.md").write_text(
         _NPC_TEMPLATE,
+        encoding="utf-8",
+    )
+
+    # 場景範例
+    (scenes_dir / "example_scene.md").write_text(
+        _SCENE_TEMPLATE,
         encoding="utf-8",
     )
 

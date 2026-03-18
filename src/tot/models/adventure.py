@@ -13,7 +13,63 @@ from __future__ import annotations
 
 from pydantic import BaseModel, Field
 
+# ── 遭遇定義 ──────────────────────────────────────────────
+
+
+class EnemyDef(BaseModel):
+    """遭遇中的敵人定義。"""
+
+    id: str
+    name: str
+    cr: str = "0"
+    description: str = ""
+    count: int = 1
+
+
+class RewardDef(BaseModel):
+    """遭遇獎勵。"""
+
+    id: str
+    name: str
+    reward_type: str = "item"  # item / xp
+    value_gp: int = 0
+    xp: int = 0
+
+
+class EncounterDef(BaseModel):
+    """節點內的遭遇定義。"""
+
+    enemies: list[EnemyDef] = Field(default_factory=list)
+    trigger: str = "enter_node"  # enter_node / interact / flag_set
+    narration: str = ""
+    outcome: str = "auto_win"  # auto_win / combat
+    rewards: list[RewardDef] = Field(default_factory=list)
+    sets_flag: str = ""
+
+
 # ── NPC 定義 ──────────────────────────────────────────────
+
+
+class SpellAssistDef(BaseModel):
+    """技能檢定時的輔助法術定義。"""
+
+    name: str  # "導引術"
+    spell_id: str  # "guidance"
+    source_npc: str  # NPC ID（如 "evendorn"）
+    bonus_die: str = ""  # "1d4" — 加骰型輔助
+    advantage: bool = False  # True = 給予優勢
+    requires_concentration: bool = True
+
+
+class SkillCheckDef(BaseModel):
+    """對話中的技能檢定定義。"""
+
+    skill: str  # Skill enum value（如 "Perception"）
+    dc: int
+    pass_dialogue: str  # 成功時跳轉的對話 ID
+    fail_dialogue: str  # 失敗時跳轉的對話 ID
+    hidden_dc: bool = False  # True = 暗骰，不顯示 DC
+    assists: list[SpellAssistDef] = Field(default_factory=list)
 
 
 class DialogueLine(BaseModel):
@@ -24,8 +80,10 @@ class DialogueLine(BaseModel):
     text: str
     condition: str = ""  # 條件表達式（空 = 永遠可用）
     sets_flag: str = ""  # 說完後設定的 flag（值 = 1）
+    silent: bool = False  # 靜默節點（不顯示文字，自動推進）
     next_lines: list[str] = []  # 後續對話 id（空 = 結束）
     choice_label: str = ""  # 選擇分支的選項文字
+    skill_check: SkillCheckDef | None = None  # 技能檢定（有時取代 choices）
 
 
 class NpcDef(BaseModel):
@@ -35,6 +93,17 @@ class NpcDef(BaseModel):
     name: str
     description: str = ""
     node_id: str | None = None  # 所在 Pointcrawl 節點
+    dialogue: list[DialogueLine] = Field(default_factory=list)
+
+
+# ── 場景定義 ──────────────────────────────────────────────
+
+
+class SceneDef(BaseModel):
+    """場景定義——多角色互動場景。"""
+
+    id: str
+    name: str
     dialogue: list[DialogueLine] = Field(default_factory=list)
 
 
@@ -65,6 +134,7 @@ class EventAction(BaseModel):
     node_id: str = ""  # move_npc/reveal_node 的目標節點
     edge_id: str = ""  # reveal_edge 的邊
     item_id: str = ""  # add_item 的物品
+    scene_id: str = ""  # start_scene 的場景 ID
 
 
 class ScriptEvent(BaseModel):
@@ -87,6 +157,7 @@ class AdventureScript(BaseModel):
     name: str  # "危在松溪"
     description: str = ""
     npcs: dict[str, NpcDef] = Field(default_factory=dict)  # npc_id → NpcDef
+    scenes: dict[str, SceneDef] = Field(default_factory=dict)  # scene_id → SceneDef
     events: list[ScriptEvent] = Field(default_factory=list)  # 按優先序排列
     initial_flags: dict[str, int] = Field(default_factory=dict)
 

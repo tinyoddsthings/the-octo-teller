@@ -37,14 +37,18 @@ src/tot/
 │   ├── tma/          # Telegram Mini Apps (Phase 8+)
 │   └── ...
 ├── gremlins/         # 六隻 Gremlin 代理人
-│   ├── bone_engine/  # 骷髏引擎 — 骰子/角色/戰鬥/地圖/探索/佈陣/法術/狀態
+│   ├── bone_engine/  # 骷髏引擎 — 骰子/角色/戰鬥/地圖/探索/佈陣/法術/狀態/冒險
 │   ├── narrator/     # 章魚說書人 — LLM 敘事 + prompt 模板
 │   ├── mimic/        # 擬態解析器 — NL → 結構化動作
 │   ├── companion/    # AI 隊友 — 信任/個性/情境自主決策
 │   ├── prep/         # 備戰精靈 — 世界生成/session 準備
 │   └── extension/    # 延伸精靈 — 脫稿即興
 ├── memory/           # 三層記憶系統
-├── data/             # D&D 5e 靜態資料（SRD/職業/法術/怪物...）
+├── models/           # Pydantic 資料模型（角色/怪物/地圖/戰鬥/探索/冒險）
+├── tools/            # 開發工具
+│   └── adventure_author/  # MD→JSON 冒險劇本編譯器
+├── data/             # D&D 5e 靜態資料（SRD/職業/法術/怪物/冒險劇本...）
+├── tui/              # Textual TUI（戰鬥/探索 試玩介面）
 ├── visuals/          # 視覺化 — 地圖/面板/AI 圖片 (Phase 8+)
 └── combat_ai/        # 怪物 AI — Behavior Tree + GOAP
 ```
@@ -102,3 +106,39 @@ uv run ruff format --check src/ tests/
 | 9 | 生產化（Docker、CI/CD、監控） | 待開始 |
 
 詳見 [todo.md](todo.md) 了解各 Phase 細項。
+
+## 開發工具
+
+### Adventure Author（MD → JSON 編譯器）
+
+用 Markdown 撰寫冒險劇本（地圖/NPC/章節），工具編譯成引擎可讀的 JSON：
+
+```bash
+# 建立新冒險骨架
+uv run adventure-author new my_adventure --dir adventures
+
+# 驗證格式
+uv run adventure-author validate adventures/my_adventure/
+
+# 編譯成 JSON
+uv run adventure-author build adventures/my_adventure/
+```
+
+詳見 [`docs/adventure-author.md`](docs/adventure-author.md)。
+
+### `/ingest` Skill（自然語言 → 結構化 MD）
+
+Claude Code Skill，用於將紙本冒險書的自然語言內容轉換為 Adventure Author 的結構化 MD 格式。
+支援增量輸入——每次 `/ingest` 先掃描已有檔案，確保新內容能正確引用舊 ID。
+
+## 設計文件
+
+| 文件 | 說明 |
+|------|------|
+| [`docs/adventure-author.md`](docs/adventure-author.md) | Adventure Author 工具文件（MD 格式規格 + CLI 用法 + encounter 語法） |
+| [`docs/exploration-design.md`](docs/exploration-design.md) | Pointcrawl 探索系統設計 |
+| [`docs/bone-engine-v2-design.md`](docs/bone-engine-v2-design.md) | Bone Engine v2 架構設計 |
+| [`docs/data_model.md`](docs/data_model.md) | 資料模型重構設計 |
+| [`docs/spatial-combat-design.md`](docs/spatial-combat-design.md) | 空間戰鬥系統設計 |
+| [`docs/game-session-design.md`](docs/game-session-design.md) | 遊戲 Session 設計 |
+| [`docs/rendering-refactor-design.md`](docs/rendering-refactor-design.md) | 渲染架構重構設計 |

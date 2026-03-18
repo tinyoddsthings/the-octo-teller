@@ -12,7 +12,13 @@ from tot.tools.adventure_author.id_gen import (
     slugify,
 )
 from tot.tools.adventure_author.map_builder import build_map as build_map_fn
-from tot.tools.adventure_author.parser import parse_chapter, parse_map, parse_meta, parse_npc
+from tot.tools.adventure_author.parser import (
+    parse_chapter,
+    parse_map,
+    parse_meta,
+    parse_npc,
+    parse_scene,
+)
 from tot.tools.adventure_author.scaffold import create_adventure
 from tot.tools.adventure_author.script_builder import build_script
 
@@ -120,6 +126,7 @@ class TestScaffold:
         assert (root / "chapters").is_dir()
         assert (root / "maps").is_dir()
         assert (root / "npcs").is_dir()
+        assert (root / "scenes").is_dir()
 
     def test_meta_file(self, tmp_path):
         root = create_adventure(tmp_path, "my_adv", "我的冒險")
@@ -819,3 +826,398 @@ class TestCli:
     def test_no_command(self):
         ret = cli_main([])
         assert ret == 1
+
+
+# ── Encounter 解析 ──────────────────────────────────────
+
+
+SAMPLE_ENCOUNTER_MAP = """\
+---
+id: test_dungeon_enc
+name: 遭遇測試地城
+scale: dungeon
+entry: entrance
+---
+
+## 入口 #entrance
+type: room
+description: 一個空蕩蕩的房間。
+
+## 巢穴 #dragon_nest
+type: room
+description: 一個寬敞的洞室，中央有一堆閃亮的小物品圍成的窩。
+
+encounter:
+  enemies:
+  - 幼藍龍 #young_blue_dragon | CR:2
+    一隻藍色的小龍，蜷縮在窩裡。
+  - 冰凍蜥蜴 #ice_lizard | CR:1/4
+    兩隻結冰的蜥蜴，在角落嘶嘶作響。
+    count: 2
+  trigger: enter_node
+  narration: 幼龍猛然抬起頭，發出一聲低吼。
+  outcome: auto_win
+  rewards:
+  - 龍鱗碎片 #dragon_scale_piece | value_gp: 10
+  - 經驗值 #encounter_xp | xp: 450
+  sets_flag: dragon_defeated
+
+### → 巢穴 #to_nest
+to: dragon_nest
+from: entrance
+distance: 5min
+"""
+
+
+class TestParseEncounter:
+    def test_encounter_parsed(self):
+        ir = parse_map(SAMPLE_ENCOUNTER_MAP)
+        nest = ir.nodes[1]
+        assert nest.encounter is not None
+        assert nest.encounter.trigger == "enter_node"
+        assert nest.encounter.outcome == "auto_win"
+        assert nest.encounter.sets_flag == "dragon_defeated"
+
+    def test_encounter_enemies(self):
+        ir = parse_map(SAMPLE_ENCOUNTER_MAP)
+        enemies = ir.nodes[1].encounter.enemies
+        assert len(enemies) == 2
+        assert enemies[0].name == "幼藍龍"
+        assert enemies[0].explicit_id == "young_blue_dragon"
+        assert enemies[0].cr == "2"
+        assert enemies[0].description == "一隻藍色的小龍，蜷縮在窩裡。"
+        assert enemies[0].count == 1
+
+    def test_encounter_enemy_count(self):
+        ir = parse_map(SAMPLE_ENCOUNTER_MAP)
+        lizard = ir.nodes[1].encounter.enemies[1]
+        assert lizard.name == "冰凍蜥蜴"
+        assert lizard.cr == "1/4"
+        assert lizard.count == 2
+
+    def test_encounter_narration(self):
+        ir = parse_map(SAMPLE_ENCOUNTER_MAP)
+        assert "低吼" in ir.nodes[1].encounter.narration
+
+    def test_encounter_rewards(self):
+        ir = parse_map(SAMPLE_ENCOUNTER_MAP)
+        rewards = ir.nodes[1].encounter.rewards
+        assert len(rewards) == 2
+        assert rewards[0].name == "龍鱗碎片"
+        assert rewards[0].value_gp == 10
+        assert rewards[0].reward_type == "item"
+        assert rewards[1].xp == 450
+        assert rewards[1].reward_type == "xp"
+
+    def test_node_without_encounter(self):
+        ir = parse_map(SAMPLE_ENCOUNTER_MAP)
+        assert ir.nodes[0].encounter is None
+
+    def test_edges_still_parsed(self):
+        """encounter 不影響邊的解析。"""
+        ir = parse_map(SAMPLE_ENCOUNTER_MAP)
+        all_edges = []
+        for node in ir.nodes:
+            all_edges.extend(node.edges)
+        assert len(all_edges) == 1
+        assert all_edges[0].explicit_id == "to_nest"
+
+
+# ── Encounter Build ─────────────────────────────────────
+
+
+class TestBuildEncounter:
+    def test_encounter_in_map_dict(self):
+        ir = parse_map(SAMPLE_ENCOUNTER_MAP)
+        result = build_map_fn(ir)
+        nest = result["nodes"][1]
+        assert "encounter" in nest
+        enc = nest["encounter"]
+        assert enc["trigger"] == "enter_node"
+        assert enc["outcome"] == "auto_win"
+        assert enc["sets_flag"] == "dragon_defeated"
+
+    def test_encounter_enemies_in_dict(self):
+        ir = parse_map(SAMPLE_ENCOUNTER_MAP)
+        result = build_map_fn(ir)
+        enemies = result["nodes"][1]["encounter"]["enemies"]
+        assert len(enemies) == 2
+        assert enemies[0]["id"] == "young_blue_dragon"
+        assert enemies[0]["cr"] == "2"
+        assert enemies[1]["count"] == 2
+
+    def test_encounter_rewards_in_dict(self):
+        ir = parse_map(SAMPLE_ENCOUNTER_MAP)
+        result = build_map_fn(ir)
+        rewards = result["nodes"][1]["encounter"]["rewards"]
+        assert len(rewards) == 2
+        assert rewards[0]["value_gp"] == 10
+        assert rewards[1]["xp"] == 450
+
+    def test_pydantic_validation_with_encounter(self):
+        from tot.models.exploration import ExplorationMap
+
+        ir = parse_map(SAMPLE_ENCOUNTER_MAP)
+        result = build_map_fn(ir)
+        m = ExplorationMap.model_validate(result)
+        assert m.nodes[1].encounter is not None
+        assert m.nodes[1].encounter.sets_flag == "dragon_defeated"
+        assert len(m.nodes[1].encounter.enemies) == 2
+
+    def test_encounter_generates_script_event(self):
+        """encounter auto_win 會自動生成對應的 ScriptEvent。"""
+        from tot.models.adventure import AdventureScript
+
+        meta_md = """\
+---
+id: enc_test
+name: 遭遇測試
+---
+"""
+        meta_dict, flags = parse_meta(meta_md)
+        map_ir = parse_map(SAMPLE_ENCOUNTER_MAP)
+        result = build_script(meta_dict, flags, [], [], maps=[map_ir])
+        script = AdventureScript.model_validate(result)
+
+        # 應有一個自動生成的遭遇事件
+        enc_events = [e for e in script.events if e.id == "encounter_dragon_nest"]
+        assert len(enc_events) == 1
+        event = enc_events[0]
+        assert event.trigger.type == "enter_node"
+        assert event.trigger.node_id == "dragon_nest"
+        # 應有 narrate + set_flag + add_item actions
+        action_types = [a.type for a in event.actions]
+        assert "narrate" in action_types
+        assert "set_flag" in action_types
+        assert "add_item" in action_types
+        # 條件：not:dragon_defeated（避免重複觸發）
+        assert event.condition == "not:dragon_defeated"
+
+
+# ── Scene 解析 ──────────────────────────────────────
+
+
+SAMPLE_SCENE = """\
+---
+id: encounter_intro
+name: 洞穴遭遇開場
+trigger: enter_node cave_mouth
+condition: has:dragon_following
+once: true
+---
+
+## 洞穴口旁白 #cave_narration
+speaker: dm
+
+> 你們沿著小路來到洞穴口。空氣中帶著刺骨寒意。
+
+next: cave_shalefire_react
+
+## 岩炎的反應 #cave_shalefire_react
+speaker: shalefire
+next: cave_evendorn_react
+
+> 岩炎皺起眉頭：「這股冷氣……不對勁。」
+
+## 埃文多恩的反應 #cave_evendorn_react
+speaker: evendorn
+
+> 埃文多恩握緊聖徽：「月之女神庇佑我們。」
+
+choices:
+- **「小心前進。」** #choice_careful → cave_entry
+- **「先偵查。」** #choice_scout → cave_scout_check
+
+## 設定旗標 #cave_set_flags
+speaker: dm
+silent: true
+sets_flag: cave_entered
+next: cave_actual_entry
+"""
+
+
+class TestParseScene:
+    def test_meta(self):
+        scene = parse_scene(SAMPLE_SCENE)
+        assert scene.name == "洞穴遭遇開場"
+        assert scene.explicit_id == "encounter_intro"
+
+    def test_trigger(self):
+        scene = parse_scene(SAMPLE_SCENE)
+        assert scene.trigger_type == "enter_node"
+        assert scene.trigger_target == "cave_mouth"
+
+    def test_condition(self):
+        scene = parse_scene(SAMPLE_SCENE)
+        assert scene.condition == "has:dragon_following"
+
+    def test_once(self):
+        scene = parse_scene(SAMPLE_SCENE)
+        assert scene.once is True
+
+    def test_dialogues_count(self):
+        scene = parse_scene(SAMPLE_SCENE)
+        assert len(scene.dialogues) == 4
+
+    def test_first_dialogue(self):
+        scene = parse_scene(SAMPLE_SCENE)
+        narration = scene.dialogues[0]
+        assert narration.explicit_id == "cave_narration"
+        assert narration.speaker == "dm"
+        assert "洞穴口" in narration.text
+        assert narration.next_id == "cave_shalefire_react"
+
+    def test_speaker_required(self):
+        """場景每段都有明確 speaker（非預設）。"""
+        scene = parse_scene(SAMPLE_SCENE)
+        for dlg in scene.dialogues:
+            assert dlg.speaker != "", f"對話 {dlg.explicit_id} 缺少 speaker"
+
+    def test_choices(self):
+        scene = parse_scene(SAMPLE_SCENE)
+        evendorn = scene.dialogues[2]
+        assert len(evendorn.choices) == 2
+        assert evendorn.choices[0].label == "小心前進。"
+        assert evendorn.choices[0].next_id == "cave_entry"
+
+    def test_silent_dialogue(self):
+        scene = parse_scene(SAMPLE_SCENE)
+        flags_dlg = scene.dialogues[3]
+        assert flags_dlg.explicit_id == "cave_set_flags"
+        assert flags_dlg.silent is True
+        assert flags_dlg.sets_flag == "cave_entered"
+        assert flags_dlg.next_id == "cave_actual_entry"
+
+    def test_scene_without_trigger(self):
+        """無 trigger 的場景（手動觸發）。"""
+        md = """\
+---
+id: manual_scene
+name: 手動場景
+---
+
+## 對話 #manual_dlg
+speaker: dm
+
+> 這是手動觸發的場景。
+"""
+        scene = parse_scene(md)
+        assert scene.trigger_type == ""
+        assert scene.trigger_target == ""
+        assert scene.once is True  # 預設
+
+    def test_scene_once_false(self):
+        md = """\
+---
+id: repeatable
+name: 可重複
+once: false
+---
+
+## 對話 #repeat_dlg
+speaker: dm
+
+> 可重複的場景。
+"""
+        scene = parse_scene(md)
+        assert scene.once is False
+
+    def test_scene_with_skill_check(self):
+        md = """\
+---
+id: scout_scene
+name: 偵查場景
+---
+
+## 偵查檢定 #scout_check
+speaker: dm
+
+> 你仔細觀察四周。
+
+skill_check:
+  skill: Perception
+  dc: 12
+  pass: scout_success
+  fail: scout_fail
+"""
+        scene = parse_scene(md)
+        assert len(scene.dialogues) == 1
+        dlg = scene.dialogues[0]
+        assert dlg.skill_check is not None
+        assert dlg.skill_check.skill == "Perception"
+        assert dlg.skill_check.dc == 12
+
+
+# ── Scene Build ────────────────────────────────────
+
+
+class TestBuildScene:
+    def _build_with_scene(self):
+        meta_md = """\
+---
+id: scene_test
+name: 場景測試
+---
+"""
+        meta_dict, flags = parse_meta(meta_md)
+        scene = parse_scene(SAMPLE_SCENE)
+        return build_script(meta_dict, flags, [], [], scenes=[scene])
+
+    def test_scene_in_output(self):
+        result = self._build_with_scene()
+        assert "scenes" in result
+        assert "encounter_intro" in result["scenes"]
+
+    def test_scene_dialogue_lines(self):
+        result = self._build_with_scene()
+        scene = result["scenes"]["encounter_intro"]
+        dlg_ids = [d["id"] for d in scene["dialogue"]]
+        assert "cave_narration" in dlg_ids
+        assert "cave_shalefire_react" in dlg_ids
+
+    def test_scene_silent_dialogue(self):
+        result = self._build_with_scene()
+        scene = result["scenes"]["encounter_intro"]
+        flags_dlg = next(d for d in scene["dialogue"] if d["id"] == "cave_set_flags")
+        assert flags_dlg["silent"] is True
+
+    def test_scene_auto_event(self):
+        """有 trigger 的場景應自動生成 start_scene 事件。"""
+        result = self._build_with_scene()
+        scene_events = [e for e in result["events"] if e["id"] == "scene_encounter_intro"]
+        assert len(scene_events) == 1
+        event = scene_events[0]
+        assert event["trigger"]["type"] == "enter_node"
+        assert event["trigger"]["node_id"] == "cave_mouth"
+        assert event["condition"] == "has:dragon_following"
+        # 動作為 start_scene
+        assert event["actions"][0]["type"] == "start_scene"
+        assert event["actions"][0]["scene_id"] == "encounter_intro"
+
+    def test_scene_pydantic_validation(self):
+        from tot.models.adventure import AdventureScript
+
+        result = self._build_with_scene()
+        script = AdventureScript.model_validate(result)
+        assert "encounter_intro" in script.scenes
+        assert len(script.scenes["encounter_intro"].dialogue) >= 4
+
+    def test_scene_without_trigger_no_event(self):
+        """無 trigger 的場景不生成事件。"""
+        md = """\
+---
+id: manual_scene
+name: 手動場景
+---
+
+## 對話 #manual_dlg
+speaker: dm
+
+> 這是手動觸發的場景。
+"""
+        meta_dict, flags = parse_meta("---\nid: test\nname: test\n---")
+        scene = parse_scene(md)
+        result = build_script(meta_dict, flags, [], [], scenes=[scene])
+        assert "manual_scene" in result["scenes"]
+        # 不應有 scene 事件
+        assert len(result["events"]) == 0

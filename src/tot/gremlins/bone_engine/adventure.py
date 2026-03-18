@@ -14,6 +14,7 @@ from tot.models.adventure import (
     DialogueLine,
     EventAction,
     NpcDef,
+    SceneDef,
     ScriptEvent,
 )
 
@@ -264,20 +265,61 @@ def get_available_lines(
     ]
 
 
+def _build_global_line_map(
+    script: AdventureScript | None,
+    npc: NpcDef | None = None,
+    scene: SceneDef | None = None,
+) -> dict[str, DialogueLine]:
+    """建立全域對話行索引（支援跨 NPC/場景對話鏈）。
+
+    優先序（後加的覆蓋先加的）：
+    1. scenes（最低優先）
+    2. 其他 NPC
+    3. 當前 NPC 或場景（最高優先）
+    """
+    line_map: dict[str, DialogueLine] = {}
+    # 先加場景的（最低優先）
+    if script:
+        for s in script.scenes.values():
+            if scene and s.id == scene.id:
+                continue
+            for line in s.dialogue:
+                line_map[line.id] = line
+    # 再加其他 NPC 的
+    if script:
+        npc_id = npc.id if npc else ""
+        for other in script.npcs.values():
+            if other.id != npc_id:
+                for line in other.dialogue:
+                    line_map[line.id] = line
+    # 最後加當前 NPC 或場景的（最高優先）
+    if npc:
+        for line in npc.dialogue:
+            line_map[line.id] = line
+    if scene:
+        for line in scene.dialogue:
+            line_map[line.id] = line
+    return line_map
+
+
 def advance_dialogue(
     state: AdventureState,
-    npc: NpcDef,
-    line_id: str,
+    npc: NpcDef | None = None,
+    line_id: str = "",
+    script: AdventureScript | None = None,
+    scene: SceneDef | None = None,
 ) -> tuple[AdventureState, DialogueLine, list[DialogueLine]]:
     """推進對話：選擇一行對話，回傳新 state + 當前行 + 後續可選行。
 
     純函式——不改傳入的 state。
+    script 傳入時支援跨 NPC/場景 對話鏈。
+    遇到 silent 節點會自動執行 flag 並遞迴推進。
 
     Returns:
         (new_state, chosen_line, next_available_lines)
         - next_available_lines 為空代表對話結束
     """
-    line_map = {line.id: line for line in npc.dialogue}
+    line_map = _build_global_line_map(script, npc=npc, scene=scene)
     chosen = line_map[line_id]
     new_state = state.model_copy(deep=True)
 
@@ -301,7 +343,63 @@ def advance_dialogue(
         new_state.active_dialogue = None
         next_lines = []
 
+    # silent 節點自動推進（遞迴，上限 10 層防無限迴圈）
+    if chosen.silent and next_lines:
+        return _advance_through_silent(new_state, next_lines[0], line_map, depth=0)
+
     return new_state, chosen, next_lines
+
+
+def _advance_through_silent(
+    state: AdventureState,
+    line: DialogueLine,
+    line_map: dict[str, DialogueLine],
+    depth: int,
+) -> tuple[AdventureState, DialogueLine, list[DialogueLine]]:
+    """遞迴推進 silent 節點。"""
+    if depth >= 10:
+        return state, line, []
+
+    new_state = state.model_copy(deep=True)
+
+    if line.id not in new_state.dialogue_history:
+        new_state.dialogue_history.append(line.id)
+
+    if line.sets_flag:
+        new_state.story_flags[line.sets_flag] = 1
+
+    if line.next_lines:
+        new_state.active_dialogue = line.id
+        next_lines = [
+            line_map[lid]
+            for lid in line.next_lines
+            if lid in line_map and evaluate_condition(line_map[lid].condition, new_state)
+        ]
+    else:
+        new_state.active_dialogue = None
+        next_lines = []
+
+    if line.silent and next_lines:
+        return _advance_through_silent(new_state, next_lines[0], line_map, depth + 1)
+
+    return new_state, line, next_lines
+
+
+def get_scene_entry_lines(
+    scene: SceneDef,
+    state: AdventureState,
+    elapsed_minutes: int = 0,
+) -> list[DialogueLine]:
+    """取得場景的入口對話行（頂層且條件符合）。"""
+    referenced: set[str] = set()
+    for line in scene.dialogue:
+        referenced.update(line.next_lines)
+
+    return [
+        line
+        for line in scene.dialogue
+        if line.id not in referenced and evaluate_condition(line.condition, state, elapsed_minutes)
+    ]
 
 
 # ── 載入 ──────────────────────────────────────────────────

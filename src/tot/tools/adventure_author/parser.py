@@ -19,12 +19,18 @@ from tot.tools.adventure_author.ir import (
     ChoiceIR,
     DialogueIR,
     EdgeIR,
+    EncounterIR,
+    EnemyIR,
     EventIR,
     ItemIR,
     MapIR,
     NodeIR,
     NpcIR,
     PoiIR,
+    RewardIR,
+    SceneIR,
+    SkillCheckIR,
+    SpellAssistIR,
 )
 
 
@@ -112,8 +118,28 @@ def parse_map(text: str) -> MapIR:
     current_edge: EdgeIR | None = None
     in_items = False
     in_pois = False
+    in_encounter = False
+    in_encounter_enemies = False
+    in_encounter_rewards = False
     current_item: ItemIR | None = None
     current_poi: PoiIR | None = None
+    current_encounter: EncounterIR | None = None
+    current_enemy: EnemyIR | None = None
+
+    def _reset_sub_blocks() -> None:
+        nonlocal in_items, in_pois, in_encounter, in_encounter_enemies, in_encounter_rewards
+        nonlocal current_item, current_poi, current_encounter, current_enemy
+        _flush_item(current_item, current_node)
+        _flush_poi(current_poi, current_node)
+        _flush_enemy(current_enemy, current_encounter)
+        current_item = None
+        current_poi = None
+        current_enemy = None
+        in_items = False
+        in_pois = False
+        in_encounter = False
+        in_encounter_enemies = False
+        in_encounter_rewards = False
 
     i = start
     while i < len(lines):
@@ -131,14 +157,11 @@ def parse_map(text: str) -> MapIR:
 
         # ## 節點
         if stripped.startswith("## ") and not stripped.startswith("### "):
-            _flush_item(current_item, current_node)
-            _flush_poi(current_poi, current_node)
+            _reset_sub_blocks()
+            _flush_encounter(current_encounter, current_node)
+            current_encounter = None
             _flush_edge(current_edge, current_node)
-            current_item = None
-            current_poi = None
             current_edge = None
-            in_items = False
-            in_pois = False
 
             heading = stripped[3:]
             name, eid = parse_heading_id(heading)
@@ -149,13 +172,10 @@ def parse_map(text: str) -> MapIR:
 
         # ### → 邊
         if stripped.startswith("### ") and "→" in stripped:
-            _flush_item(current_item, current_node)
-            _flush_poi(current_poi, current_node)
+            _reset_sub_blocks()
+            _flush_encounter(current_encounter, current_node)
+            current_encounter = None
             _flush_edge(current_edge, current_node)
-            current_item = None
-            current_poi = None
-            in_items = False
-            in_pois = False
 
             heading = stripped[4:]
             # 去掉 → 前綴
@@ -163,6 +183,88 @@ def parse_map(text: str) -> MapIR:
             edge_text = heading[arrow_idx + 1 :].strip()
             name, eid = parse_heading_id(edge_text)
             current_edge = EdgeIR(name=name, explicit_id=eid)
+            i += 1
+            continue
+
+        # encounter: 區塊開始
+        if stripped == "encounter:" and current_node:
+            _reset_sub_blocks()
+            current_encounter = EncounterIR()
+            in_encounter = True
+            i += 1
+            continue
+
+        # encounter 子區塊解析
+        if in_encounter and current_encounter and (line.startswith("  ") or line.startswith("\t")):
+            # enemies: 子區塊
+            if stripped == "enemies:":
+                in_encounter_enemies = True
+                in_encounter_rewards = False
+                i += 1
+                continue
+
+            # rewards: 子區塊
+            if stripped == "rewards:":
+                _flush_enemy(current_enemy, current_encounter)
+                current_enemy = None
+                in_encounter_enemies = False
+                in_encounter_rewards = True
+                i += 1
+                continue
+
+            # enemies 列表項
+            if in_encounter_enemies and stripped.startswith("- "):
+                _flush_enemy(current_enemy, current_encounter)
+                current_enemy = _parse_enemy_header(stripped[2:])
+                i += 1
+                continue
+
+            # enemy 描述/count（更深縮排：4+ 空格）
+            # 2 空格開頭 = 回到 encounter 頂層，不是 enemy 子項
+            indent = len(line) - len(line.lstrip())
+            if in_encounter_enemies and current_enemy and indent >= 4:
+                kv = _parse_kv(stripped)
+                if kv:
+                    key, val = kv
+                    if key == "count":
+                        current_enemy.count = int(val)
+                elif not stripped.startswith("<!--"):
+                    current_enemy.description = stripped
+                i += 1
+                continue
+
+            # 回到 encounter 頂層（indent <= 3），結束 enemies/rewards 子區塊
+            if in_encounter_enemies and indent < 4 and not stripped.startswith("- "):
+                _flush_enemy(current_enemy, current_encounter)
+                current_enemy = None
+                in_encounter_enemies = False
+
+            # rewards 列表項
+            if in_encounter_rewards and stripped.startswith("- "):
+                reward = _parse_reward_header(stripped[2:])
+                current_encounter.rewards.append(reward)
+                i += 1
+                continue
+
+            # encounter 頂層屬性
+            kv = _parse_kv(stripped)
+            if kv:
+                key, val = kv
+                if key == "trigger":
+                    current_encounter.trigger = val
+                elif key == "outcome":
+                    current_encounter.outcome = val
+                elif key == "sets_flag":
+                    current_encounter.sets_flag = val
+                elif key == "narration":
+                    current_encounter.narration = val
+            elif stripped.startswith("> "):
+                # > 多行 narration
+                narr_text = stripped[2:]
+                if current_encounter.narration:
+                    current_encounter.narration += "\n" + narr_text
+                else:
+                    current_encounter.narration = narr_text
             i += 1
             continue
 
@@ -258,6 +360,8 @@ def parse_map(text: str) -> MapIR:
     # 收尾
     _flush_item(current_item, current_node)
     _flush_poi(current_poi, current_node)
+    _flush_enemy(current_enemy, current_encounter)
+    _flush_encounter(current_encounter, current_node)
     _flush_edge(current_edge, current_node)
 
     return ir
@@ -276,6 +380,16 @@ def _flush_poi(poi: PoiIR | None, node: NodeIR | None) -> None:
 def _flush_edge(edge: EdgeIR | None, node: NodeIR | None) -> None:
     if edge and node:
         node.edges.append(edge)
+
+
+def _flush_encounter(encounter: EncounterIR | None, node: NodeIR | None) -> None:
+    if encounter and node:
+        node.encounter = encounter
+
+
+def _flush_enemy(enemy: EnemyIR | None, encounter: EncounterIR | None) -> None:
+    if enemy and encounter:
+        encounter.enemies.append(enemy)
 
 
 def _parse_item_header(text: str) -> ItemIR:
@@ -302,22 +416,66 @@ def _parse_poi_header(text: str) -> PoiIR:
     return PoiIR(name=name, explicit_id=eid)
 
 
-# ── NPC 解析 ─────────────────────────────────────────────
+def _parse_enemy_header(text: str) -> EnemyIR:
+    """解析 enemies 列表項：名稱 #id | CR:N"""
+    parts = [p.strip() for p in text.split("|")]
+    name_part = parts[0]
+    name, eid = parse_heading_id(name_part)
+
+    enemy = EnemyIR(name=name, explicit_id=eid)
+    for part in parts[1:]:
+        part = part.strip()
+        if part.upper().startswith("CR:"):
+            enemy.cr = part[3:].strip()
+    return enemy
 
 
-def parse_npc(text: str) -> NpcIR:
-    """解析 NPC MD → NpcIR。"""
-    lines = text.splitlines()
-    meta, start = _parse_frontmatter(lines)
+def _parse_reward_header(text: str) -> RewardIR:
+    """解析 rewards 列表項：名稱 #id | value_gp:N 或 名稱 | xp:N"""
+    parts = [p.strip() for p in text.split("|")]
+    name_part = parts[0]
+    name, eid = parse_heading_id(name_part)
 
-    npc = NpcIR(
-        name=meta.get("name", ""),
-        explicit_id=meta.get("id"),
-    )
+    reward = RewardIR(name=name, explicit_id=eid)
+    for part in parts[1:]:
+        part = part.strip()
+        if part.startswith("value_gp:"):
+            reward.value_gp = int(part[9:].strip())
+            reward.reward_type = "item"
+        elif part.startswith("xp:"):
+            reward.xp = int(part[3:].strip())
+            reward.reward_type = "xp"
+    return reward
 
-    section: str = ""  # "background" / "dialogue"
+
+# ── 對話區塊共用解析 ─────────────────────────────────────
+
+
+def _parse_dialogue_blocks(
+    lines: list[str],
+    start: int,
+    default_speaker: str = "",
+) -> list[DialogueIR]:
+    """解析 ## heading 對話區塊，回傳 DialogueIR 列表。
+
+    從 start 開始掃描，遇到 ## 開頭的 heading 就視為新對話段落。
+    跳過名為「背景」的 heading（NPC 專用區塊）。
+
+    Args:
+        lines: 全文行列表
+        start: 開始掃描的行號
+        default_speaker: 預設說話人 ID（NPC 用 NPC ID，場景為空）
+    """
+    dialogues: list[DialogueIR] = []
     current_dialogue: DialogueIR | None = None
     in_choices = False
+    in_background = False
+
+    def _flush() -> None:
+        nonlocal current_dialogue
+        if current_dialogue:
+            dialogues.append(current_dialogue)
+            current_dialogue = None
 
     i = start
     while i < len(lines):
@@ -341,43 +499,29 @@ def parse_npc(text: str) -> NpcIR:
         if stripped.startswith("## ") and not stripped.startswith("### "):
             heading = stripped[3:]
             if heading.strip() == "背景":
-                _flush_dialogue(current_dialogue, npc)
-                current_dialogue = None
-                section = "background"
+                _flush()
                 in_choices = False
+                in_background = True
             else:
-                _flush_dialogue(current_dialogue, npc)
+                _flush()
                 in_choices = False
-                section = "dialogue"
+                in_background = False
                 name, eid = parse_heading_id(heading)
-
-                # 判斷是否為常態對話
                 current_dialogue = DialogueIR(
                     title=name,
                     explicit_id=eid,
-                    speaker=meta.get("id", ""),
+                    speaker=default_speaker,
                 )
             i += 1
             continue
 
-        # 背景區屬性
-        if section == "background":
-            kv = _parse_kv(stripped)
-            if kv:
-                key, val = kv
-                if key == "description":
-                    npc.description = val
-                elif key == "location":
-                    npc.location = val
-                elif key == "personality":
-                    npc.personality = val
-                elif key == "role":
-                    npc.role = val
+        # 背景區直接跳過（由 NPC 解析自行處理）
+        if in_background:
             i += 1
             continue
 
         # 對話區
-        if section == "dialogue" and current_dialogue:
+        if current_dialogue:
             # > 文字
             if stripped.startswith("> "):
                 text_line = stripped[2:]
@@ -386,6 +530,17 @@ def parse_npc(text: str) -> NpcIR:
                 else:
                     current_dialogue.text = text_line
                 i += 1
+                continue
+
+            # skill_check: 區塊
+            if stripped == "skill_check:":
+                sc = _parse_skill_check(lines, i + 1)
+                if sc:
+                    current_dialogue.skill_check = sc
+                # 跳過子行
+                i += 1
+                while i < len(lines) and (lines[i].startswith("  ") or lines[i].startswith("\t")):
+                    i += 1
                 continue
 
             # choices: 區塊
@@ -424,16 +579,100 @@ def parse_npc(text: str) -> NpcIR:
                     current_dialogue.map_id = val
                 elif key == "chapter":
                     current_dialogue.chapter = val
+                elif key == "next":
+                    current_dialogue.next_id = val
+                elif key == "silent":
+                    current_dialogue.silent = val.lower() in ("true", "1", "yes")
 
         i += 1
 
-    _flush_dialogue(current_dialogue, npc)
+    _flush()
+    return dialogues
+
+
+# ── Scene 解析 ───────────────────────────────────────────
+
+
+def parse_scene(text: str) -> SceneIR:
+    """解析場景 MD → SceneIR。
+
+    場景格式與 NPC 對話相似，但：
+    - frontmatter 含 trigger/condition/once
+    - 每段對話**必須**有 speaker:（場景無預設說話人）
+    - 支援 silent: true 靜默節點
+    """
+    lines = text.splitlines()
+    meta, start = _parse_frontmatter(lines)
+
+    scene = SceneIR(
+        name=meta.get("name", ""),
+        explicit_id=meta.get("id"),
+    )
+
+    # 解析 trigger
+    trigger_raw = meta.get("trigger", "")
+    if trigger_raw:
+        parts = trigger_raw.strip().split(None, 1)
+        scene.trigger_type = parts[0] if parts else ""
+        scene.trigger_target = parts[1] if len(parts) > 1 else ""
+
+    scene.condition = meta.get("condition", "")
+    once_raw = meta.get("once", "true")
+    scene.once = once_raw.lower() != "false"
+
+    # 用共用 helper 解析對話（不帶預設 speaker）
+    scene.dialogues = _parse_dialogue_blocks(lines, start, default_speaker="")
+
+    return scene
+
+
+# ── NPC 解析 ─────────────────────────────────────────────
+
+
+def parse_npc(text: str) -> NpcIR:
+    """解析 NPC MD → NpcIR。"""
+    lines = text.splitlines()
+    meta, start = _parse_frontmatter(lines)
+
+    npc = NpcIR(
+        name=meta.get("name", ""),
+        explicit_id=meta.get("id"),
+    )
+
+    # 用共用 helper 解析對話（預設 speaker = NPC ID）
+    all_dialogues = _parse_dialogue_blocks(lines, start, default_speaker=meta.get("id", ""))
+    npc.dialogues = all_dialogues
+
+    # 解析背景區（共用 helper 會跳過背景，這裡手動掃描）
+    in_background = False
+    for i in range(start, len(lines)):
+        line = lines[i]
+        stripped = line.strip()
+
+        if stripped.startswith("## ") and not stripped.startswith("### "):
+            heading = stripped[3:]
+            if heading.strip() == "背景":
+                in_background = True
+                continue
+            else:
+                if in_background:
+                    break
+                continue
+
+        if in_background:
+            kv = _parse_kv(stripped)
+            if kv:
+                key, val = kv
+                if key == "description":
+                    npc.description = val
+                elif key == "location":
+                    npc.location = val
+                elif key == "personality":
+                    npc.personality = val
+                elif key == "role":
+                    npc.role = val
+
     return npc
-
-
-def _flush_dialogue(dialogue: DialogueIR | None, npc: NpcIR) -> None:
-    if dialogue:
-        npc.dialogues.append(dialogue)
 
 
 def _parse_choice(text: str) -> ChoiceIR | None:
@@ -460,6 +699,99 @@ def _parse_choice(text: str) -> ChoiceIR | None:
         next_id = arrow_match.group(1)
 
     return ChoiceIR(label=label, explicit_id=eid, next_id=next_id)
+
+
+def _parse_skill_check(lines: list[str], start: int) -> SkillCheckIR | None:
+    """解析 skill_check: 子行區塊。
+
+    格式::
+
+        skill_check:
+          skill: Perception
+          dc: 10
+          pass: dialogue_id_on_success
+          fail: dialogue_id_on_failure
+          hidden_dc: true
+          assists:
+          - 導引術 #guidance | evendorn | 1d4 | concentration
+    """
+    sc = SkillCheckIR(skill="", dc=10)
+    in_assists = False
+    i = start
+    while i < len(lines):
+        line = lines[i]
+        if not (line.startswith("  ") or line.startswith("\t")):
+            break
+        stripped = line.strip()
+
+        # assists: 子區塊
+        if stripped == "assists:":
+            in_assists = True
+            i += 1
+            continue
+
+        if in_assists and stripped.startswith("- "):
+            assist = _parse_spell_assist(stripped[2:].strip())
+            if assist:
+                sc.assists.append(assist)
+            i += 1
+            continue
+
+        if in_assists and not stripped.startswith("- "):
+            in_assists = False
+
+        kv = _parse_kv(stripped)
+        if kv:
+            key, val = kv
+            if key == "skill":
+                sc.skill = val
+            elif key == "dc":
+                sc.dc = int(val)
+            elif key == "pass":
+                sc.pass_id = val
+            elif key == "fail":
+                sc.fail_id = val
+            elif key == "hidden_dc":
+                sc.hidden_dc = val.lower() in ("true", "1", "yes")
+        i += 1
+    if not sc.skill:
+        return None
+    return sc
+
+
+def _parse_spell_assist(text: str) -> SpellAssistIR | None:
+    """解析輔助法術行。
+
+    格式: ``導引術 #guidance | evendorn | 1d4 | concentration``
+    或:   ``強化屬性 #enhance_ability | evendorn | advantage | concentration``
+    """
+    # 提取名稱和 #id
+    parts_before_pipe = text.split("|")[0].strip()
+    id_match = re.search(r"#(\S+)", parts_before_pipe)
+    spell_id = id_match.group(1) if id_match else ""
+    name = parts_before_pipe[: id_match.start()].strip() if id_match else parts_before_pipe
+
+    # 剩餘 pipe 分隔欄位
+    pipe_parts = [p.strip() for p in text.split("|")[1:]]
+    if len(pipe_parts) < 2:
+        return None
+
+    source_npc = pipe_parts[0]
+    bonus_part = pipe_parts[1]  # "1d4" or "advantage"
+    concentration = "concentration" in pipe_parts[2] if len(pipe_parts) > 2 else False
+
+    assist = SpellAssistIR(
+        name=name,
+        spell_id=spell_id,
+        source_npc=source_npc,
+        requires_concentration=concentration,
+    )
+    if bonus_part == "advantage":
+        assist.advantage = True
+    else:
+        assist.bonus_die = bonus_part
+
+    return assist
 
 
 # ── Chapter 解析 ─────────────────────────────────────────

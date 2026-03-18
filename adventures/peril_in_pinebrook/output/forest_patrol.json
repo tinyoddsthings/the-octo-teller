@@ -1,0 +1,132 @@
+{
+  "id": "forest_patrol",
+  "name": "森林巡邏路線",
+  "scale": "world",
+  "entry_node_id": "forest_trail_start",
+  "nodes": [
+    {
+      "id": "forest_trail_start",
+      "name": "林間小路",
+      "node_type": "landmark",
+      "description": "松溪村外的林間小路起點。陽光透過樹冠灑落，空氣中帶著松脂與泥土的氣息。巡邏隊在此集合出發。",
+      "ambient": "鳥鳴聲與遠處的伐木聲交織。偶爾傳來礦錘敲擊的迴響。",
+      "npcs": [
+        "emmajeen_kole",
+        "shalefire",
+        "evendorn",
+        "gallantine"
+      ]
+    },
+    {
+      "id": "deep_forest",
+      "name": "密林深處",
+      "node_type": "landmark",
+      "description": "林木漸密，陽光被厚重的枝葉遮擋。地面上落葉堆積，腳步聲被吞沒。科爾隊長突然停下腳步，舉起一隻手示意大家安靜。",
+      "ambient": "不尋常的寂靜。風中帶著一絲寒意。荊棘叢中隱約有窸窣聲。",
+      "npcs": [
+        "emmajeen_kole",
+        "shalefire",
+        "evendorn",
+        "gallantine"
+      ],
+      "hidden_items": [
+        {
+          "id": "dragon_language_page",
+          "name": "龍語翻譯書頁",
+          "item_type": "item",
+          "investigation_dc": 0,
+          "description": "科爾隊長從《完全基本龍類指南》上撕下的一頁。記載了龍語和通用語的對照翻譯。"
+        }
+      ]
+    },
+    {
+      "id": "mountain_approach",
+      "name": "山腳林緣",
+      "node_type": "landmark",
+      "description": "樹木漸稀，前方是一座巍峨的山峰。世界之脊山的積雪在陽光下閃閃發光。一個寬敞的洞穴入口就在前方不遠處。",
+      "ambient": "風變得刺骨。地面上散落著碎冰和結塊的雪花。",
+      "npcs": [
+        "emmajeen_kole",
+        "shalefire",
+        "evendorn",
+        "gallantine"
+      ],
+      "hidden_items": [
+        {
+          "id": "old_leather_pack",
+          "name": "舊皮包",
+          "item_type": "chest",
+          "investigation_dc": 0,
+          "description": "一個被遺棄的舊皮背包，裡面有一包肉乾、五支火把、用來點火的鋼片和打火石，還有一個裝著 12 枚金幣的小包。",
+          "value_gp": 12
+        }
+      ],
+      "encounter": {
+        "enemies": [
+          {
+            "id": "living_icicle",
+            "name": "活化冰錐",
+            "cr": "1/4",
+            "description": "冰錐和雪花組成的小型冰生物，長著尖銳的爪子。",
+            "count": 5
+          }
+        ],
+        "trigger": "enter_node",
+        "outcome": "auto_win",
+        "narration": "一片碎冰開始騷動起來。冰錐和雪花組成了小小的冰生物，長著嚇人的尖銳爪子。其中一個大叫著：「入侵者！狠狠地撕碎他們！」",
+        "rewards": [
+          {
+            "id": "loot_old_pack",
+            "name": "舊皮包",
+            "reward_type": "item",
+            "value_gp": 12
+          },
+          {
+            "id": "encounter2_xp",
+            "name": "經驗值",
+            "reward_type": "xp",
+            "xp": 125
+          }
+        ],
+        "sets_flag": "icicles_defeated"
+      }
+    },
+    {
+      "id": "dragon_cave_entry",
+      "name": "龍之洞穴入口",
+      "node_type": "dungeon",
+      "description": "前方是一個寬敞的洞穴入口。陽光照亮了前段，但深處一片黑暗。一股冰冷的空氣從洞口湧出。",
+      "ambient": "水滴聲從黑暗中傳來。空氣中帶著金屬般的氣味。",
+      "sub_map": "dragon_cave"
+    }
+  ],
+  "edges": [
+    {
+      "id": "trail_to_deep_forest",
+      "from_node_id": "forest_trail_start",
+      "to_node_id": "deep_forest",
+      "name": "前往密林深處",
+      "distance_days": 0.1,
+      "danger_level": 2,
+      "terrain_type": "林間小徑"
+    },
+    {
+      "id": "trail_to_mountain",
+      "from_node_id": "deep_forest",
+      "to_node_id": "mountain_approach",
+      "name": "前往山腳",
+      "distance_days": 0.2,
+      "danger_level": 4,
+      "terrain_type": "林間小徑"
+    },
+    {
+      "id": "path_to_cave",
+      "from_node_id": "mountain_approach",
+      "to_node_id": "dragon_cave_entry",
+      "name": "進入洞穴",
+      "distance_days": 0.1,
+      "danger_level": 6,
+      "terrain_type": "洞穴入口"
+    }
+  ]
+}
