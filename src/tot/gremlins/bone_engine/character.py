@@ -307,6 +307,57 @@ def validate_standard_array(scores: dict[Ability, int]) -> tuple[bool, str]:
     return True, "OK"
 
 
+def validate_skill_selection(
+    selected: list[Skill],
+    char_class: str,
+    bg_skills: list[Skill] | None = None,
+) -> tuple[bool, str]:
+    """驗證技能選擇的數量與合法性。
+
+    檢查：
+    1. 選擇數量是否等於該職業可選技能數
+    2. 每個技能是否在職業可選列表中
+    3. 是否與背景技能重複
+    """
+    if char_class not in CLASS_REGISTRY:
+        return False, f"未知職業: {char_class!r}"
+
+    cls = CLASS_REGISTRY[char_class]
+    bg_set = set(bg_skills) if bg_skills else set()
+
+    for s in selected:
+        if s in bg_set:
+            return False, f"技能 {s.value} 已由背景提供，不可重複選擇"
+        if s not in cls.skill_choices:
+            return False, f"{char_class} 無法選擇技能 {s.value}"
+
+    if len(selected) != cls.num_skills:
+        return False, f"{char_class} 應選 {cls.num_skills} 項技能，收到 {len(selected)}"
+
+    return True, "OK"
+
+
+def validate_spell_selection(
+    cantrips: list[str],
+    spells: list[str],
+    num_cantrips: int,
+    num_spells: int,
+) -> tuple[bool, str]:
+    """驗證戲法/法術選擇的數量。
+
+    Args:
+        cantrips: 已選戲法名稱列表。
+        spells: 已選 1 環法術名稱列表。
+        num_cantrips: 該職業 1 級應選戲法數。
+        num_spells: 該職業 1 級應選法術數。
+    """
+    if num_cantrips > 0 and len(cantrips) != num_cantrips:
+        return False, f"應選 {num_cantrips} 個戲法，收到 {len(cantrips)}"
+    if num_spells > 0 and len(spells) != num_spells:
+        return False, f"應選 {num_spells} 個法術，收到 {len(spells)}"
+    return True, "OK"
+
+
 def apply_background_bonus(
     scores: AbilityScores,
     bonuses: dict[Ability, int],
