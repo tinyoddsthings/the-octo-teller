@@ -56,15 +56,12 @@ def _rogue() -> Character:
     """DEX 16, INT 14 Rogue。"""
     return Character(
         name="Lyra",
-        char_class="Rogue",
-        level=5,
+        class_levels={"Rogue": 5},
         ability_scores=AbilityScores(STR=10, DEX=16, CON=12, INT=14, WIS=12, CHA=10),
         proficiency_bonus=3,
         hp_max=33,
         hp_current=33,
-        hit_dice_total=5,
-        hit_dice_remaining=5,
-        hit_die_size=8,
+        hit_dice_remaining={8: 5},
         ac=15,
         speed=9,
         skill_proficiencies=["Investigation", "Perception", "Stealth"],
@@ -75,15 +72,12 @@ def _fighter() -> Character:
     """STR 16 Fighter（Investigation 不熟練）。"""
     return Character(
         name="Aldric",
-        char_class="Fighter",
-        level=5,
+        class_levels={"Fighter": 5},
         ability_scores=AbilityScores(STR=16, DEX=12, CON=14, INT=10, WIS=12, CHA=8),
         proficiency_bonus=3,
         hp_max=44,
         hp_current=44,
-        hit_dice_total=5,
-        hit_dice_remaining=5,
-        hit_die_size=10,
+        hit_dice_remaining={10: 5},
         ac=18,
         speed=9,
     )

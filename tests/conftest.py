@@ -45,16 +45,13 @@ def std_fighter():
     """5 級戰士——高 HP、重甲、長劍+盾。"""
     return Character(
         name="Aldric",
-        char_class="Fighter",
-        level=5,
+        class_levels={"Fighter": 5},
         background="Soldier",
         ability_scores=AbilityScores(STR=16, DEX=12, CON=14, INT=10, WIS=12, CHA=8),
         proficiency_bonus=3,
         hp_max=44,
         hp_current=44,
-        hit_dice_total=5,
-        hit_dice_remaining=5,
-        hit_die_size=10,
+        hit_dice_remaining={10: 5},
         ac=18,  # 鏈甲(16) + 盾(2)
         speed=9,
         skill_proficiencies=[Skill.ATHLETICS, Skill.PERCEPTION],
@@ -76,15 +73,12 @@ def std_wizard():
     """5 級法師——法術欄位 1~3 環、已知法術。"""
     return Character(
         name="Elara",
-        char_class="Wizard",
-        level=5,
+        class_levels={"Wizard": 5},
         ability_scores=AbilityScores(STR=8, DEX=14, CON=12, INT=18, WIS=12, CHA=10),
         proficiency_bonus=3,
         hp_max=27,
         hp_current=27,
-        hit_dice_total=5,
-        hit_dice_remaining=5,
-        hit_die_size=6,
+        hit_dice_remaining={6: 5},
         ac=15,  # 法師護甲(13) + DEX(2)
         speed=9,
         spell_dc=15,
@@ -113,15 +107,12 @@ def std_cleric():
     """5 級牧師——治療 + 法術、中甲+盾。"""
     return Character(
         name="Branwen",
-        char_class="Cleric",
-        level=5,
+        class_levels={"Cleric": 5},
         ability_scores=AbilityScores(STR=14, DEX=10, CON=14, INT=10, WIS=18, CHA=12),
         proficiency_bonus=3,
         hp_max=38,
         hp_current=38,
-        hit_dice_total=5,
-        hit_dice_remaining=5,
-        hit_die_size=8,
+        hit_dice_remaining={8: 5},
         ac=18,  # 半身甲(15+0) + 盾(2) + ... 近似
         speed=9,
         spell_dc=15,

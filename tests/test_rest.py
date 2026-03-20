@@ -12,15 +12,12 @@ def _fighter(hp_current: int = 20) -> Character:
     """STR 16, CON 14 Fighter, 5 Hit Dice (d10)."""
     return Character(
         name="Aldric",
-        char_class="Fighter",
-        level=5,
+        class_levels={"Fighter": 5},
         ability_scores=AbilityScores(STR=16, DEX=12, CON=14, INT=10, WIS=12, CHA=8),
         proficiency_bonus=3,
         hp_max=44,
         hp_current=hp_current,
-        hit_dice_total=5,
-        hit_dice_remaining=5,
-        hit_die_size=10,
+        hit_dice_remaining={10: 5},
         ac=18,
         speed=9,
     )
@@ -30,15 +27,12 @@ def _wizard(hp_current: int = 10) -> Character:
     """INT 18, CON 12 Wizard, 5 Hit Dice (d6)."""
     return Character(
         name="陶德",
-        char_class="Wizard",
-        level=5,
+        class_levels={"Wizard": 5},
         ability_scores=AbilityScores(STR=8, DEX=14, CON=12, INT=18, WIS=12, CHA=10),
         proficiency_bonus=3,
         hp_max=27,
         hp_current=hp_current,
-        hit_dice_total=5,
-        hit_dice_remaining=5,
-        hit_die_size=6,
+        hit_dice_remaining={6: 5},
         ac=15,
         speed=9,
         spell_slots=SpellSlots(
@@ -58,7 +52,7 @@ class TestShortRest:
         assert result.elapsed_seconds == 3600
         assert fighter.hp_current > 20
         assert "Aldric" in result.hp_recovered
-        assert fighter.hit_dice_remaining < 5
+        assert fighter.hit_dice_remaining_count < 5
 
     def test_full_hp_no_dice_used(self):
         """HP 全滿時不消耗 Hit Dice。"""
@@ -66,12 +60,12 @@ class TestShortRest:
         result = short_rest([fighter])
         assert result.hp_recovered == {}
         assert result.hit_dice_used == {}
-        assert fighter.hit_dice_remaining == 5
+        assert fighter.hit_dice_remaining_count == 5
 
     def test_no_dice_remaining(self):
         """Hit Dice 用盡時無法回復。"""
         fighter = _fighter(hp_current=20)
-        fighter.hit_dice_remaining = 0
+        fighter.hit_dice_remaining = {10: 0}
         result = short_rest([fighter])
         assert result.hp_recovered == {}
         assert fighter.hp_current == 20
@@ -116,32 +110,30 @@ class TestLongRest:
     def test_hit_dice_recovery(self):
         """長休回復一半 Hit Dice。"""
         fighter = _fighter()
-        fighter.hit_dice_remaining = 0
+        fighter.hit_dice_remaining = {10: 0}
         long_rest([fighter])
         # 5 // 2 = 2 顆回復
-        assert fighter.hit_dice_remaining == 2
+        assert fighter.hit_dice_remaining_count == 2
 
     def test_hit_dice_min_one(self):
         """1 級角色（1 顆 Hit Die）長休至少回復 1 顆。"""
         char = Character(
             name="Newbie",
-            level=1,
+            class_levels={"Fighter": 1},
             hp_max=10,
             hp_current=10,
-            hit_dice_total=1,
-            hit_dice_remaining=0,
-            hit_die_size=8,
+            hit_dice_remaining={10: 0},
         )
         long_rest([char])
-        assert char.hit_dice_remaining == 1
+        assert char.hit_dice_remaining_count == 1
 
     def test_hit_dice_cap(self):
         """Hit Dice 不超過上限。"""
         fighter = _fighter()
-        fighter.hit_dice_remaining = 4
+        fighter.hit_dice_remaining = {10: 4}
         long_rest([fighter])
         # 回復 2 顆，但不超過 5
-        assert fighter.hit_dice_remaining == 5
+        assert fighter.hit_dice_remaining_count == 5
 
     def test_already_full(self):
         """HP 已滿時不出現在 hp_recovered。"""

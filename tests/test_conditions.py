@@ -26,7 +26,7 @@ from tot.models import Character, Condition, GameClock, Monster
 @pytest.fixture
 def fighter():
     """建立一個基礎角色（直接用 model，不經 build_character）。"""
-    return Character(name="TestFighter", char_class="Fighter", hp_max=12, hp_current=12)
+    return Character(name="TestFighter", class_levels={"Fighter": 1}, hp_max=12, hp_current=12)
 
 
 @pytest.fixture

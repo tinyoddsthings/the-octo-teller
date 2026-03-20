@@ -65,7 +65,7 @@ class ExploreStatusWidget(Static):
                 slot_str = f"  [dim]{'  '.join(slot_parts)}[/]"
 
             # Hit Dice
-            hd_str = f"  [dim]HD:{char.hit_dice_remaining}/{char.hit_dice_total}[/]"
+            hd_str = f"  [dim]HD:{char.hit_dice_remaining_count}/{char.hit_dice_total}[/]"
 
             lines.append(f"  [bold]{char.name}[/] ({char.char_class} Lv{char.level})  AC {char.ac}")
             lines.append(f"    [{bar_color}]{bar}[/] {hp_str}{hd_str}")
