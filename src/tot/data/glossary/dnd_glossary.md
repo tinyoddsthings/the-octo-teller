@@ -16,10 +16,11 @@
 | [class_features/monk.md](class_features/monk.md) | 僧侶能力翻譯 |
 | [class_features/paladin.md](class_features/paladin.md) | 聖騎士能力＋法術翻譯 |
 | [class_features/ranger.md](class_features/ranger.md) | 遊俠能力＋法術翻譯 |
-| [class_features/rogue.md](class_features/rogue.md) | 盜賊能力＋法術翻譯 |
+| [class_features/rogue.md](class_features/rogue.md) | 游蕩者能力＋法術翻譯 |
 | [class_features/sorcerer.md](class_features/sorcerer.md) | 術士能力＋法術翻譯 |
-| [class_features/warlock.md](class_features/warlock.md) | 魔導士能力＋法術翻譯 |
+| [class_features/warlock.md](class_features/warlock.md) | 契術師能力＋法術翻譯 |
 | [class_features/wizard.md](class_features/wizard.md) | 法師能力＋法術翻譯 |
+| [monsters.md](monsters.md) | 怪物名稱對照表（MM 2025，453 個數據表） |
 
 ---
 
@@ -29,7 +30,7 @@
 | ToT | ToT | 玩家角色 |
 | Gunnar | 岡納 | 矮人戰士 NPC |
 | Lira | 莉拉 | 半精靈牧師 NPC |
-| Nic | 乃克 | 輕足族盜賊 NPC |
+| Nic | 乃克 | 輕足族游蕩者 NPC |
 | Elysia | 愛麗希 | 白龍裔吟遊詩人，玩家角色 |
 | Gundren Rockseeker | 乾瑞·岩尋者 | 矮人雇主 |
 | Sildar Hallwinter | 席達·寒冬 | 人類戰士，領主同盟 |
@@ -113,7 +114,7 @@
 | XP (Experience Points) | 經驗值（XP） |
 | STR (Strength) | 力量（STR） |
 | DEX (Dexterity) | 敏捷（DEX） |
-| CON (Constitution) | 體魄（CON） |
+| CON (Constitution) | 體質（CON） |
 | INT (Intelligence) | 智力（INT） |
 | WIS (Wisdom) | 感知（WIS） |
 | CHA (Charisma) | 魅力（CHA） |
@@ -177,6 +178,37 @@
 | Resistance | 抗性 |
 | Vulnerability | 易傷 |
 | Immunity | 免疫 |
+| Multiclassing | 兼職 |
+| Trinket | 隨身物 |
+| Tiers of Play | 冒險等級 |
+| Epic Boon | 史詩恩賜 |
+| Armor Training | 護甲訓練 |
+| Passive Perception | 被動感知 |
+| Extra Attack | 額外攻擊 |
+| Pact Magic | 契約魔法 |
+| Initiative | 先攻 |
+| Character Sheet | 角色卡 |
+| Ability Modifier | 屬性修正值 |
+| Stat Block | 數據表 |
+
+### 距離單位規範
+- 統一使用 **m**（公尺縮寫），如 9m、18m
+- 不使用「公尺」「呎」「英尺」等全稱
+- 換算：5 ft = 1.5m, 10 ft = 3m, 30 ft = 9m, 60 ft = 18m, 120 ft = 36m
+
+### 陣營（Alignment）
+| 英文 | 中文 | 縮寫 |
+|------|------|------|
+| Lawful Good | 守序善良 | LG |
+| Neutral Good | 中立善良 | NG |
+| Chaotic Good | 混亂善良 | CG |
+| Lawful Neutral | 守序中立 | LN |
+| Neutral | 絕對中立 | N |
+| Chaotic Neutral | 混亂中立 | CN |
+| Lawful Evil | 守序邪惡 | LE |
+| Neutral Evil | 中立邪惡 | NE |
+| Chaotic Evil | 混亂邪惡 | CE |
+| Unaligned | 無陣營 | — |
 
 ## 魔法學派（Schools of Magic）
 | 英文 | 中文 |
