@@ -30,7 +30,7 @@
 | Champion | 鬥士 | |
 | Eldritch Knight | 奧法騎士 | |
 | Psi Warrior | 靈能戰士 | |
-| **Monk** | **僧侶** | |
+| **Monk** | **武僧** | |
 | Warrior of Mercy | 慈悲戰士 | |
 | Warrior of Shadow | 暗影戰士 | |
 | Warrior of the Elements | 元素戰士 | |
@@ -45,17 +45,17 @@
 | Fey Wanderer | 精靈漫遊者 | |
 | Gloom Stalker | 幽暗獵人 | |
 | Hunter | 獵人 | |
-| **Rogue** | **盜賊** | |
+| **Rogue** | **游蕩者** | |
 | Arcane Trickster | 秘法騙徒 | |
 | Assassin | 刺客 | |
 | Soulknife | 靈刃 | |
-| Thief | 盜賊（子職） | 同名但指子職業 |
+| Thief | 神偷 | 同名但指子職業 |
 | **Sorcerer** | **術士** | |
 | Aberrant Sorcery | 異怪術法 | |
 | Clockwork Sorcery | 鐘律術法 | |
 | Draconic Sorcery | 龍族術法 | |
 | Wild Magic Sorcery | 狂野魔法術法 | |
-| **Warlock** | **魔導士** | |
+| **Warlock** | **契術師** | |
 | Archfey Patron | 妖精宗主 | |
 | Celestial Patron | 天界宗主 | |
 | Fiend Patron | 邪魔宗主 | Fiend 涵蓋 Devil + Demon |

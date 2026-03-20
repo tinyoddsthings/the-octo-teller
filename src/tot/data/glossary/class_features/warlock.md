@@ -1,4 +1,4 @@
-# 魔導士（Warlock）職業能力翻譯
+# 契術師（Warlock）職業能力翻譯
 
 > [← 回到總表](../dnd_glossary.md)
 

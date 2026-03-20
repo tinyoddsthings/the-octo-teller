@@ -41,3 +41,5 @@ mcp_*.log
 # Database
 *.db
 *.sqlite3
+
+docs/*
