@@ -22,8 +22,7 @@ def _wizard() -> Character:
     """INT 18 Wizard，Investigation 熟練。"""
     return Character(
         name="陶德",
-        char_class="Wizard",
-        level=5,
+        class_levels={"Wizard": 5},
         ability_scores=AbilityScores(STR=8, DEX=14, CON=12, INT=18, WIS=12, CHA=10),
         proficiency_bonus=3,
         hp_max=27,
@@ -36,8 +35,7 @@ def _fighter() -> Character:
     """STR 16 Fighter，Athletics 熟練、Perception 熟練。"""
     return Character(
         name="Aldric",
-        char_class="Fighter",
-        level=5,
+        class_levels={"Fighter": 5},
         ability_scores=AbilityScores(STR=16, DEX=12, CON=14, INT=10, WIS=12, CHA=8),
         proficiency_bonus=3,
         hp_max=44,

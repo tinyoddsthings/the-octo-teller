@@ -84,8 +84,7 @@ def _make_characters() -> list[Character]:
     return [
         Character(
             name="Test Fighter",
-            char_class="Fighter",
-            level=3,
+            class_levels={"Fighter": 3},
             ability_scores=AbilityScores(STR=16, DEX=14, CON=14, INT=10, WIS=12, CHA=10),
             proficiency_bonus=2,
             hp_max=30,

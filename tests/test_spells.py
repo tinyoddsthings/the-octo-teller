@@ -36,7 +36,7 @@ def wizard():
     """有法術欄位的法師角色。"""
     return Character(
         name="TestWizard",
-        char_class="Wizard",
+        class_levels={"Wizard": 1},
         hp_max=8,
         hp_current=8,
         spell_dc=13,
@@ -67,7 +67,7 @@ def cleric():
     """有治療法術的牧師角色。"""
     return Character(
         name="TestCleric",
-        char_class="Cleric",
+        class_levels={"Cleric": 1},
         hp_max=10,
         hp_current=10,
         spell_dc=14,
@@ -109,7 +109,7 @@ def wounded_wizard():
     """受傷的法師（用於測試治療）。"""
     return Character(
         name="WoundedWizard",
-        char_class="Wizard",
+        class_levels={"Wizard": 1},
         hp_max=20,
         hp_current=5,
         spell_dc=13,

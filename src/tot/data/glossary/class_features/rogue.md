@@ -1,4 +1,4 @@
-# 盜賊（Rogue）職業能力翻譯
+# 游蕩者（Rogue）職業能力翻譯
 
 > [← 回到總表](../dnd_glossary.md)
 
@@ -33,7 +33,7 @@
 | Second-Story Work | 二樓工作 |
 | Supreme Sneak | 超凡隱匿 |
 | Use Magic Device | 使用魔法物品 |
-| Thief's Reflexes | 盜賊反射 |
+| Thief's Reflexes | 神偷反射 |
 
 ---
 

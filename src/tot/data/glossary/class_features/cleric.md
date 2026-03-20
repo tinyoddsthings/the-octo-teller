@@ -48,7 +48,7 @@
 | Resistance | 抵抗術 |
 | Sacred Flame | 神聖火焰 |
 | Spare the Dying | 慈悲之手 |
-| Thaumaturgy | 奇蹟術 |
+| Thaumaturgy | 奇術 |
 | Toll the Dead | 亡者喪鐘 |
 | Word of Radiance | 光輝之語 |
 

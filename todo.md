@@ -5,23 +5,31 @@
 > 目標：純 Bone Engine + TUI，1 人用本地終端機跑完一場完整冒險
 > 📄 系統總覽：[`docs/architecture.md`](docs/architecture.md)
 
-### A-1: GameSession 核心
+
+### A-1: 角色建造系統（獨立模組）
+> 現有基礎：`bone_engine/character.py` CharacterBuilder（5.5e 建角邏輯已完成）
+> 📄 詳細拆分：[`docs/todo-character-system.md`](docs/todo-character-system.md)
+
+- [ ] 角色建造 TUI（模組 1）— wizard 介面：背景→種族→職業→屬性→技能→確認
+- [ ] 角色卡 JSON 匯出/讀取（模組 2）— `~/.tot/characters/<name>.json`
+
+### A-1b: 啟動 TUI
+> 📄 設計文件：[`docs/game-session-design.md`](docs/game-session-design.md) §2
+
+- [ ] Start Menu TUI：新冒險（選劇本）/ 讀檔 / 測試模式
+- [ ] 新冒險流程：選劇本 → 建角（切入 A-1）→ 進入遊戲
+- [ ] 測試模式：
+  - 直接戰鬥（`tutorial_room`，預設角色）
+  - 小地城探索（`test_dungeon`：3 節點 Pointcrawl + Area Prop/Loot + 戰鬥觸發，預設角色有遠近法藥投擲）
+- [ ] 松溪先鎖定 1 人遊玩
+
+### A-2: GameSession 核心
 > 📄 設計文件：[`docs/game-session-design.md`](docs/game-session-design.md) §1-2, §5, §7
 
 - [ ] GamePhase enum（Exploration / Story / Combat）+ GameState model
 - [ ] 狀態轉換邏輯 — transition rules + 各階段進出 hook
 - [ ] GameClock 整合 — 探索現實時間 + 戰鬥 +6 秒/輪 + 效果 expires_at_second
 - [ ] 存讀檔 — 單一存檔槽自動存檔（`~/.tot/saves/<adventure>.json`）
-
-### A-2: 啟動與創角 TUI
-> 📄 設計文件：[`docs/game-session-design.md`](docs/game-session-design.md) §2
-
-- [ ] Start Menu TUI：新冒險（選劇本）/ 讀檔 / 測試模式
-- [ ] 測試模式：
-  - 直接戰鬥（`tutorial_room`）
-  - 小地城探索（`test_dungeon`：3 節點 Pointcrawl + Area Prop/Loot + 戰鬥觸發，預設角色有遠近法藥投擲）
-- [ ] 角色建造 TUI（人數→背景→種族→職業→屬性→技能→確認）
-- [ ] 松溪先鎖定 1 人遊玩
 
 ### A-3: 三模式 TUI + 轉場
 > 📄 設計文件：[`docs/game-session-design.md`](docs/game-session-design.md) §2
@@ -83,9 +91,11 @@
 ## Phase C: LLM 多人 TUI（同裝置）
 
 > 目標：多人同螢幕輪流操控各自角色
+> 📄 角色卡 + 升級系統詳細拆分：[`docs/todo-character-system.md`](docs/todo-character-system.md)
 
+- [ ] 角色卡完整顯示（模組 3）— 遊戲中 `C` 鍵開啟完整角色卡
+- [ ] 升級系統（模組 4）— level_up + 職業特性 + ASI/Feat + 經驗值分配
 - [ ] 多角色輸入管理
-- [ ] 升級系統（level_up + 職業特性 + ASI/Feat + 經驗值分配）
 
 ---
 

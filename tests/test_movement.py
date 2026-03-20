@@ -74,8 +74,7 @@ def _make_character(
     return Character(
         id=char_id or uuid4(),
         name=name,
-        char_class="Fighter",
-        level=1,
+        class_levels={"Fighter": 1},
         hp_max=hp,
         hp_current=hp,
         ac=ac,
@@ -466,8 +465,7 @@ class TestGetReachM:
     def test_default_reach(self):
         pc = Character(
             name="Unarmed",
-            char_class="Monk",
-            level=1,
+            class_levels={"Monk": 1},
             hp_max=8,
             hp_current=8,
             ac=10,

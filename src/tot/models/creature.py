@@ -137,18 +137,22 @@ class Combatant(BaseModel):
 
 
 class Character(Combatant):
-    """玩家角色或 NPC 隊友。"""
+    """玩家角色或 NPC 隊友。支援兼職（multiclass）。"""
 
     species: str = ""  # 2024 PHB 用「species」而非「race」
-    char_class: str = ""
-    subclass: str = ""
-    level: int = Field(default=1, ge=1, le=20)
     background: str = ""
 
+    # 兼職支援：每個職業的等級，例如 {"Fighter": 3, "Wizard": 2}
+    class_levels: dict[str, int] = Field(default_factory=dict)
+    # 子職業，例如 {"Fighter": "Eldritch Knight"}
+    subclasses: dict[str, str] = Field(default_factory=dict)
+
     hp_temp: int = 0
-    hit_dice_total: int = 1
-    hit_dice_remaining: int = 1
-    hit_die_size: int = 8  # d6/d8/d10/d12
+    # 剩餘 Hit Dice，key = 骰面，value = 剩餘顆數，例如 {10: 3, 6: 2}
+    hit_dice_remaining: dict[int, int] = Field(default_factory=dict)
+
+    # 術士契約法術欄位（Pact Magic，短休恢復，獨立於普通法術欄位）
+    pact_slots: SpellSlots = Field(default_factory=SpellSlots)
 
     initiative_bonus: int = 0
 
@@ -173,6 +177,40 @@ class Character(Combatant):
     is_ai_controlled: bool = False
 
     xp: int = 0
+
+    # ---- computed fields（向後相容，可直接讀取） ----
+
+    @computed_field
+    @property
+    def level(self) -> int:
+        """總等級 = 所有職業等級之和。"""
+        return sum(self.class_levels.values()) if self.class_levels else 1
+
+    @computed_field
+    @property
+    def char_class(self) -> str:
+        """主職 = 等級最高的職業（同等取插入順序第一個）。"""
+        if not self.class_levels:
+            return ""
+        return max(self.class_levels, key=self.class_levels.__getitem__)
+
+    @computed_field
+    @property
+    def subclass(self) -> str:
+        """主職的子職業。"""
+        return self.subclasses.get(self.char_class, "")
+
+    @computed_field
+    @property
+    def hit_dice_total(self) -> int:
+        """Hit Dice 總顆數（等於總等級）。"""
+        return sum(self.class_levels.values()) if self.class_levels else 0
+
+    @computed_field
+    @property
+    def hit_dice_remaining_count(self) -> int:
+        """剩餘 Hit Dice 總顆數（顯示用）。"""
+        return sum(self.hit_dice_remaining.values())
 
     def skill_bonus(self, skill: Skill) -> int:
         ability = SKILL_ABILITY_MAP[skill]

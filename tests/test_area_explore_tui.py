@@ -49,15 +49,12 @@ def _make_map() -> ExplorationMap:
 def _rogue() -> Character:
     return Character(
         name="Lyra",
-        char_class="Rogue",
-        level=5,
+        class_levels={"Rogue": 5},
         ability_scores=AbilityScores(STR=10, DEX=16, CON=12, INT=14, WIS=12, CHA=10),
         proficiency_bonus=3,
         hp_max=33,
         hp_current=33,
-        hit_dice_total=5,
-        hit_dice_remaining=5,
-        hit_die_size=8,
+        hit_dice_remaining={8: 5},
         ac=15,
         speed=9,
         skill_proficiencies=[Skill.INVESTIGATION, Skill.PERCEPTION, Skill.STEALTH],
