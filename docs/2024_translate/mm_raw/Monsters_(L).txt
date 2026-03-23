@@ -1,0 +1,890 @@
+Monsters (L)
+
+Lamia
+
+Accursed Bargainer and Ruin Raider
+
+Habitat:
+Desert;
+Treasure:
+Arcana
+
+Viko Menezes
+
+Legends say the first lamia was an ambitious ruler who made a sinister bargain with the demon lord
+Graz’zt
+for everlasting majesty. As a consequence, the ruler was transformed into a lamia, a monster with the body of a lion and an accursed touch.
+
+Lamias either are descendants of that first lamia or have made similar deals. They often dwell near ruins, seeking mysterious magic they can use to gain riches and influence. Lamias use magical illusions and enchantments to trick others into serving them. They sometimes work with bandits to abduct travelers, releasing captives only if they accept a dangerous bargain. Roll on or choose a result from the Lamia Pacts table to inspire a lamia’s desires.
+
+Lamia Pacts
+1d6
+The Lamia Compels the Bargainer To...
+1
+Bring it a possession from a ruler or noble.
+2
+Create a map of a dungeon or ruin.
+3
+Escort it through a nearby community’s gate.
+4
+Place a strange idol in a specific site or home.
+5
+Remove a magic item’s curse, then return it.
+6
+Slay a monster and retrieve a specific organ.
+
+Lamia
+Large Fiend, Chaotic Evil
+AC
+13
+Initiative
++1 (11)
+HP
+97 (13d10 + 26)
+Speed
+40 ft.
+Ability
+Score
+Mod
+Save
+Str
+16
++3
++3
+Dex
+13
++1
++1
+Con
+15
++2
++2
+Ability
+Score
+Mod
+Save
+Int
+14
++2
++2
+Wis
+15
++2
++2
+Cha
+16
++3
++3
+Skills
+Deception
++7,
+Insight
++4,
+Stealth
++5
+Senses
+Darkvision
+60 ft.; Passive Perception 12
+Languages
+Abyssal, Common
+CR
+4 (XP 1,100; PB +2)
+Actions
+Multiattack.
+The lamia makes two Claw attacks. It can replace one attack with a use of Corrupting Touch.
+Claw.
+Melee Attack Roll:
++5, reach 5 ft.
+Hit:
+7 (1d8 + 3) Slashing damage plus 7 (2d6) Psychic damage.
+Corrupting Touch.
+Wisdom Saving Throw:
+DC 13, one creature the lamia can see within 5 feet.
+Failure:
+13 (3d8) Psychic damage, and the target is
+cursed
+for 1 hour. Until the curse ends, the target has the
+Charmed
+and
+Poisoned
+conditions.
+Spellcasting.
+The lamia casts one of the following spells, requiring no Material components and using Charisma as the spellcasting ability (spell save DC 13):
+At Will:
+Disguise Self
+(can appear as a Large or Medium biped),
+Minor Illusion
+1/Day Each:
+Geas
+,
+Major Image
+,
+Scrying
+Bonus Actions
+Leap.
+The lamia jumps up to 30 feet by spending 10 feet of movement.
+
+Larvae
+
+Fitting Fates for Depraved Souls
+
+Habitat:
+Planar (Lower Planes);
+Treasure:
+None
+
+Helge C. Balzer
+
+Souls condemned to the Lower Planes often become larvae—repulsive, maggot-like creatures with twisted features evocative of those they possessed in life. These pathetic creatures are nearly helpless and struggle to escape the attention of the more powerful inhabitants of the Lower Planes. Many Fiends view larvae as delicacies to be consumed, while evil magic-users find larvae useful for depraved rituals.
+Night hags
+frequently collect and herd larvae, trading them to nefarious parties across the multiverse.
+
+Larvae that survive on the Lower Planes long enough can eventually transform into other sorts of lesser Fiends.
+
+Larva
+
+Larvae have disjointed, painful memories of their past lives. Most desperately avoid other creatures.
+
+Larva
+Medium Fiend, Neutral Evil
+AC
+9
+Initiative
+−1 (9)
+HP
+9 (2d8)
+Speed
+20 ft.
+Ability
+Score
+Mod
+Save
+Str
+9
+−1
+−1
+Dex
+9
+−1
+−1
+Con
+10
++0
++0
+Ability
+Score
+Mod
+Save
+Int
+6
+−2
+−2
+Wis
+10
++0
++0
+Cha
+2
+−4
+−4
+Senses
+Darkvision
+60 ft.; Passive Perception 10
+Languages
+Understands Common plus one other language but can’t speak
+CR
+0 (XP 10; PB +2)
+Actions
+Bite.
+Melee Attack Roll:
++1, reach 5 ft.
+Hit:
+1 (1d4 − 1) Necrotic damage.
+
+Swarm of Larvae
+
+Lone larvae pose little threat, but in large numbers, larvae can overwhelm vulnerable creatures. Out of desperation, larvae band together in grotesque swarms, their squirming stampedes heralded by a din of wordless whimpers and stomach-turning worm sounds.
+
+Swarm of Larvae
+Large Swarm of Medium Fiends, Neutral Evil
+AC
+13
+Initiative
++0 (10)
+HP
+22 (3d10 + 6)
+Speed
+30 ft.
+Ability
+Score
+Mod
+Save
+Str
+14
++2
++2
+Dex
+11
++0
++0
+Con
+14
++2
++2
+Ability
+Score
+Mod
+Save
+Int
+6
+−2
+−2
+Wis
+12
++1
++1
+Cha
+2
+−4
+−4
+Resistances
+Bludgeoning, Piercing, Slashing
+Immunities
+Charmed
+,
+Frightened
+,
+Grappled
+,
+Paralyzed
+,
+Petrified
+,
+Prone
+,
+Restrained
+,
+Stunned
+Senses
+Darkvision
+60 ft.; Passive Perception 11
+Languages
+Understands all but can’t speak
+CR
+1 (XP 200; PB +2)
+Traits
+Swarm.
+The swarm can occupy another creature’s space and vice versa, and the swarm can move through an opening large enough for a Medium creature. The swarm can’t regain Hit Points or gain
+Temporary Hit Points
+.
+Actions
+Bites.
+Melee Attack Roll:
++4, reach 5 ft.
+Hit:
+9 (2d6 + 2) Necrotic damage, or 7 (2d4 + 2) Necrotic damage if the swarm is
+Bloodied
+.
+
+Lemures
+
+Devils of Agony and Despair
+
+Habitat:
+Planar (Nine Hells);
+Treasure:
+None
+
+The least of all devils, lemures arise from wicked souls, their mortal memories scoured away. Only vague limbs and anguished features jut from these slurries of infernal proto-matter.
+
+Lemure
+
+Lemures torment weaker creatures, but in the Nine Hells, few such beings exist. To avoid greater suffering, they obey the orders of more powerful devils.
+
+Lemure
+Medium Fiend (Devil), Lawful Evil
+AC
+9
+Initiative
+−3 (7)
+HP
+9 (2d8)
+Speed
+20 ft.
+Ability
+Score
+Mod
+Save
+Str
+10
++0
++0
+Dex
+5
+−3
+−3
+Con
+11
++0
++0
+Ability
+Score
+Mod
+Save
+Int
+1
+−5
+−5
+Wis
+11
++0
++0
+Cha
+3
+−4
+−4
+Resistances
+Cold
+Immunities
+Fire, Poison;
+Charmed
+,
+Frightened
+,
+Poisoned
+Senses
+Darkvision
+120 ft. (unimpeded by magical
+Darkness
+); Passive Perception 10
+Languages
+Understands Infernal but can’t speak
+CR
+0 (XP 10; PB +2)
+Traits
+Hellish Restoration.
+If the lemure dies in the
+Nine Hells
+, it revives with all its Hit Points in 1d10 days unless it is killed by a creature under the effects of a
+Bless
+spell or its remains are sprinkled with
+Holy Water
+.
+Actions
+Vile Slime.
+Melee Attack Roll:
++2, reach 5 ft.
+Hit:
+2 (1d4) Poison damage.
+John Tedrick
+
+Swarm of Lemures
+
+When devils drive hosts of lemures into close proximity or when lemures compress into a single mass, a swarm forms and adopts a unified mind.
+
+Swarm of Lemures
+Large Swarm of Medium Fiends (Devil), Lawful Evil
+AC
+12
+Initiative
+−2 (8)
+HP
+45 (6d10 + 12)
+Speed
+40 ft.
+Ability
+Score
+Mod
+Save
+Str
+14
++2
++2
+Dex
+7
+−2
+−2
+Con
+14
++2
++2
+Ability
+Score
+Mod
+Save
+Int
+1
+−5
+−5
+Wis
+12
++1
++1
+Cha
+3
+−4
+−4
+Resistances
+Bludgeoning, Cold, Piercing, Slashing
+Immunities
+Fire, Poison;
+Charmed
+,
+Frightened
+,
+Grappled
+,
+Paralyzed
+,
+Petrified
+,
+Poisoned
+,
+Prone
+,
+Restrained
+,
+Stunned
+Senses
+Darkvision
+120 ft. (unimpeded by magical
+Darkness
+); Passive Perception 11
+Languages
+Understands Infernal but can’t speak
+CR
+3 (XP 700; PB +2)
+Traits
+Hellish Restoration.
+If the swarm dies in the
+Nine Hells
+, it revives with all its Hit Points in 1d10 days unless it is killed by a creature under the effects of a
+Bless
+spell or its remains are sprinkled with
+Holy Water
+.
+Swarm.
+The swarm can occupy another creature’s space and vice versa, and the swarm can move through an opening large enough for a Medium creature. The swarm can’t regain Hit Points or gain
+Temporary Hit Points
+.
+Actions
+Multiattack.
+The swarm makes two Vile Slime attacks.
+Vile Slime.
+Melee Attack Roll:
++4, reach 5 ft.
+Hit:
+11 (2d8 + 2) Poison damage, or 9 (2d6 + 2) Poison damage if the swarm is
+Bloodied
+.
+
+Lich
+
+Deathless Master of Magic
+
+Habitat:
+Any;
+Treasure:
+Arcana
+
+Viko Menezes
+An ancient lich and her ghast gravecaller attendants warp reality with forbidden magic
+
+Some nefarious magic-users carry out forbidden necromantic rituals that sever their souls from their bodies to turn themselves into liches, masters of magic and undeath. With their souls preserved in hidden relics, liches puppet their own corpses as they pursue ambitions free from mortal bonds.
+
+Liches possess exceptional cunning and magical prowess, and they use their unnatural immortality to pursue arcane secrets few could grasp in a single life. Uncanny agendas lead them to plumb the secrets of life, the multiverse, godhood, and less fathomable topics. Careless of mortal lives or desires, liches go to any lengths to achieve their goals.
+
+A lich’s age and origin influences its form. Older liches appear as little more than brittle skeletons clad in the rotten finery of forgotten empires, while younger liches more closely resemble living creatures and are clad in contemporary garb. Many cloak themselves in illusions of their idealized mortal forms.
+
+Although liches don’t fear death, they’re not free from the ravages of time. Over ages, some liches lose their connection to time and the physical world, degenerating into
+demiliches
+.
+
+Ambition can become an addiction of the mind and spirit. It builds beyond a driving flame into an insidious inferno that burns a mage hollow until only the desire for more magical power remains.
+—Rudolph van Richten,
+Van Richten’s Guide to Liches
+
+Lich Spirit Jars
+
+The process of becoming a lich is involved, dangerous, and unique to each would-be lich. If the rite succeeds, the lich’s soul is bound to a spirit jar, a specially prepared magical repository. This relic anchors the lich’s spirit to the world and preserves it should the lich’s body be destroyed. A lich can be slain only if its spirit jar is ruined. As such, a lich goes to great lengths to hide and protect its spirit jar.
+
+Spirit jars are typically small, well-made objects that were meaningful to a lich in life. Roll on or choose a result from the Lich Spirit Jar table to inspire where a lich hides its soul.
+
+Lich Spirit Jars
+1d8
+The Lich’s Spirit Jar Is...
+1
+A bottle or puzzle box inscribed with sigils.
+2
+A contract folded into a paper figure.
+3
+The first magic item the lich created.
+4
+A hollow figurine of a deity or monster.
+5
+An hourglass with its sands floating in stasis.
+6
+A locket or signet ring with a noble crest.
+7
+A rune-etched egg.
+8
+The skull of the lich’s mentor.
+
+Lich Lairs
+
+Liches create secluded libraries of magical lore and arcane laboratories hidden within extraplanar bastions, fortresses with cursed reputations, or other such deadly sanctuaries.
+
+The region containing a lich’s lair is warped by its presence, creating the following effects:
+
+All-Seeing.
+While in its lair, the lich can cast
+Clairvoyance
+, requiring no spell components and using the same spellcasting ability as its Spellcasting action.
+
+Inevitable Siphon.
+Whenever a Humanoid dies within 1 mile of the lair, its soul is immediately consumed by the lich. A Humanoid whose soul is consumed in this way can be brought back to life only by a
+True Resurrection
+or
+Wish
+spell.
+
+If the lich is destroyed or moves its lair elsewhere, these effects end immediately. These effects resume if the lich gains a new body (see its Spirit Jar trait).
+
+Lich
+Medium Undead (Wizard), Neutral Evil
+AC
+20
+Initiative
++17 (27)
+HP
+315 (42d8 + 126)
+Speed
+30 ft.
+Ability
+Score
+Mod
+Save
+Str
+11
++0
++0
+Dex
+16
++3
++10
+Con
+16
++3
++10
+Ability
+Score
+Mod
+Save
+Int
+21
++5
++12
+Wis
+14
++2
++9
+Cha
+16
++3
++3
+Skills
+Arcana
++19,
+History
++12,
+Insight
++9,
+Perception
++9
+Resistances
+Cold, Lightning
+Immunities
+Necrotic, Poison;
+Charmed
+,
+Exhaustion
+,
+Frightened
+,
+Paralyzed
+,
+Poisoned
+Gear
+Component Pouch
+Senses
+Truesight
+120 ft.; Passive Perception 19
+Languages
+All
+CR
+21 (XP 33,000, or 41,000 in lair; PB +7)
+Traits
+Legendary Resistance (4/Day, or 5/Day in Lair).
+If the lich fails a saving throw, it can choose to succeed instead.
+Spirit Jar.
+If destroyed, the lich reforms in 1d10 days if it has a spirit jar, reviving with all its Hit Points. The new body appears in an unoccupied space within the lich’s lair.
+Actions
+Multiattack.
+The lich makes three attacks, using Eldritch Burst or Paralyzing Touch in any combination.
+Eldritch Burst.
+Melee or Ranged Attack Roll:
++12, reach 5 ft. or range 120 ft.
+Hit:
+31 (4d12 + 5) Force damage.
+Paralyzing Touch.
+Melee Attack Roll:
++12, reach 5 ft.
+Hit:
+15 (3d6 + 5) Cold damage, and the target has the
+Paralyzed
+condition until the start of the lich’s next turn.
+Spellcasting.
+The lich casts one of the following spells, using Intelligence as the spellcasting ability (spell save DC 20):
+At Will:
+Detect Magic
+,
+Detect Thoughts
+,
+Dispel Magic
+,
+Fireball
+(level 5 version),
+Invisibility
+,
+Lightning Bolt
+(level 5 version),
+Mage Hand
+,
+Prestidigitation
+2/Day Each:
+Animate Dead
+,
+Dimension Door
+,
+Plane Shift
+1/Day Each:
+Chain Lightning
+,
+Finger of Death
+,
+Power Word Kill
+,
+Scrying
+Reactions
+Protective Magic.
+The lich casts
+Counterspell
+or
+Shield
+in response to the spell’s trigger, using the same spellcasting ability as Spellcasting.
+Legendary Actions
+Legendary Action Uses: 3 (4 in Lair). Immediately after another creature’s turn, the lich can expend a use to take one of the following actions. The lich regains all expended uses at the start of each of its turns.
+Deathly Teleport.
+The lich teleports up to 60 feet to an unoccupied space it can see, and each creature within 10 feet of the space it left takes 11 (2d10) Necrotic damage.
+Disrupt Life.
+Constitution Saving Throw:
+DC 20, each creature that isn’t an Undead in a 20-foot
+Emanation
+originating from the lich.
+Failure:
+31 (9d6) Necrotic damage.
+Success:
+Half damage.
+Failure or Success:
+The lich can’t take this action again until the start of its next turn.
+Frightening Gaze.
+The lich casts
+Fear
+, using the same spellcasting ability as Spellcasting. The lich can’t take this action again until the start of its next turn.
+
+Lizardfolk
+
+Reptilian Defenders of the Land
+
+Habitat:
+Forest, Swamp;
+Treasure:
+Individual
+
+Lizardfolk dwell in wildernesses suffused with primal magic. While many lizardfolk are Humanoids with varied skills, some forge powerful bonds with the
+Elemental Plane of Earth
+, granting them magical connections to the cycle of growth and rebirth.
+
+Lizardfolk Geomancer
+
+Lizardfolk geomancers draw magic from the natural world, using it to protect their people and territories.
+
+Lizardfolk Geomancer
+Medium Elemental, Neutral
+AC
+13
+Initiative
++0 (10)
+HP
+33 (6d8 + 6)
+Speed
+30 ft., Burrow 20 ft., Swim 30 ft.
+Ability
+Score
+Mod
+Save
+Str
+15
++2
++2
+Dex
+10
++0
++0
+Con
+13
++1
++1
+Ability
+Score
+Mod
+Save
+Int
+10
++0
++0
+Wis
+15
++2
++2
+Cha
+8
+−1
+−1
+Skills
+Nature
++2,
+Perception
++4,
+Stealth
++4
+Senses
+Passive Perception 14
+Languages
+Draconic, Primordial (Terran)
+CR
+2 (XP 450; PB +2)
+Actions
+Multiattack.
+The lizardfolk makes two Earth Burst attacks.
+Earth Burst.
+Melee or Ranged Attack Roll:
++4, reach 5 ft. or range 60 ft.
+Hit:
+9 (2d6 + 2) Bludgeoning damage.
+Hail of Stone (Recharge 5–6).
+Constitution Saving Throw:
+DC 12, each creature in a 20-foot-radius, 40-foot-high
+Cylinder
+centered on a point the lizardfolk can see within 60 feet.
+Failure:
+15 (6d4) Bludgeoning damage, and the target has the
+Prone
+condition.
+Success:
+Half damage only.
+Spellcasting.
+The lizardfolk casts one of the following spells, requiring no Material components and using Wisdom as the spellcasting ability (spell save DC 12):
+At Will:
+Elementalism
+1/Day Each:
+Meld into Stone
+,
+Speak with Plants
+,
+Spike Growth
+
+Lizardfolk Sovereign
+
+Lizardfolk sovereigns undergo magical rites that imbue them with fantastic strength and magic from the
+Elemental Plane of Earth
+. In some, though, it also unlocks a primal viciousness.
+
+Lizardfolk Sovereign
+Medium Elemental, Neutral
+AC
+15
+Initiative
++1 (11)
+HP
+78 (12d8 + 24)
+Speed
+30 ft., Burrow 20 ft., Swim 30 ft.
+Ability
+Score
+Mod
+Save
+Str
+17
++3
++3
+Dex
+12
++1
++1
+Con
+15
++2
++4
+Ability
+Score
+Mod
+Save
+Int
+11
++0
++0
+Wis
+11
++0
++2
+Cha
+15
++2
++2
+Skills
+Perception
++4,
+Stealth
++5
+Immunities
+Frightened
+Senses
+Darkvision
+60 ft.; Passive Perception 14
+Languages
+Draconic, Primordial (Terran)
+CR
+4 (XP 1,100; PB +2)
+Actions
+Multiattack.
+The lizardfolk makes one Bite attack and one Earthen Maul attack.
+Bite.
+Melee Attack Roll:
++5, reach 5 ft.
+Hit:
+8 (1d10 + 3) Piercing damage. If the target is a creature that isn’t a Construct or an Undead, the lizardfolk gains
+Temporary Hit Points
+equal to the damage dealt.
+Earthen Maul.
+Melee Attack Roll:
++5, reach 5 ft.
+Hit:
+10 (2d6 + 3) Bludgeoning damage. If the target is a Medium or smaller creature, it has the
+Prone
+condition.
+Bonus Actions
+Charge.
+The lizardfolk moves up to its Speed or Swim Speed straight toward an enemy it can see.
+
+Zuzanna Wuzyk

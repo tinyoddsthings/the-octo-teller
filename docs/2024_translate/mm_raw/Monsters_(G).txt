@@ -1,0 +1,4895 @@
+Monsters (G)
+
+Galeb Duhr
+
+Eyes and Ears of the Earth
+
+Habitat:
+Hill, Mountain;
+Treasure:
+Any
+
+Luca Bancone
+
+Beings of living rock, galeb duhr seek harmony with the earth and give voice to the vibrations of stone. Their rocky bodies have limbs and facial features accented by gems, ores, and other minerals found in the surrounding earth.
+
+Galeb duhr are effectively immortal, with lifespans similar in length to mountains. They don’t experience time or perceive danger as shorter-lived species do. Galeb duhr avoid danger by hiding from other creatures. When they do reveal themselves, they speak and act ponderously, but they often know much of the surrounding land and secrets within the earth. When motivated to action, galeb duhr slam into foes and animate nearby boulders to do the same.
+
+Some mountain dwellers view galeb duhr as aloof allies and might entrust these long-lived beings with secrets or treasures for future generations. Others speak of galeb duhr songs, barely audible harmonizations by groups of galeb duhr that are said to influence earthquakes and volcanic eruptions.
+
+Galeb Duhr
+Medium Elemental, Neutral
+AC
+16
+Initiative
++2 (12)
+HP
+123 (13d8 + 65)
+Speed
+15 ft. (30 ft. when rolling, 60 ft. rolling downhill)
+Ability
+Score
+Mod
+Save
+Str
+20
++5
++5
+Dex
+14
++2
++2
+Con
+20
++5
++5
+Ability
+Score
+Mod
+Save
+Int
+11
++0
++0
+Wis
+12
++1
++1
+Cha
+11
++0
++0
+Immunities
+Poison;
+Charmed
+,
+Exhaustion
+,
+Frightened
+,
+Paralyzed
+,
+Petrified
+,
+Poisoned
+Senses
+Darkvision
+60 ft.,
+Tremorsense
+60 ft.; Passive Perception 11
+Languages
+Primordial (Terran)
+CR
+6 (XP 2,300; PB +3)
+Actions
+Avalanche Slam.
+Melee Attack Roll:
++8, reach 5 ft.
+Hit:
+12 (2d6 + 5) Bludgeoning damage. If the target is a Large or smaller creature and the galeb duhr moved 20+ feet straight toward it immediately before the hit, the target takes an extra 7 (2d6) Bludgeoning damage and has the
+Prone
+condition.
+Animate Boulders (1/Day).
+The galeb duhr magically animates one or two boulders it can see within 60 feet of itself. Each boulder uses the
+Galeb Duhr
+stat block, except it has Intelligence and Charisma scores of 1 and lacks this action. The boulder takes its turn immediately after the galeb duhr on the same Initiative count, and it obeys the galeb duhr. A boulder remains animate for 1 minute or until it or the galeb duhr dies.
+
+Gargoyle
+
+Sculpted Sentinel Hidden in Plain Sight
+
+Habitat:
+Underdark, Urban;
+Treasure:
+Any
+
+Gargoyles are sculptures inhabited by elemental spirits. Wings and magic allow their heavy stone bodies to fly, and they often perch where they can blend in amid ornate architecture, rock formations, or mundane statues. Gargoyles usually serve the magic-users who conjured them into their bodies, but if left to their own devices, they might play cruel pranks and steal treasures to hoard in lofty lairs.
+
+Gargoyle Ambushes
+
+Gargoyles have a variety of appearances. Roll on or choose a result from the Gargoyle Sculptures table to inspire how a gargoyle looks.
+Gargoyle Sculptures
+1d6
+The Gargoyle Is Sculpted to Appear...
+1
+Cherubic with perpetually smiling features.
+2
+Crudely hewed or naturally formed.
+3
+Damaged or marred by mismatched pieces.
+4
+Dragon-like with polished stone scales.
+5
+Gothically fiendish with horns and a tail.
+6
+Useful, like an ornate podium or a pillar.
+Kent Davis
+
+Gargoyles seek to ambush foes or creatures that trespass on their territories. With no biological needs and supernatural patience, these monsters might wait unmoving for months, revealing themselves only when conditions are perfect to attack. They tend to lurk where statuary seems commonplace or where terrain obscures the shape and color of their bodies. Roll on or choose a result from the Gargoyle Camouflage table to inspire where a gargoyle sets up an ambush.
+
+Gargoyle Camouflage
+1d8
+The Gargoyle Conceals Itself Amid...
+1
+Burls and bark on a giant tree.
+2
+Monuments in a graveyard or memorial.
+3
+Outcroppings on a cliff or rock formation
+4
+The petrified victims of a basilisk or medusa.
+5
+Reliefs on a sculpted gate or wall.
+6
+Rubble in a ruin or junkyard.
+7
+Stalactites or icicles on a cavern ceiling.
+8
+Statuary on a castle, mansion, or temple.
+
+Gargoyle
+Medium Elemental, Chaotic Evil
+AC
+15
+Initiative
++2 (12)
+HP
+67 (9d8 + 27)
+Speed
+30 ft., Fly 60 ft.
+Ability
+Score
+Mod
+Save
+Str
+15
++2
++2
+Dex
+11
++0
++0
+Con
+16
++3
++3
+Ability
+Score
+Mod
+Save
+Int
+6
+−2
+−2
+Wis
+11
++0
++0
+Cha
+7
+−2
+−2
+Skills
+Stealth
++4
+Immunities
+Poison;
+Exhaustion
+,
+Petrified
+,
+Poisoned
+Senses
+Darkvision
+60 ft.; Passive Perception 10
+Languages
+Primordial (Terran)
+CR
+2 (XP 450; PB +2)
+Traits
+Flyby.
+The gargoyle doesn’t provoke an
+Opportunity Attack
+when it flies out of an enemy’s reach.
+Actions
+Multiattack.
+The gargoyle makes two Claw attacks.
+Claw.
+Melee Attack Roll:
++4, reach 5 ft.
+Hit:
+7 (2d4 + 2) Slashing damage.
+
+Where evil passes in the Elemental Plane of Earth, it stains the rock and spoils the soil. Malice vanishes amid other elements, but in the dismal dark, the wicked shape it into nightmares.
+—Tiv, scholar of the Elemental Planes
+
+Gelatinous Cube
+
+Dungeon-Scouring Block of Ooze
+
+Habitat:
+Underdark;
+Treasure:
+Any
+
+Quivering masses of acidic goo, gelatinous cubes wobble through narrow caverns and dungeons, engulfing anything in their paths. These Oozes are naturally transparent, making them difficult to see while they’re stationary. Creatures and objects that become stuck within these slimes are gradually dissolved. Undigested detritus sometimes floats within a gelatinous cube, hinting at its past meals. Roll on or choose a result from the Gelatinous Cube Debris table to inspire a gelatinous cube’s contents.
+
+Gelatinous Cube Debris
+1d6
+Floating in the Gelatinous Cube Is A...
+1
+Chest or recently trapped mimic.
+2
+Collection of bubbles or rocks resembling eyes.
+3
+Key to a nearby door or coffer.
+4
+Remarkable weapon in need of repair.
+5
+Skeleton belonging to a famous adventurer.
+6
+Tablet bearing a mysterious message.
+
+Gelatinous Cube
+Large Ooze, Unaligned
+AC
+6
+Initiative
+−4 (6)
+HP
+63 (6d10 + 30)
+Speed
+15 ft.
+Ability
+Score
+Mod
+Save
+Str
+14
++2
++2
+Dex
+3
+−4
+−4
+Con
+20
++5
++5
+Ability
+Score
+Mod
+Save
+Int
+1
+−5
+−5
+Wis
+6
+−2
+−2
+Cha
+1
+−5
+−5
+Immunities
+Acid;
+Blinded
+,
+Charmed
+,
+Deafened
+,
+Exhaustion
+,
+Frightened
+,
+Prone
+Senses
+Blindsight
+60 ft.; Passive Perception 8
+Languages
+None
+CR
+2 (XP 450; PB +2)
+Traits
+Ooze Cube.
+The cube fills its entire space and is transparent. Other creatures can enter that space, but a creature that does so is subjected to the cube’s Engulf and has Disadvantage on the saving throw.
+Creatures inside the cube have
+Total Cover
+, and the cube can hold one Large creature or up to four Medium or Small creatures inside itself at a time.
+As an action, a creature within 5 feet of the cube can pull a creature or an object out of the cube by succeeding on a DC 12 Strength (
+Athletics
+) check, and the puller takes 10 (3d6) Acid damage.
+Transparent.
+Even when the cube is in plain sight, a creature must succeed on a DC 15 Wisdom (
+Perception
+) check to notice the cube if the creature hasn’t witnessed the cube move or otherwise act.
+Actions
+Pseudopod.
+Melee Attack Roll:
++4, reach 5 ft.
+Hit:
+12 (3d6 + 2) Acid damage.
+Engulf.
+The cube moves up to its Speed without provoking
+Opportunity Attacks
+. The cube can move through the spaces of Large or smaller creatures if it has room inside itself to contain them (see the Ooze Cube trait).
+Dexterity Saving Throw:
+DC 12, each creature whose space the cube enters for the first time during this move.
+Failure:
+10 (3d6) Acid damage, and the target is engulfed. An engulfed target is
+suffocating
+, can’t cast spells with a Verbal component, has the
+Restrained
+condition, and takes 10 (3d6) Acid damage at the start of each of the cube’s turns. When the cube moves, the engulfed target moves with it. An engulfed target can try to escape by taking an action to make a DC 12 Strength (
+Athletics
+) check. On a successful check, the target escapes and enters the nearest unoccupied space.
+Success:
+Half damage, and the target moves to an unoccupied space within 5 feet of the cube. If there is no unoccupied space, the target fails the save instead.
+Olivier Bernard
+
+Ghasts
+
+Tyrants among Corpses
+
+Habitat:
+Swamp, Underdark, Urban;
+Treasure:
+Any
+
+Ghasts are reeking, undying corpses closely related to ghouls. They hunger for the vices they enjoyed in life as much as they do for rotting flesh.
+
+Ghast
+
+Ghasts frequently organize ghouls into packs to despoil crypts and steal the wealth within.
+
+Ghast
+Medium Undead, Chaotic Evil
+AC
+13
+Initiative
++3 (13)
+HP
+36 (8d8)
+Speed
+30 ft.
+Ability
+Score
+Mod
+Save
+Str
+16
++3
++3
+Dex
+17
++3
++3
+Con
+10
++0
++0
+Ability
+Score
+Mod
+Save
+Int
+11
++0
++0
+Wis
+10
++0
++2
+Cha
+8
+−1
+−1
+Resistances
+Necrotic
+Immunities
+Poison;
+Charmed
+,
+Exhaustion
+,
+Poisoned
+Senses
+Darkvision
+60 ft.; Passive Perception 10
+Languages
+Common
+CR
+2 (XP 450; PB +2)
+Traits
+Stench.
+Constitution Saving Throw:
+DC 10, any creature that starts its turn in a 5-foot
+Emanation
+originating from the ghast.
+Failure:
+The target has the
+Poisoned
+condition until the start of its next turn.
+Success:
+The target is immune to this ghast’s Stench for 24 hours.
+Actions
+Bite.
+Melee Attack Roll:
++5, reach 5 ft.
+Hit:
+7 (1d8 + 3) Piercing damage plus 9 (2d8) Necrotic damage.
+Claw.
+Melee Attack Roll:
++5, reach 5 ft.
+Hit:
+10 (2d6 + 3) Slashing damage. If the target is a non-Undead creature, it is subjected to the following effect.
+Constitution Saving Throw:
+DC 10.
+Failure:
+The target has the
+Paralyzed
+condition until the end of its next turn.
+Olivier Bernard
+
+Ghast Gravecaller
+
+Ghast gravecallers wield fell magic and converse with corpses. They might pose as liches or vampires.
+
+Ghast Gravecaller
+Medium Undead, Chaotic Evil
+AC
+16
+Initiative
++3 (13)
+HP
+97 (15d8 + 30)
+Speed
+30 ft.
+Ability
+Score
+Mod
+Save
+Str
+16
++3
++3
+Dex
+17
++3
++3
+Con
+14
++2
++5
+Ability
+Score
+Mod
+Save
+Int
+18
++4
++4
+Wis
+14
++2
++5
+Cha
+8
+−1
+−1
+Immunities
+Necrotic, Poison;
+Charmed
+,
+Exhaustion
+,
+Poisoned
+Senses
+Darkvision
+120 ft.; Passive Perception 12
+Languages
+Abyssal, Common
+CR
+6 (XP 2,300; PB +3)
+Traits
+Stench.
+Constitution Saving Throw:
+DC 13, any creature that starts its turn in a 5-foot
+Emanation
+originating from the ghast.
+Failure:
+The target has the
+Poisoned
+condition until the start of its next turn.
+Success:
+The target is immune to this ghast’s Stench for 24 hours.
+Actions
+Multiattack.
+The ghast makes two Horrific Necrosis attacks. It can replace one attack with a Claw attack.
+Claw.
+Melee Attack Roll:
++6, reach 5 ft.
+Hit:
+13 (3d6 + 3) Slashing damage. If the target isn’t an Undead, it has the
+Paralyzed
+condition until the end of its next turn.
+Horrific Necrosis.
+Melee or Ranged Attack Roll:
++7, reach 5 ft. or range 120 ft.
+Hit:
+15 (2d10 + 4) Necrotic damage, and the target has the
+Frightened
+condition until the end of its next turn.
+Spellcasting.
+The ghast casts one of the following spells, requiring no Material components and using Intelligence as the spellcasting ability:
+At Will:
+Speak with Dead
+,
+Thaumaturgy
+
+Ghost
+Lost Soul and Unquiet Spirit
+Habitat:
+Underdark, Urban;
+Treasure:
+Any
+Ghosts arise when living creatures die in a state of extreme emotion or having left an important task undone. These incorporeal spirits haunt locations that are meaningful to them, lingering until their business is complete or they’re put to rest.
+Ghosts typically appear as semitransparent versions of the creatures they were in life, though some bear evidence of the wounds that killed them or have nightmarish distortions to their forms. Many have extreme reactions to actions, objects, or individuals that remind them of emotionally charged aspects of their lives. Particularly desperate or vengeful ghosts might possess the living to fulfill their ends.
+Steven Belledin
+
+Ghost
+Medium Undead, Neutral
+AC
+11
+Initiative
++1 (11)
+HP
+45 (10d8)
+Speed
+5 ft., Fly 40 ft. (hover)
+Ability
+Score
+Mod
+Save
+Str
+7
+−2
+−2
+Dex
+13
++1
++1
+Con
+10
++0
++0
+Ability
+Score
+Mod
+Save
+Int
+10
++0
++0
+Wis
+12
++1
++1
+Cha
+17
++3
++3
+Resistances
+Acid, Bludgeoning, Cold, Fire, Lightning, Piercing, Slashing, Thunder
+Immunities
+Necrotic, Poison;
+Charmed
+,
+Exhaustion
+,
+Frightened
+,
+Grappled
+,
+Paralyzed
+,
+Petrified
+,
+Poisoned
+,
+Prone
+,
+Restrained
+Senses
+Darkvision
+60 ft.; Passive Perception 11
+Languages
+Common plus one other language
+CR
+4 (XP 1,100; PB +2)
+Traits
+Ethereal Sight.
+The ghost can see 60 feet into the Ethereal Plane when it is on the Material Plane.
+Incorporeal Movement.
+The ghost can move through other creatures and objects as if they were
+Difficult Terrain
+. It takes 5 (1d10) Force damage if it ends its turn inside an object.
+Actions
+Multiattack.
+The ghost makes two Withering Touch attacks.
+Withering Touch.
+Melee Attack Roll:
++5, reach 5 ft.
+Hit:
+19 (3d10 + 3) Necrotic damage.
+Etherealness.
+The ghost casts the
+Etherealness
+spell, requiring no spell components and using Charisma as the spellcasting ability. The ghost is visible on the Material Plane while on the Border Ethereal and vice versa, but it can’t affect or be affected by anything on the other plane.
+Horrific Visage.
+Wisdom Saving Throw:
+DC 13, each creature in a 60-foot
+Cone
+that can see the ghost and isn’t an Undead.
+Failure:
+10 (2d6 + 3) Psychic damage, and the target has the
+Frightened
+condition until the start of the ghost’s next turn.
+Success:
+The target is immune to this ghost’s Horrific Visage for 24 hours.
+Possession (Recharge 6).
+Charisma Saving Throw:
+DC 13, one Humanoid the ghost can see within 5 feet.
+Failure:
+The target is possessed by the ghost; the ghost disappears, and the target has the
+Incapacitated
+condition and loses control of its body. The ghost now controls the body, but the target retains awareness. The ghost can’t be targeted by any attack, spell, or other effect, except ones that specifically target Undead. The ghost’s game statistics are the same, except it uses the possessed target’s Speed, as well as the target’s Strength, Dexterity, and Constitution modifiers.
+The possession lasts until the body drops to 0 Hit Points or the ghost leaves as a Bonus Action. When the possession ends, the ghost appears in an unoccupied space within 5 feet of the target, and the target is immune to this ghost’s Possession for 24 hours.
+Success:
+The target is immune to this ghost’s Possession for 24 hours.
+
+Ghouls
+
+Eaters of the Dead
+
+Habitat:
+Swamp, Underdark, Urban;
+Treasure:
+Any
+
+Packs of ghouls haunt the rotten corners of the world, ravenously hunting for corpses and those soon to be corpses. These gaunt, animate cadavers with unnaturally long tongues dwell in catacombs and ruins where they devour the contents of graves and paralyze foes with vicious claws.
+
+On a plain of teeth, in a temple of filth, the starving king wastes no morsel. Every coffin a banquet. Every slab a platter. Now is the time of feasting!
+—Invocation of Doresain, King of Ghouls
+
+Andrey Kuzinskiy
+
+Ghoul
+
+Ghouls rise from the bodies of cannibals and villains with depraved hungers. They form packs out of shared voracity.
+
+Ghoul
+Medium Undead, Chaotic Evil
+AC
+12
+Initiative
++2 (12)
+HP
+22 (5d8)
+Speed
+30 ft.
+Ability
+Score
+Mod
+Save
+Str
+13
++1
++1
+Dex
+15
++2
++2
+Con
+10
++0
++0
+Ability
+Score
+Mod
+Save
+Int
+7
+−2
+−2
+Wis
+10
++0
++0
+Cha
+6
+−2
+−2
+Immunities
+Poison;
+Charmed
+,
+Exhaustion
+,
+Poisoned
+Senses
+Darkvision
+60 ft.; Passive Perception 10
+Languages
+Common
+CR
+1 (XP 200; PB +2)
+Actions
+Multiattack.
+The ghoul makes two Bite attacks.
+Bite.
+Melee Attack Roll:
++4, reach 5 ft.
+Hit:
+5 (1d6 + 2) Piercing damage plus 3 (1d6) Necrotic damage.
+Claw.
+Melee Attack Roll:
++4, reach 5 ft.
+Hit:
+4 (1d4 + 2) Slashing damage. If the target is a creature that isn’t an Undead or elf, it is subjected to the following effect.
+Constitution Saving Throw:
+DC 10.
+Failure:
+The target has the
+Paralyzed
+condition until the end of its next turn.
+
+Lacedon Ghoul
+
+Lacedons are loose-skinned, aquatic ghouls. They often arise from the corpses of greedy pirates, those who starved on deserted islands, or scoundrels who met their end by drowning.
+
+Lacedon Ghoul
+Medium Undead, Chaotic Evil
+AC
+12
+Initiative
++2 (12)
+HP
+22 (5d8)
+Speed
+30 ft., Swim 30 ft.
+Ability
+Score
+Mod
+Save
+Str
+13
++1
++1
+Dex
+15
++2
++2
+Con
+10
++0
++0
+Ability
+Score
+Mod
+Save
+Int
+7
+−2
+−2
+Wis
+10
++0
++0
+Cha
+6
+−2
+−2
+Resistances
+Cold
+Immunities
+Poison;
+Charmed
+,
+Exhaustion
+,
+Poisoned
+Senses
+Darkvision
+60 ft.; Passive Perception 10
+Languages
+Common
+CR
+1 (XP 200; PB +2)
+Actions
+Multiattack.
+The ghoul makes two Icy Bite attacks.
+Icy Bite.
+Melee Attack Roll:
++4, reach 5 ft.
+Hit:
+9 (2d6 + 2) Cold damage, and the target’s Speed decreases by 5 feet until the start of the ghoul’s next turn.
+Claw.
+Melee Attack Roll:
++4, reach 5 ft.
+Hit:
+4 (1d4 + 2) Slashing damage. If the target is a creature that isn’t an Undead or elf, it is subjected to the following effect.
+Constitution Saving Throw:
+DC 10.
+Failure:
+The target has the
+Paralyzed
+condition until the end of its next turn.
+Bonus Actions
+Watery Rush.
+While underwater, the ghoul moves up to half its Swim Speed without provoking
+Opportunity Attacks
+.
+
+Gibbering Mouther
+
+Ravenous Chorus of Unreality
+
+Habitat:
+Underdark;
+Treasure:
+None
+
+Helge C. balzer
+
+Gibbering mouthers endlessly feed on and regrow their own amoeboid bodies—amorphous heaps roiling with eyes, teeth, and strange organs. These mind-bending terrors sing and scream, laugh and cry with a cacophony of voices ranging from disturbingly unnatural to shockingly familiar. They exist only to feed and to unleash their disdain for reality, their many maws dripping with otherworldly spittle.
+
+Gibbering mouthers come into being in various unpleasant ways. Roll on or choose a result from the Gibbering Mouther Nascencies table to inspire what brought one of these horrors into being.
+
+Alas, the Elder Elves made a fatal mistake. When the Dragon’s Tear comet next returned, the Vast Gate—still keyed to the Far Realm of alien entities—linked to the comet and opened again. And what emerged, ululating profanities, sang unnameable hungers into an unguarded world.
+—From
+The Book of the Gate
+, found near Firestorm Peak
+
+Gibbering Mouther Nascencies
+1d6
+The Gibbering Mouther Is...
+1
+Another creature warped by dangerous magic.
+2
+The autonomous appendage of a chaotic deity, Far Realm entity, or star-spawn horror.
+3
+The experiment of an aberrant manipulator.
+4
+Part of the life cycle of some other Aberration.
+5
+A shape-shifter that lost control of its powers.
+6
+Someone cursed by a cult or vengeful deity.
+
+Gibbering Mouther
+Medium Aberration, Chaotic Neutral
+AC
+9
+Initiative
+−1 (9)
+HP
+52 (7d8 + 21)
+Speed
+20 ft., Swim 20 ft.
+Ability
+Score
+Mod
+Save
+Str
+10
++0
++0
+Dex
+8
+−1
+−1
+Con
+16
++3
++3
+Ability
+Score
+Mod
+Save
+Int
+3
+−4
+−4
+Wis
+10
++0
++0
+Cha
+6
+−2
+−2
+Immunities
+Prone
+Senses
+Darkvision
+60 ft.; Passive Perception 10
+Languages
+None
+CR
+2 (XP 450; PB +2)
+Traits
+Aberrant Ground.
+The ground in a 10-foot
+Emanation
+originating from the mouther is
+Difficult Terrain
+.
+Gibbering.
+The mouther babbles incoherently while it doesn’t have the
+Incapacitated
+condition.
+Wisdom Saving Throw:
+DC 10, any creature that starts its turn within 20 feet of the mouther while it is babbling.
+Failure:
+The target rolls 1d8 to determine what it does during the current turn:
+1–4.
+The target does nothing.
+5–6.
+The target takes no action or Bonus Action and uses all its movement to move in a random direction.
+7–8.
+The target makes a melee attack against a randomly determined creature within its reach or does nothing if it can’t make such an attack.
+Actions
+Bite.
+Melee Attack Roll:
++2, reach 5 ft.
+Hit:
+7 (2d6) Piercing damage. If the target is a Medium or smaller creature, it has the
+Prone
+condition. The target dies if it is reduced to 0 Hit Points by this attack. Its body is then absorbed into the mouther, leaving only equipment behind.
+Blinding Spittle (Recharge 5–6).
+Dexterity Saving Throw:
+DC 10, each creature in a 10-foot-radius
+Sphere
+centered on a point within 30 feet.
+Failure:
+7 (2d6) Radiant damage, and the target has the
+Blinded
+condition until the end of the mouther’s next turn.
+
+Githyanki
+
+Invaders from the Astral Plane
+
+Habitat:
+Planar (Astral Plane);
+Treasure:
+Armaments
+
+Jason Rainville
+Left to Right: Githyanki Dracomancer, Githyanki Knight, and Githyanki Warrior
+
+Githyanki were once an ordinary people, but the deeds of a vile mind flayer empire etched conflict on their being. Gaunt, humanlike creatures, githyanki have serrated ears and speckled skin ranging through shades of yellow, green, and brown. While some githyanki follow their own paths, many are influenced by a past that forever altered their fates.
+
+History of the Gith
+
+Ages ago, a humanlike people were conquered by an empire of
+mind flayers
+. The illithids manipulated this forgotten people through untold horrors, forced evolution, and psychic reshaping. Eventually one named Gith rose from among the captives and led a rebellion against their oppressors. Gith’s followers, who became known as the gith, defeated the mind flayers and shattered their vast empire.
+
+The victory of the gith was short-lived. As Gith was forging her own burgeoning empire, a leader named Zerthimon challenged her. Zerthimon claimed Gith’s drive for vengeance and new conquests was evidence of species-wide mental programing laid by the mind flayers, biological manipulation that condemned her people to continued servitude. This claim split the gith into Gith’s followers, the githyanki (meaning “followers of Gith”), and Zerthimon’s followers, the
+githzerai
+(meaning “those who spurn Gith”), and sparked an ongoing conflict.
+
+When Gith perished, her adviser,
+Vlaakith
+, assumed rule of the githyanki. Vlaakith’s line has continued to the githyanki’s current ruler, Vlaakith the Lich-Queen. This undead tyrant compels her people to wage endless wars against mind flayers, githzerai, and any others that threaten githyanki supremacy.
+
+To slay in Vlaakith’s name is our greatest service. To die in her name is our last act of reverence.
+—Meldavh, githyanki knight
+
+Githyanki Warrior
+
+Githyanki warriors use psionic abilities to augment their battle prowess.
+
+Githyanki Warrior
+Medium Aberration (Gith), Lawful Evil
+AC
+17
+Initiative
++4 (14)
+HP
+49 (9d8 + 9)
+Speed
+30 ft.
+Ability
+Score
+Mod
+Save
+Str
+15
++2
++2
+Dex
+14
++2
++2
+Con
+12
++1
++3
+Ability
+Score
+Mod
+Save
+Int
+13
++1
++3
+Wis
+13
++1
++3
+Cha
+10
++0
++0
+Gear
+Half-Plate Armor
+Senses
+Passive Perception 11
+Languages
+Common, Gith
+CR
+3 (XP 700; PB +2)
+Actions
+Multiattack.
+The githyanki makes two Psi Blade attacks.
+Psi Blade.
+Melee Attack Roll:
++4, reach 5 ft.
+Hit:
+9 (2d6 + 2) Slashing damage plus 7 (2d6) Psychic damage.
+Spellcasting.
+The githyanki casts one of the following spells, requiring no spell components and using Intelligence as the spellcasting ability:
+At Will:
+Mage Hand
+(the hand is
+Invisible
+)
+2/Day:
+Nondetection
+(self only)
+Bonus Actions
+Misty Step (2/Day).
+The githyanki casts
+Misty Step
+, requiring no spell components and using the same spellcasting ability as Spellcasting.
+
+Githyanki Knight
+
+Githyanki knights wield silver blades to slay magic-users who use the
+Astral Projection
+spell to intrude on githyanki territories on the Astral Plane. These silver blades are sacred to the githyanki. Non-githyanki who claim these weapons often find themselves hunted by wrathful githyanki knights.
+
+Githyanki Knight
+Medium Aberration (Gith), Lawful Evil
+AC
+18
+Initiative
++5 (15)
+HP
+117 (18d8 + 36)
+Speed
+30 ft.
+Ability
+Score
+Mod
+Save
+Str
+16
++3
++3
+Dex
+14
++2
++2
+Con
+15
++2
++5
+Ability
+Score
+Mod
+Save
+Int
+14
++2
++5
+Wis
+14
++2
++5
+Cha
+15
++2
++2
+Gear
+Plate Armor
+Senses
+Passive Perception 12
+Languages
+Common, Gith
+CR
+8 (XP 3,900; PB +3)
+Actions
+Multiattack.
+The githyanki makes three Silver Sword attacks. It can replace one attack with a use of Spellcasting to cast
+Telekinesis
+if available.
+Silver Sword.
+Melee Attack Roll:
++6, reach 5 ft.
+Hit:
+10 (2d6 + 3) Slashing damage plus 14 (4d6) Psychic damage.
+Critical Hit:
+If the target is in an astral body (as with the
+Astral Projection
+spell), the githyanki can cut the silvery cord that tethers the target to its material body instead of dealing damage.
+Spellcasting.
+The githyanki casts one of the following spells, requiring no spell components and using Intelligence as the spellcasting ability (spell save DC 13):
+At Will:
+Mage Hand
+(the hand is
+Invisible
+)
+2/Day Each:
+Nondetection
+(self only),
+Tongues
+1/Day Each:
+Plane Shift
+,
+Telekinesis
+Bonus Actions
+Misty Step (2/Day).
+The githyanki casts
+Misty Step
+, requiring no spell components and using the same spellcasting ability as Spellcasting.
+
+Githyanki Dracomancer
+
+One of Gith’s last deeds was to forge an alliance between the githyanki and the dragon god Tiamat. Ever since, the Dragon Queen’s red dragon consort, Ephelomon, and his kind have been allies of the githyanki. Githyanki dracomancers uphold this pact and cultivate magic talents that complement the might of red dragons.
+
+Githyanki Dracomancer
+Medium Aberration (Gith), Lawful Evil
+AC
+18
+Initiative
++8 (18)
+HP
+255 (30d8 + 120)
+Speed
+30 ft., Fly 30 ft. (hover)
+Ability
+Score
+Mod
+Save
+Str
+10
++0
++0
+Dex
+16
++3
++8
+Con
+18
++4
++9
+Ability
+Score
+Mod
+Save
+Int
+20
++5
++10
+Wis
+16
++3
++8
+Cha
+18
++4
++4
+Skills
+Arcana
++10,
+Perception
++8
+Senses
+Blindsight
+30 ft.; Passive Perception 18
+Languages
+Common, Draconic, Gith
+CR
+16 (XP 15,000; PB +5)
+Actions
+Multiattack.
+The githyanki makes three Draconic Strike attacks.
+Draconic Strike.
+Melee or Ranged Attack Roll:
++10, reach 10 ft. or range 120 ft.
+Hit:
+12 (2d6 + 5) Slashing damage plus 17 (5d6) Fire damage, and the target has the
+Frightened
+condition until the start of the githyanki’s next turn.
+Conjured Dragon’s Breath (Recharge 5–6).
+Dexterity Saving Throw:
+DC 18, each creature in a 90-foot
+Cone
+.
+Failure:
+27 (6d8) Fire damage plus 27 (6d8) Force damage.
+Success:
+Half damage.
+Spellcasting.
+The githyanki casts one of the following spells, requiring no spell components and using Intelligence as the spellcasting ability (spell save DC 18, +10 to hit with spell attacks):
+At Will:
+Mage Hand
+(the hand is
+Invisible
+)
+2/Day Each:
+Nondetection
+(self only),
+Plane Shift
+,
+Tongues
+Bonus Actions
+Misty Step (3/Day).
+The githyanki casts
+Misty Step
+, requiring no spell components and using the same spellcasting ability as Spellcasting.
+
+Githzerai
+
+Explorers at Reality’s Extremes
+
+Habitat:
+Planar (Limbo);
+Treasure:
+Arcana
+,
+Individual
+
+Jason Rainville
+Left to Right: Githzerai Zerth, Githzerai Psion, and Githzerai Monk
+
+Githzerai are gaunt, humanlike beings, physically identical to githyanki. They share a history with githyanki as creatures physically and psychically transformed by
+mind flayers
+(see the “
+Githyanki
+” section). Githzerai know that in body and mind, their species was manipulated by their former illithid oppressors. Rather than giving in to this programming, githzerai follow the teachings of their first leader, Zerthimon, and reshape their minds and bodies to find peace.
+
+Githzerai psychically create serene, hidden sanctuaries in chaotic reaches of the multiverse. Most of these redoubts drift through the chaotic plane of Limbo, but githzerai conclaves can also be found in the Abyss, the Elemental Chaos, and the Feywild. Githzerai create these cloisters to hone their psionic abilities, to gain insights from the multiverse, and to avoid githyanki and mind flayers.
+
+We githzerai crave a challenge, so that when Zerthimon returns, he shall find us ready. Thus we traveled to howling Limbo to make our new home.
+—Zaerith Menyar-Ag-Gith, githzerai leader
+
+Adventures with Gith
+
+Characters might be drawn into conflicts involving githzerai and githyanki in various ways. Roll on or choose a result from the Gith Conflicts table to inspire adventures featuring these age-old rivals.
+
+Gith Conflicts
+1d8
+The Characters Are...
+1
+Called on to deliver a message or mysterious parcel to or from Vlaakith the Lich Queen.
+2
+Encouraged by a disguised
+intellect devourer
+to seek out an elusive gith leader.
+3
+Entreated to aid githzerai fleeing the githyanki who destroyed their sanctuary.
+4
+Entrusted with renewing or disrupting the githyanki’s alliance with red dragons.
+5
+Invited to hunt illithids with githyanki.
+6
+Pressed to uncover a gith spy in a planar community or on a spelljamming ship.
+7
+Sent on a quest to discover the last known location of the hero Gith or Zerthimon.
+8
+Tasked with returning the blade of a fallen githyanki knight to the knight’s people.
+
+Githzerai Monk
+
+Githzerai monks pursue control of their minds by honing their physical and psionic talents. They might be found beyond githzerai sanctuaries, testing themselves amid the dangerous extremes of the multiverse.
+
+Githzerai Monk
+Medium Aberration (Gith), Lawful Neutral
+AC
+14
+Initiative
++4 (14)
+HP
+38 (7d8 + 7)
+Speed
+40 ft.
+Ability
+Score
+Mod
+Save
+Str
+12
++1
++3
+Dex
+15
++2
++4
+Con
+12
++1
++1
+Ability
+Score
+Mod
+Save
+Int
+13
++1
++3
+Wis
+14
++2
++4
+Cha
+10
++0
++0
+Skills
+Insight
++4,
+Perception
++4
+Senses
+Passive Perception 14
+Languages
+Common, Gith
+CR
+2 (XP 450; PB +2)
+Actions
+Multiattack.
+The githzerai makes two Psi Strike attacks.
+Psi Strike.
+Melee Attack Roll:
++4, reach 5 ft.
+Hit:
+6 (1d8 + 2) Bludgeoning damage plus 9 (2d8) Psychic damage.
+Spellcasting.
+The githzerai casts one of the following spells, requiring no spell components and using Wisdom as the spellcasting ability:
+At Will:
+Mage Hand
+(the hand is
+Invisible
+)
+1/Day:
+See Invisibility
+Bonus Actions
+Psi-Powered Leap (2/Day).
+The githzerai casts
+Jump
+, requiring no spell components and using the same spellcasting ability as Spellcasting.
+Reactions
+Psionic Defense (2/Day).
+The githzerai casts
+Feather Fall
+or
+Shield
+in response to the spell’s trigger, requiring no spell components and using the same spellcasting ability as Spellcasting.
+
+Githzerai Zerth
+
+Githzerai zerths embody the discipline espoused by their first leader, Zerthimon. Their psionic control aids them in protecting their people and traveling the planes of existence without fear of being followed by githyanki or mind flayer foes.
+
+Githzerai Zerth
+Medium Aberration (Gith), Lawful Neutral
+AC
+17
+Initiative
++7 (17)
+HP
+84 (13d8 + 26)
+Speed
+40 ft.
+Ability
+Score
+Mod
+Save
+Str
+13
++1
++4
+Dex
+18
++4
++7
+Con
+15
++2
++2
+Ability
+Score
+Mod
+Save
+Int
+16
++3
++6
+Wis
+17
++3
++6
+Cha
+12
++1
++1
+Skills
+Arcana
++6,
+Insight
++6,
+Perception
++6
+Senses
+Passive Perception 16
+Languages
+Common, Gith
+CR
+6 (XP 2,300; PB +3)
+Actions
+Multiattack.
+The githzerai makes two Psi Strike attacks.
+Psi Strike.
+Melee Attack Roll:
++7, reach 5 ft.
+Hit:
+11 (2d6 + 4) Bludgeoning damage plus 13 (3d8) Psychic damage.
+Spellcasting.
+The githzerai casts one of the following spells, requiring no spell components and using Wisdom as the spellcasting ability (spell save DC 14):
+At Will:
+Mage Hand
+(the hand is
+Invisible
+)
+1/Day Each:
+Phantasmal Killer
+(level 6 version),
+Plane Shift
+,
+See Invisibility
+Bonus Actions
+Psi-Powered Leap (2/Day).
+The githzerai casts
+Jump
+, requiring no spell components and using the same spellcasting ability as Spellcasting.
+Reactions
+Psionic Defense (2/Day).
+The githzerai casts
+Feather Fall
+or
+Shield
+in response to the spell’s trigger, requiring no spell components and using the same spellcasting ability as Spellcasting.
+
+Githzerai Psion
+
+These powerful psions oversee githzerai sanctuaries, study enigmatic planar events, and lead rrakkma—hostile forays into mind flayer colonies to slay illithids and uncover secrets of how the ancient gith were transformed.
+
+Githzerai Psion
+Medium Aberration (Gith), Lawful Neutral
+AC
+18
+Initiative
++8 (18)
+HP
+169 (26d8 + 52)
+Speed
+40 ft., Fly 40 ft. (hover)
+Ability
+Score
+Mod
+Save
+Str
+12
++1
++5
+Dex
+18
++4
++8
+Con
+15
++2
++2
+Ability
+Score
+Mod
+Save
+Int
+19
++4
++8
+Wis
+18
++4
++8
+Cha
+14
++2
++2
+Skills
+Arcana
++8,
+Insight
++8,
+Perception
++8
+Senses
+Passive Perception 18
+Languages
+Common, Gith
+CR
+12 (XP 8,400; PB +4)
+Actions
+Multiattack.
+The githzerai makes three Psychic Warp attacks.
+Psychic Warp.
+Melee or Ranged Attack Roll:
++8, reach 5 ft. or range 120 ft.
+Hit:
+26 (4d10 + 4) Psychic damage, and the target has the githzerai’s choice of (A) the
+Charmed
+condition until the start of the githzerai’s next turn or (B) the
+Prone
+condition, provided the target is a Large or smaller creature.
+Spellcasting.
+The githzerai casts one of the following spells, requiring no spell components and using Intelligence as the spellcasting ability (spell save DC 16):
+At Will:
+Mage Hand
+(the hand is
+Invisible
+)
+1/Day Each:
+Plane Shift
+,
+See Invisibility
+Reactions
+Psionic Defense.
+The githzerai casts
+Feather Fall
+or
+Shield
+in response to the spell’s trigger, requiring no spell components and using the same spellcasting ability as Spellcasting.
+
+Glabrezu
+
+Demon of Delusion and Entrapment
+
+Habitat:
+Planar (Abyss);
+Treasure:
+Relics
+
+Richard Luong
+
+Glabrezus embody delusion and predatory guile. These cunning demons know the most effective traps are those that individuals devise for themselves. Despite having massive claws and overwhelming physicality, glabrezus excel at using flattery and misdirection to coerce victims into isolating themselves and harming others.
+
+In the
+Abyss
+, glabrezus act as lone hunters or deceitful advisers to greater demons. Glabrezus seek routes to the Material Plane and relish being summoned by magic-users. They eagerly serve mortals while tempting them to betray their allies and indulge in hubristic fantasies. A glabrezu strives to murder its summoner once the magic-user has committed irredeemable misdeeds and the mortal’s soul is surely condemned to the Abyss.
+
+Your companion’s life, or what you’ve journeyed through infinity in search of! Make your choice.
+—Gerrzog, glabrezu of the Infinite Staircase
+
+Glabrezu
+Large Fiend (Demon), Chaotic Evil
+AC
+17
+Initiative
++6 (16)
+HP
+189 (18d10 + 90)
+Speed
+40 ft.
+Ability
+Score
+Mod
+Save
+Str
+20
++5
++9
+Dex
+15
++2
++2
+Con
+21
++5
++9
+Ability
+Score
+Mod
+Save
+Int
+19
++4
++4
+Wis
+17
++3
++7
+Cha
+16
++3
++7
+Skills
+Deception
++7,
+Perception
++7
+Resistances
+Cold, Fire, Lightning
+Immunities
+Poison;
+Poisoned
+Senses
+Truesight
+120 ft.; Passive Perception 17
+Languages
+Abyssal; telepathy 120 ft.
+CR
+9 (XP 5,000; PB +4)
+Traits
+Demonic Restoration.
+If the glabrezu dies outside the Abyss, its body dissolves into ichor, and it gains a new body instantly, reviving with all its Hit Points somewhere in the
+Abyss
+.
+Magic Resistance.
+The glabrezu has Advantage on saving throws against spells and other magical effects.
+Actions
+Multiattack.
+The glabrezu makes two Pincer attacks and uses Pummel or Spellcasting.
+Pincer.
+Melee Attack Roll:
++9, reach 10 ft.
+Hit:
+16 (2d10 + 5) Slashing damage. If the target is a Medium or smaller creature, it has the
+Grappled
+condition (escape DC 15) from one of two pincers.
+Pummel.
+Dexterity Saving Throw:
+DC 17, one creature
+Grappled
+by the glabrezu.
+Failure:
+15 (3d6 + 5) Bludgeoning damage.
+Success:
+Half damage.
+Spellcasting.
+The glabrezu casts one of the following spells, requiring no Material components and using Intelligence as the spellcasting ability (spell save DC 16):
+At Will:
+Darkness
+,
+Detect Magic
+,
+Dispel Magic
+1/Day Each:
+Confusion
+,
+Fly
+,
+Power Word Stun
+
+Gladiator
+
+Competitor and Prizefighter
+
+Habitat:
+Any;
+Treasure:
+Armaments
+,
+Individual
+
+Gladiators are professional fighters who pit themselves against one another, monsters, and other challenges to entertain audiences. While some compete merely to survive, others love the thrill of performing—and all gladiators know the importance of theatrics in keeping audiences excited. Roll on or choose an option from the Gladiator Theatrics table to inspire the unique flourishes a gladiator uses when competing.
+
+Gladiator Theatrics
+1d6
+During a Competition, the Gladiator...
+1
+Dedicates their impending victory to a deity, ruler, beloved noble, or member of the crowd.
+2
+Dresses in a monster-themed mask and cape.
+3
+Judges whether their foe fights honorably.
+4
+Leads the crowd in a rousing theme song.
+5
+Seeks to claim a trophy from a foe.
+6
+Takes advice from the crowd, omens, or a pet.
+
+Gladiator
+Medium or Small Humanoid, Neutral
+AC
+16
+Initiative
++5 (15)
+HP
+112 (15d8 + 45)
+Speed
+30 ft.
+Ability
+Score
+Mod
+Save
+Str
+18
++4
++7
+Dex
+15
++2
++5
+Con
+16
++3
++6
+Ability
+Score
+Mod
+Save
+Int
+10
++0
++0
+Wis
+12
++1
++4
+Cha
+15
++2
++2
+Skills
+Athletics
++10,
+Performance
++5
+Gear
+Shield
+,
+Spears
+(3),
+Studded Leather Armor
+Senses
+Passive Perception 11
+Languages
+Common
+CR
+5 (XP 1,800; PB +3)
+Actions
+Multiattack.
+The gladiator makes three Spear attacks. It can replace one attack with a use of Shield Bash.
+Spear.
+Melee or Ranged Attack Roll:
++7, reach 5 ft. or range 20/60 ft.
+Hit:
+11 (2d6 + 4) Piercing damage.
+Shield Bash.
+Strength Saving Throw:
+DC 15, one creature within 5 feet that the gladiator can see.
+Failure:
+9 (2d4 + 4) Bludgeoning damage. If the target is a Medium or smaller creature, it has the
+Prone
+condition.
+Reactions
+Parry.
+Trigger:
+The gladiator is hit by a melee attack roll while holding a weapon.
+Response:
+The gladiator adds 3 to its AC against that attack, possibly causing it to miss.
+Alejandro Pacheco
+In an undersea arena, the crowd goes wild
+as a gladiator triumphs over a giant squid
+
+Gnolls
+
+Fiends in Feral Flesh
+
+Habitat:
+Desert, Forest, Grassland, Hill;
+Treasure:
+Armaments
+,
+Individual
+
+Viko Menezes
+Gnoll Warriors rampage after a gnoll pack lord, a gnoll fang of Yeenoghu, and a gnoll demoniac
+
+The first gnolls arose from hyenas that fed on flesh tainted by the
+Abyss
+. Their corruption and violence delighted the demon lord
+Yeenoghu
+, who encouraged their numbers and spread them across the multiverse. Ever since, gnolls have been the cackling servants of Yeenoghu, existing to cause ruin and to feast on what remains.
+
+Gnoll Warrior
+
+Gnoll warriors crave endless slaughter but quickly grow bored with the prey they kill and the treasures they plunder. Nevertheless, they’re enraged by the thought of anyone else having what’s theirs, compelling them to ruin what they can’t take with them.
+
+Gnoll Warrior
+Medium Fiend, Chaotic Evil
+AC
+15
+Initiative
++1 (11)
+HP
+27 (6d8)
+Speed
+30 ft.
+Ability
+Score
+Mod
+Save
+Str
+14
++2
++2
+Dex
+12
++1
++1
+Con
+11
++0
++0
+Ability
+Score
+Mod
+Save
+Int
+6
+−2
+−2
+Wis
+10
++0
++0
+Cha
+7
+−2
+−2
+Senses
+Darkvision
+60 ft.; Passive Perception 10
+Languages
+Gnoll
+CR
+1/2 (XP 100; PB +2)
+Actions
+Rend.
+Melee Attack Roll:
++4, reach 5 ft.
+Hit:
+5 (1d6 + 2) Piercing damage.
+Bone Bow.
+Ranged Attack Roll:
++3, range 150/600 ft.
+Hit:
+6 (1d10 + 1) Piercing damage.
+Bonus Actions
+Rampage (1/Day).
+Immediately after dealing damage to a creature that is already
+Bloodied
+, the gnoll moves up to half its Speed, and it makes one Rend attack.
+
+Gnoll Pack Lord
+
+Rising above other gnolls with their viciousness and physical prowess, gnoll pack lords terrorize weaker gnolls into their service. These brutes drive other gnolls to acts of great violence, then claim the best of their servants’ spoils.
+
+Gnoll Pack Lord
+Medium Fiend, Chaotic Evil
+AC
+15
+Initiative
++4 (14)
+HP
+49 (9d8 + 9)
+Speed
+30 ft.
+Ability
+Score
+Mod
+Save
+Str
+16
++3
++3
+Dex
+14
++2
++2
+Con
+13
++1
++1
+Ability
+Score
+Mod
+Save
+Int
+8
+−1
+−1
+Wis
+11
++0
++0
+Cha
+9
+−1
+−1
+Senses
+Darkvision
+60 ft.; Passive Perception 10
+Languages
+Gnoll
+CR
+2 (XP 450; PB +2)
+Actions
+Multiattack.
+The gnoll makes two attacks, using Bone Whip or Bone Javelin in any combination, and it uses Incite Rampage if available.
+Bone Whip.
+Melee Attack Roll:
++5, reach 10 ft.
+Hit:
+8 (2d4 + 3) Slashing damage.
+Bone Javelin.
+Ranged Attack Roll:
++5, range 30/120 ft.
+Hit:
+7 (1d8 + 3) Piercing damage.
+Incite Rampage (Recharge 5–6).
+The gnoll targets another creature it can see within 60 feet of itself that has the Rampage Bonus Action. The target can take a Reaction to make one melee attack.
+Bonus Actions
+Rampage (2/Day).
+Immediately after dealing damage to a creature that is already
+Bloodied
+, the gnoll moves up to half its Speed, and it makes one Bone Whip attack.
+
+Gnoll Fang of Yeenoghu
+
+Gnolls possessed by demonic vestiges of the demon lord Yeenoghu, fangs of Yeenoghu direct the chaos of gnoll packs. Along the way, these fanatics seek grisly omens from Yeenoghu and strive to interpret the demon lord’s vicious goals.
+
+Gnoll Fang of Yeenoghu
+Medium Fiend, Chaotic Evil
+AC
+14
+Initiative
++4 (14)
+HP
+71 (11d8 + 22)
+Speed
+30 ft.
+Ability
+Score
+Mod
+Save
+Str
+17
++3
++3
+Dex
+15
++2
++2
+Con
+15
++2
++4
+Ability
+Score
+Mod
+Save
+Int
+10
++0
++0
+Wis
+11
++0
++2
+Cha
+13
++1
++3
+Senses
+Darkvision
+60 ft.; Passive Perception 10
+Languages
+Abyssal, Gnoll
+CR
+4 (XP 1,100; PB +2)
+Actions
+Multiattack.
+The gnoll makes one Bite attack and two Bone Flail attacks.
+Bite.
+Melee Attack Roll:
++5, reach 5 ft.
+Hit:
+6 (1d6 + 3) Piercing damage plus 7 (2d6) Poison damage, and the target has the
+Poisoned
+condition until the start of the gnoll’s next turn.
+Bone Flail.
+Melee Attack Roll:
++5, reach 10 ft.
+Hit:
+7 (1d8 + 3) Piercing damage.
+Bonus Actions
+Rampage (2/Day).
+Immediately after dealing damage to a creature that is already
+Bloodied
+, the gnoll moves up to half its Speed, and it makes one Bite attack.
+
+Yeenoghu claims gnolls not as his brood but as maggots purposefully released to infest a despised carcass. They are a pernicious rot the Beast of Butchery spreads across mortal worlds. Whatever they once were, they were remade and are now his.
+—Iggwilv,
+Demonomicon of Iggwilv
+
+Gnoll Demoniac
+
+Gnoll demoniacs are berserkers that arise from gnolls who’ve ritualistically fed on flesh corrupted by the Abyss. Now embodying the ruinous hunger of Yeenoghu, these gnolls throw themselves into battle, heedless of odds or their own survival. Rampaging demoniacs even devour other gnolls in their wild frenzies.
+
+Gnoll Demoniac
+Medium Fiend, Chaotic Evil
+AC
+16
+Initiative
++4 (14)
+HP
+135 (18d8 + 54)
+Speed
+30 ft.
+Ability
+Score
+Mod
+Save
+Str
+16
++3
++6
+Dex
+12
++1
++1
+Con
+17
++3
++6
+Ability
+Score
+Mod
+Save
+Int
+14
++2
++2
+Wis
+15
++2
++5
+Cha
+17
++3
++6
+Skills
+Perception
++5
+Senses
+Darkvision
+60 ft.; Passive Perception 15
+Languages
+Abyssal, Common, Gnoll
+CR
+8 (XP 3,900; PB +3)
+Actions
+Multiattack.
+The gnoll makes two Abyssal Strike attacks.
+Abyssal Strike.
+Melee or Ranged Attack Roll:
++6, reach 5 ft. or range 60 ft.
+Hit:
+20 (5d6 + 3) Poison damage.
+Hunger of Yeenoghu (Recharge 5–6).
+The gnoll conjures a 30-foot
+Cube
+of magical
+Darkness
+originating from a point it can see within 60 feet, which lasts for 1 minute or until the gnoll’s
+Concentration
+ends on it. This area is
+Difficult Terrain
+.
+Dexterity Saving Throw:
+DC 14, any creature that starts its turn in this area or enters it for the first time on a turn.
+Failure:
+28 (8d6) Necrotic damage, and the gnoll or a creature of its choice it can see gains 10
+Temporary Hit Points
+.
+Success:
+Half damage only.
+Bonus Actions
+Rampage (2/Day).
+Immediately after dealing damage to a creature that is already
+Bloodied
+, the gnoll moves up to half its Speed, and it makes one Abyssal Strike attack.
+
+Goblins
+
+Wild Tricksters and Troublemakers
+
+Habitat:
+Forest, Grassland, Hill, Planar (Acheron, Feywild), Underdark;
+Treasure:
+Implements
+,
+Individual
+
+Taras Susak
+A goblin boss, a goblin hexer, and a goblin Warrior prepare to strike against a bitter foe
+
+Goblins are Feywild embodiments of recklessness and ruin. They delight in wreckage—the louder, the more energetic, and the more convoluted, the better. Goblin raids are often as much opportunities to enjoy setting fires and tormenting livestock as they are parts of more disruptive plots.
+
+Goblins obey those who accomplish the wildest plans. Such leaders might be goblin raid masterminds, bombastic magic-users, or those capable of making the loudest noises. Hobgoblins and forceful humanoids might also command ornery groups of goblins, directing their destructiveness toward banditry, sabotage, or war.
+
+The deity Maglubiyet claims to be the god of goblins, hobgoblins, and bugbears, and on the Infinite Battlefield of
+Acheron
+, the deity commands innumerable goblinoid legions. In ages long past, Maglubiyet witnessed the destructive propensity of goblinoids and relocated a population of them from the Feywild to his realm on the Outer Planes. Since then, hordes of these more martial-minded goblins have flourished, with some finding their ways to Material Plane worlds. These vicious invaders seek to sow ruin in preparation for their god’s conquest.
+
+Bree-yark!
+—Approximate translation from Goblin to Common: “Hey, rube!”
+
+Goblin Minion
+
+Goblin minions enjoy participating in the disruptive schemes of clever leaders but are quick to flee when confronted by their comeuppance.
+
+Goblin Minion
+Small Fey (Goblinoid), Chaotic Neutral
+AC
+12
+Initiative
++2 (12)
+HP
+7 (2d6)
+Speed
+30 ft.
+Ability
+Score
+Mod
+Save
+Str
+8
+−1
+−1
+Dex
+15
++2
++2
+Con
+10
++0
++0
+Ability
+Score
+Mod
+Save
+Int
+10
++0
++0
+Wis
+8
+−1
+−1
+Cha
+8
+−1
+−1
+Skills
+Stealth
++6
+Gear
+Daggers
+(3)
+Senses
+Darkvision
+60 ft.; Passive Perception 9
+Languages
+Common, Goblin
+CR
+1/8 (XP 25; PB +2)
+Actions
+Dagger.
+Melee or Ranged Attack Roll:
++4, reach 5 ft. or range 20/60 ft.
+Hit:
+4 (1d4 + 2) Piercing damage.
+Bonus Actions
+Nimble Escape.
+The goblin takes the
+Disengage
+or
+Hide
+action.
+
+Goblin Warrior
+
+Goblin warriors excel at causing mischief. Those in service to Maglubiyet have greater discipline and are likely to withdraw to set up ambushes.
+
+Goblin Warrior
+Small Fey (Goblinoid), Chaotic Neutral
+AC
+15
+Initiative
++2 (12)
+HP
+10 (3d6)
+Speed
+30 ft.
+Ability
+Score
+Mod
+Save
+Str
+8
+−1
+−1
+Dex
+15
++2
++2
+Con
+10
++0
++0
+Ability
+Score
+Mod
+Save
+Int
+10
++0
++0
+Wis
+8
+−1
+−1
+Cha
+8
+−1
+−1
+Skills
+Stealth
++6
+Gear
+Leather Armor
+,
+Scimitar
+,
+Shield
+,
+Shortbow
+Senses
+Darkvision
+60 ft.; Passive Perception 9
+Languages
+Common, Goblin
+CR
+1/4 (XP 50; PB +2)
+Actions
+Scimitar.
+Melee Attack Roll:
++4, reach 5 ft.
+Hit:
+5 (1d6 + 2) Slashing damage, plus 2 (1d4) Slashing damage if the attack roll had Advantage.
+Shortbow.
+Ranged Attack Roll:
++4, range 80/320 ft.
+Hit:
+5 (1d6 + 2) Piercing damage, plus 2 (1d4) Piercing damage if the attack roll had Advantage.
+Bonus Actions
+Nimble Escape.
+The goblin takes the
+Disengage
+or
+Hide
+action.
+
+Goblin Boss
+
+Goblin bosses are often the most imaginative, disruptive, or forceful goblins. Through a combination of luck, cowardice, and callousness, these leaders avoid harm at the expense of their followers.
+
+Goblin Boss
+Small Fey (Goblinoid), Chaotic Neutral
+AC
+17
+Initiative
++2 (12)
+HP
+21 (6d6)
+Speed
+30 ft.
+Ability
+Score
+Mod
+Save
+Str
+10
++0
++0
+Dex
+15
++2
++2
+Con
+10
++0
++0
+Ability
+Score
+Mod
+Save
+Int
+10
++0
++0
+Wis
+8
+−1
+−1
+Cha
+10
++0
++0
+Skills
+Stealth
++6
+Gear
+Chain Shirt
+,
+Scimitar
+,
+Shield
+,
+Shortbow
+Senses
+Darkvision
+60 ft.; Passive Perception 9
+Languages
+Common, Goblin
+CR
+1 (XP 200; PB +2)
+Actions
+Multiattack.
+The goblin makes two attacks, using Scimitar or Shortbow in any combination.
+Scimitar.
+Melee Attack Roll:
++4, reach 5 ft.
+Hit:
+5 (1d6 + 2) Slashing damage, plus 2 (1d4) Slashing damage if the attack roll had Advantage.
+Shortbow.
+Ranged Attack Roll:
++4, range 80/320 ft.
+Hit:
+5 (1d6 + 2) Piercing damage, plus 2 (1d4) Piercing damage if the attack roll had Advantage.
+Bonus Actions
+Nimble Escape.
+The goblin takes the
+Disengage
+or
+Hide
+action.
+Reactions
+Redirect Attack.
+Trigger:
+A creature the goblin can see makes an attack roll against it.
+Response:
+The goblin chooses a Small or Medium ally within 5 feet of itself. The goblin and that ally swap places, and the ally becomes the target of the attack instead.
+
+Goblin Hexer
+
+Goblin hexers use flashy and disruptive magic. Many goblin hexers are theatrical, dressing and behaving in exaggerated mimicry of archmages.
+
+Goblin Hexer
+Small Fey (Goblinoid), Chaotic Neutral
+AC
+13
+Initiative
++3 (13)
+HP
+45 (10d6 + 10)
+Speed
+30 ft.
+Ability
+Score
+Mod
+Save
+Str
+8
+−1
+−1
+Dex
+16
++3
++3
+Con
+12
++1
++1
+Ability
+Score
+Mod
+Save
+Int
+16
++3
++3
+Wis
+10
++0
++0
+Cha
+10
++0
++0
+Skills
+Sleight of Hand
++5,
+Stealth
++7
+Senses
+Darkvision
+60 ft.; Passive Perception 10
+Languages
+Common, Goblin
+CR
+3 (XP 700; PB +2)
+Actions
+Multiattack.
+The goblin makes two Hex Stick attacks. It can replace one attack with a use of Spellcasting.
+Hex Stick.
+Melee or Ranged Attack Roll:
++5, reach 5 ft. or range 60 ft.
+Hit:
+12 (2d8 + 3) Psychic damage.
+Spellcasting.
+The goblin casts one of the following spells, using Intelligence as the spellcasting ability (spell save DC 13):
+At Will:
+Minor Illusion
+1/Day Each:
+Blindness/Deafness
+,
+Faerie Fire
+,
+Grease
+Reactions
+Jinx.
+Trigger:
+A creature the goblin can see hits it with an attack roll.
+Response—Wisdom Saving Throw:
+DC 13, the triggering creature.
+Failure:
+The attack misses instead.
+
+Gold Dragons
+
+Dragons of Hope and Majesty
+
+Habitat:
+Forest, Grassland;
+Treasure:
+Arcana
+
+Gold dragons work to make the world a better place. The most powerful of the metallic dragons, these awe-inspiring dragons strive to protect that which is good and bend fate toward a brighter future. Their kind dispositions don’t prevent gold dragons from engaging in combat when necessary, though, and they exhale brilliant flames and weakening magic to rout their foes.
+
+Gold dragons favor grasslands and pristine forests, frequently dwelling near awe-inspiring natural wonders or guarding monuments from ancient civilizations. In their lairs, gold dragons hoard coins and gems, but they frequently put their treasure to use in pursuit of greater goals. They often use their riches to buy rare lore books, pay informants, or patronize idealistic adventurers.
+
+Gold Dragon Wyrmling
+
+Gold dragon wyrmlings learn much from their elders, then head off to save the world. Idealistic and curious, these wyrmlings seek to right obvious wrongs and make friends among those they aid.
+
+Gold Dragon Wyrmling
+Medium Dragon (Metallic), Lawful Good
+AC
+17
+Initiative
++4 (14)
+HP
+60 (8d8 + 24)
+Speed
+30 ft., Fly 60 ft., Swim 30 ft.
+Ability
+Score
+Mod
+Save
+Str
+19
++4
++4
+Dex
+14
++2
++4
+Con
+17
++3
++3
+Ability
+Score
+Mod
+Save
+Int
+14
++2
++2
+Wis
+11
++0
++2
+Cha
+16
++3
++3
+Skills
+Perception
++4,
+Stealth
++4
+Immunities
+Fire
+Senses
+Blindsight
+10 ft.,
+Darkvision
+60 ft.; Passive Perception 14
+Languages
+Draconic
+CR
+3 (700 XP; PB +2)
+Traits
+Amphibious.
+The dragon can breathe air and water.
+Actions
+Multiattack.
+The dragon makes two Rend attacks.
+Rend.
+Melee Attack Roll:
++6, reach 5 ft.
+Hit:
+9 (1d10 + 4) Slashing damage.
+Fire Breath (Recharge 5–6)
+.
+Dexterity Saving Throw:
+DC 13, each creature in a 15-foot
+Cone
+.
+Failure:
+22 (4d10) Fire damage.
+Success:
+Half damage.
+Weakening Breath.
+Strength Saving Throw:
+DC 13, each creature that isn’t currently affected by this breath in a 15-foot
+Cone
+.
+Failure:
+The target has Disadvantage on Strength-based
+D20 Tests
+and subtracts 2 (1d4) from its damage rolls. It repeats the save at the end of each of its turns, ending the effect on itself on a success. After 1 minute, it succeeds automatically.
+Alexander Ostrowski
+
+Young Gold Dragon
+
+Young gold dragons have seen glimpses of the world’s true evils and crusade to oppose them. They often seek bold and direct solutions to problems.
+
+Young Gold Dragon
+Large Dragon (Metallic), Lawful Good
+AC
+18
+Initiative
++6 (16)
+HP
+178 (17d10 + 85)
+Speed
+40 ft., Fly 80 ft., Swim 40 ft.
+Ability
+Score
+Mod
+Save
+Str
+23
++6
++6
+Dex
+14
++2
++6
+Con
+21
++5
++5
+Ability
+Score
+Mod
+Save
+Int
+16
++3
++3
+Wis
+13
++1
++5
+Cha
+20
++5
++5
+Skills
+Insight
++5,
+Perception
++9,
+Persuasion
++9,
+Stealth
++6
+Immunities
+Fire
+Senses
+Blindsight
+30 ft.,
+Darkvision
+120 ft.; Passive Perception 19
+Languages
+Common, Draconic
+CR
+10 (XP 5,900; PB +4)
+Traits
+Amphibious.
+The dragon can breathe air and water.
+Actions
+Multiattack.
+The dragon makes three Rend attacks. It can replace one attack with a use of Weakening Breath.
+Rend.
+Melee Attack Roll:
++10, reach 10 ft.
+Hit:
+17 (2d10 + 6) Slashing damage.
+Fire Breath (Recharge 5–6)
+.
+Dexterity Saving Throw:
+DC 17, each creature in a 30-foot
+Cone
+.
+Failure:
+55 (10d10) Fire damage.
+Success:
+Half damage.
+Weakening Breath.
+Strength Saving Throw:
+DC 17, each creature that isn’t currently affected by this breath in a 30-foot
+Cone
+.
+Failure:
+The target has Disadvantage on Strength-based
+D20 Tests
+and subtracts 3 (1d6) from its damage rolls. It repeats the save at the end of each of its turns, ending the effect on itself on a success. After 1 minute, it succeeds automatically.
+
+Gold Dragon Lairs
+
+Gold dragons make their homes in places of natural and magical wonder.
+
+The region containing an adult or ancient gold dragon’s lair is altered by its presence, creating the following effects:
+
+Dream Messenger.
+While in its lair, the dragon can cast
+Dream
+, requiring no Material components and using Charisma as the spellcasting ability. When casting the spell this way, the dragon can target any creature within 6 miles.
+
+Foretelling Fog.
+The area within 1 mile of the lair is
+Lightly Obscured
+by opalescent fog. While in that area, creatures can’t be
+surprised
+, as the fog swirls into shapes that warn of danger.
+
+If the dragon dies or moves its lair elsewhere, these effects end immediately.
+
+Adult Gold Dragon
+
+Alexander Ostrowski
+An adult gold dragon guards the site of a mysterious seal from intruders
+
+Adult gold dragons act subtly, frequently changing their shape to resemble harmless animals or cultivating personas so they can pass as common people.
+
+Adult Gold Dragon
+Huge Dragon (Metallic), Lawful Good
+AC
+19
+Initiative
++14 (24)
+HP
+243 (18d12 + 126)
+Speed
+40 ft., Fly 80 ft., Swim 40 ft.
+Ability
+Score
+Mod
+Save
+Str
+27
++8
++8
+Dex
+14
++2
++8
+Con
+25
++7
++7
+Ability
+Score
+Mod
+Save
+Int
+16
++3
++3
+Wis
+15
++2
++8
+Cha
+24
++7
++7
+Skills
+Insight
++8,
+Perception
++14,
+Persuasion
++13,
+Stealth
++8
+Immunities
+Fire
+Senses
+Blindsight
+60 ft.,
+Darkvision
+120 ft.; Passive Perception 24
+Languages
+Common, Draconic
+CR
+17 (XP 18,000, or 20,000 in lair; PB +6)
+Traits
+Amphibious.
+The dragon can breathe air and water.
+Legendary Resistance (3/Day, or 4/Day in Lair).
+If the dragon fails a saving throw, it can choose to succeed instead.
+Actions
+Multiattack.
+The dragon makes three Rend attacks. It can replace one attack with a use of (A) Spellcasting to cast
+Guiding Bolt
+(level 2 version) or (B) Weakening Breath.
+Rend.
+Melee Attack Roll:
++14, reach 10 ft.
+Hit:
+17 (2d8 + 8) Slashing damage plus 4 (1d8) Fire damage.
+Fire Breath (Recharge 5–6)
+.
+Dexterity Saving Throw:
+DC 21, each creature in a 60-foot
+Cone
+.
+Failure:
+66 (12d10) Fire damage.
+Success:
+Half damage.
+Spellcasting.
+The dragon casts one of the following spells, requiring no Material components and using Charisma as the spellcasting ability (spell save DC 21, +13 to hit with spell attacks):
+At Will:
+Detect Magic
+,
+Guiding Bolt
+(level 2 version),
+Shapechange
+(Beast or Humanoid form only, no Temporary Hit Points gained from the spell, and no
+Concentration
+or
+Temporary Hit Points
+required to maintain the spell)
+1/Day Each:
+Flame Strike
+,
+Zone of Truth
+Weakening Breath.
+Strength Saving Throw:
+DC 21, each creature that isn’t currently affected by this breath in a 60-foot
+Cone
+.
+Failure:
+The target has Disadvantage on Strength-based
+D20 Tests
+and subtracts 3 (1d6) from its damage rolls. It repeats the save at the end of each of its turns, ending the effect on itself on a success. After 1 minute, it succeeds automatically.
+Legendary Actions
+Legendary Action Uses: 3 (4 in Lair). Immediately after another creature’s turn, the dragon can expend a use to take one of the following actions. The dragon regains all expended uses at the start of each of its turns.
+Banish.
+Charisma Saving Throw:
+DC 21, one creature the dragon can see within 120 feet.
+Failure:
+10 (3d6) Force damage, and the target has the
+Incapacitated
+condition and is transported to a harmless demiplane until the start of the dragon’s next turn, at which point it reappears in an unoccupied space of the dragon’s choice within 120 feet of the dragon.
+Failure or Success:
+The dragon can’t take this action again until the start of its next turn.
+Guiding Light.
+The dragon uses Spellcasting to cast
+Guiding Bolt
+(level 2 version).
+Pounce.
+The dragon moves up to half its Speed, and it makes one Rend attack.
+
+Ancient Gold Dragon
+
+Ancient gold dragons are wise and mysterious. Many aid virtuous groups, guiding them in secret or patronizing them from afar. Only when stakes are at their highest do ancient gold dragons reveal themselves in all their majesty.
+
+Alexander Ostrowski
+The pure of heart have nothing to fear in
+the presence of an ancient gold dragon
+
+Ancient Gold Dragon
+Gargantuan Dragon (Metallic), Lawful Good
+AC
+22
+Initiative
++16 (26)
+HP
+546 (28d20 + 252)
+Speed
+40 ft., Fly 80 ft., Swim 40 ft.
+Ability
+Score
+Mod
+Save
+Str
+30
++10
++10
+Dex
+14
++2
++9
+Con
+29
++9
++9
+Ability
+Score
+Mod
+Save
+Int
+18
++4
++4
+Wis
+17
++3
++10
+Cha
+28
++9
++9
+Skills
+Insight
++10,
+Perception
++17,
+Persuasion
++16,
+Stealth
++9
+Immunities
+Fire
+Senses
+Blindsight
+60 ft.,
+Darkvision
+120 ft.; Passive Perception 27
+Languages
+Common, Draconic
+CR
+24 (XP 62,000, or 75,000 in lair; PB +7)
+Traits
+Amphibious.
+The dragon can breathe air and water.
+Legendary Resistance (4/Day, or 5/Day in Lair).
+If the dragon fails a saving throw, it can choose to succeed instead.
+Actions
+Multiattack.
+The dragon makes three Rend attacks. It can replace one attack with a use of (A) Spellcasting to cast
+Guiding Bolt
+(level 4 version) or (B) Weakening Breath.
+Rend.
+Melee Attack Roll:
++17 to hit, reach 15 ft.
+Hit:
+19 (2d8 + 10) Slashing damage plus 9 (2d8) Fire damage.
+Fire Breath(Recharge 5–6)
+.
+Dexterity Saving Throw:
+DC 24, each creature in a 90-foot
+Cone
+.
+Failure:
+71 (13d10) Fire damage.
+Success:
+Half damage.
+Spellcasting.
+The dragon casts one of the following spells, requiring no Material components and using Charisma as the spellcasting ability (spell save DC 24, +16 to hit with spell attacks):
+At Will:
+Detect Magic
+,
+Guiding Bolt
+(level 4 version),
+Shapechange
+(Beast or Humanoid form only, no Temporary Hit Points gained from the spell, and no
+Concentration
+or
+Temporary Hit Points
+required to maintain the spell)
+1/Day Each:
+Flame Strike
+(level 6 version),
+Word of Recall
+,
+Zone of Truth
+Weakening Breath.
+Strength Saving Throw:
+DC 24, each creature that isn’t currently affected by this breath in a 90-foot
+Cone
+.
+Failure:
+The target has Disadvantage on Strength-based
+D20 Tests
+and subtracts 5 (1d10) from its damage rolls. It repeats the save at the end of each of its turns, ending the effect on itself on a success. After 1 minute, it succeeds automatically.
+Legendary Actions
+Legendary Action Uses: 3 (4 in Lair). Immediately after another creature’s turn, the dragon can expend a use to take one of the following actions. The dragon regains all expended uses at the start of each of its turns.
+Banish.
+Charisma Saving Throw:
+DC 24, one creature the dragon can see within 120 feet.
+Failure:
+24 (7d6) Force damage, and the target has the
+Incapacitated
+condition and is transported to a harmless demiplane until the start of the dragon’s next turn, at which point it reappears in an unoccupied space of the dragon’s choice within 120 feet of the dragon.
+Failure or Success:
+The dragon can’t take this action again until the start of its next turn.
+Guiding Light.
+The dragon uses Spellcasting to cast
+Guiding Bolt
+(level 4 version).
+Pounce.
+The dragon moves up to half its Speed, and it makes one Rend attack.
+
+Gorgons
+
+Bull-like Guardians with Petrifying Breath
+
+Habitat:
+Forest, Grassland, Hill;
+Treasure:
+Any
+
+Kai Carpenter
+A gorgon petrifies victims with its deadly breath, then tramples them to pieces
+
+Resembling mighty bulls armored in iron plates, gorgons are lifelike automatons that seek to destroy all who enter their territories. In addition to goring foes with their deadly horns and trampling them under their iron hooves, gorgons exhale gouts of noxious gas.
+
+Gorgons are created by magic-users to serve as guardians. The process for creating a gorgon is labor intensive and dangerous, with one method requiring the skeleton of a bull, the blood of a medusa, and the brain of a basilisk fused into a frame of ensorcelled iron. If the process fails, petrifying gas emerges from the materials, creating a magical threat that can fill a structure and linger for years.
+
+When magic-users create gorgons, they often enchant them to ignore those who confront the creature with a specific command key, usually a password or a specific signal. Once a gorgon is set to guard an area, it attacks any who enter until they flee or are destroyed. Should someone provide the command key, the monster ignores that intruder so long as the intruder remains in its sight. But if the intruder ventures out of sight and then returns without again presenting the command key, the gorgon attacks. Those in a gorgon’s territory must remain vigilant and aware of the monster’s exact position, or they risk being attacked by a gorgon they thought was no longer a threat.
+
+Those who create gorgons strive to give them purposefully obscure command keys. Hints at command keys might be found among the records of a gorgon’s creator or in the area the gorgon protects—perhaps scrawled as a petrified trespasser’s final act. Roll on or choose a result from the Gorgon Command Keys table to inspire the word or signal that temporarily neutralizes a gorgon.
+
+Notable among my eccentric ancestor’s scattered designs was a schematic of a swamp-dwelling bovine monster and an ominous note: “Do better.”
+—Lum the Maestro,
+A Mind of Metal
+
+Gorgon Command Keys
+1d6
+Gorgon Won’t Attack Those That...
+1
+Cast a particular spell in the gorgon’s presence.
+2
+Keep their back to the gorgon or otherwise act like they don’t see the monster.
+3
+Offer it a drink of blood, water, or wine.
+4
+Recite a specific rhyme or sing a certain song.
+5
+Say its creator’s name backward.
+6
+Wear a mask, perhaps in the shape of a bull or an animal meaningful to the gorgon’s creator.
+
+Gorgon
+
+Most gorgons are iron bulls wreathed in clouds of petrifying gas. Their metal plates vary in sheen and color, from sleek silver to pitted black. The oldest gorgons might be covered in rust, but this rarely impedes their abilities. These gorgons’ stomping grounds are littered with the shattered remains of petrified foes. Many gorgons outlive their creators by centuries, misleading some to believe these creations have natural origins and territories. Most such gorgons continue to follow age-old commands, guarding sites long fallen to ruin.
+
+Gorgon
+Large Construct, Unaligned
+AC
+19
+Initiative
++0 (10)
+HP
+114 (12d10 + 48)
+Speed
+40 ft.
+Ability
+Score
+Mod
+Save
+Str
+20
++5
++5
+Dex
+11
++0
++0
+Con
+18
++4
++4
+Ability
+Score
+Mod
+Save
+Int
+2
+−4
+−4
+Wis
+12
++1
++1
+Cha
+7
+−2
+−2
+Skills
+Perception
++7
+Immunities
+Exhaustion
+,
+Petrified
+Senses
+Darkvision
+60 ft.; Passive Perception 17
+Languages
+None
+CR
+5 (XP 1,800; PB +3)
+Actions
+Gore.
+Melee Attack Roll:
++8, reach 5 ft.
+Hit:
+18 (2d12 + 5) Piercing damage. If the target is a Large or smaller creature and the gorgon moved 20+ feet straight toward it immediately before the hit, the target has the
+Prone
+condition.
+Petrifying Breath (Recharge 5–6).
+Constitution Saving Throw:
+DC 15, each creature in a 30-foot
+Cone
+.
+First Failure:
+The target has the
+Restrained
+condition and repeats the save at the end of its next turn if it is still Restrained, ending the effect on itself on a success.
+Second Failure:
+The target has the
+Petrified
+condition instead of the Restrained condition.
+Bonus Actions
+Trample.
+Dexterity Saving Throw:
+DC 16, one creature within 5 feet that has the
+Prone
+condition.
+Failure:
+16 (2d10 + 5) Bludgeoning damage.
+Success:
+Half damage.
+
+Brazen Gorgon
+
+Followers of the exiled archdevil Moloch altered the process of creating gorgons to craft their own diabolical guardians called brazen gorgons. These gorgons are hollow, bull-like automatons whose metal bodies glow with intense heat. When they charge their foes, the ribs of their frames open like cages to ensnare enemies and roast them within. Brazen gorgons are often found in blasphemous sites dedicated to Moloch, other archdevils, or bloodthirsty gods.
+
+Brazen Gorgon
+Large Construct, Unaligned
+AC
+19
+Initiative
++2 (12)
+HP
+161 (17d10 + 68)
+Speed
+40 ft.
+Ability
+Score
+Mod
+Save
+Str
+18
++4
++4
+Dex
+14
++2
++2
+Con
+19
++4
++4
+Ability
+Score
+Mod
+Save
+Int
+2
+−4
+−4
+Wis
+14
++2
++2
+Cha
+7
+−2
+−2
+Skills
+Perception
++10
+Immunities
+Fire;
+Exhaustion
+,
+Petrified
+Senses
+Darkvision
+60 ft.; Passive Perception 20
+Languages
+None
+CR
+9 (XP 5,000; PB +4)
+Traits
+Flame Aura.
+At the end of each of the gorgon’s turns, each creature in a 5-foot
+Emanation
+originating from the gorgon takes 13 (3d8) Fire damage.
+Illumination.
+The gorgon sheds
+Bright Light
+in a 10-foot radius and
+Dim Light
+for an additional 10 feet.
+Actions
+Multiattack.
+The gorgon makes two Gore attacks.
+Gore.
+Melee Attack Roll:
++8, reach 5 ft.
+Hit:
+11 (2d6 + 4) Piercing damage plus 10 (3d6) Fire damage.
+Smelting Charge (Recharge 5–6).
+The gorgon moves up to its Speed without provoking
+Opportunity Attacks
+and can move through the spaces of Medium or smaller creatures. Each time the gorgon enters a creature’s space for the first time during this move, that target is subjected to the following effect.
+Dexterity Saving Throw:
+DC 16.
+Failure:
+13 (2d8 + 4) Piercing damage plus 13 (3d8) Fire damage, and the target is pulled into the gorgon’s space and has the
+Grappled
+condition (escape DC 14); if the gorgon already has a creature Grappled, the target has the
+Prone
+condition instead. Until the grapple ends, the target has the
+Restrained
+condition. When the gorgon moves, the Grappled target moves with it, costing no extra movement.
+
+Goristro
+
+Demon of Disaster
+
+Habitat:
+Planar (Abyss);
+Treasure:
+Armaments
+
+Ben Wootten
+
+Terrifying in scale and overwhelming power, goristros are giant demons capable of bringing cities to ruin. These demons embody senseless anarchy and nihilistic destruction, and they take special offense at creatures or structures that rival them in size. Castles, towers, giants, and beasts of war are all common victims of these monsters’ wrath.
+
+Goristros resemble hunched, primeval minotaurs bearing the scars of Abyssal wars or wounds from mighty war machines. Their appearance reflects that of their creator,
+Baphomet
+, the demon lord worshiped by many evil minotaurs. Goristros stalk Baphomet’s Abyssal realm, known as the Endless Maze, and pulp any non-demons they encounter in that massive, magical labyrinth.
+
+Plot and strategize, bait and scheme, but hubris is no armor against ruin incarnate, and greater beings than you have fallen under the onslaught of the Abyss.
+—Mellagorus the pit fiend,
+Deceptions and Stratagems
+
+Goristro
+Huge Fiend (Demon), Chaotic Evil
+AC
+19
+Initiative
++6 (16)
+HP
+310 (23d12 + 161)
+Speed
+50 ft.
+Ability
+Score
+Mod
+Save
+Str
+25
++7
++13
+Dex
+11
++0
++6
+Con
+25
++7
++13
+Ability
+Score
+Mod
+Save
+Int
+6
+−2
+−2
+Wis
+13
++1
++7
+Cha
+14
++2
++2
+Skills
+Perception
++7,
+Survival
++7
+Resistances
+Cold, Fire, Lightning
+Immunities
+Poison;
+Poisoned
+Senses
+Darkvision
+120 ft.; Passive Perception 17
+Languages
+Abyssal
+CR
+17 (XP 18,000; PB +6)
+Traits
+Demonic Restoration.
+If the goristro dies outside the Abyss, its body dissolves into ichor, and it gains a new body instantly, reviving with all its Hit Points somewhere in the
+Abyss
+.
+Magic Resistance.
+The goristro has Advantage on saving throws against spells and other magical effects.
+Siege Monster.
+The goristro deals double damage to objects and structures.
+Actions
+Multiattack.
+The goristro makes one Brutal Gore attack and two Slam attacks.
+Brutal Gore.
+Melee Attack Roll:
++13, reach 10 ft.
+Hit:
+40 (6d10 + 7) Piercing damage. If the target is a Huge or smaller creature, it is pushed up to 20 feet straight away from the goristro and has the
+Prone
+condition.
+Slam.
+Melee Attack Roll:
++13, reach 10 ft.
+Hit:
+29 (4d10 + 7) Bludgeoning damage.
+Bonus Actions
+Charge.
+The goristro moves up to half its Speed straight toward an enemy it can see.
+
+Gray Oozes
+Hungry Slimes and Magical Failures
+Habitat:
+Underdark;
+Treasure:
+None
+Gray oozes are predatory, corrosive slimes that blend in with stony surroundings.
+Gray Ooze
+Gray oozes appear in areas affected by unpredictable magic. Magic-users who fail in their attempts to bind elemental spirits to the bodies of Constructs might also accidentally create gray oozes.
+Mark Behm
+
+Gray Ooze
+Medium Ooze, Unaligned
+AC
+9
+Initiative
+−2 (13)
+HP
+22 (3d8 + 9)
+Speed
+10 ft., Climb 10 ft.
+Ability
+Score
+Mod
+Save
+Str
+12
++1
++1
+Dex
+6
+−2
+−2
+Con
+16
++3
++3
+Ability
+Score
+Mod
+Save
+Int
+1
+−5
+−5
+Wis
+6
+−2
+−2
+Cha
+2
+−4
+−4
+Skills
+Stealth
++2
+Resistances
+Acid, Cold, Fire
+Immunities
+Blinded
+,
+Charmed
+,
+Deafened
+,
+Exhaustion
+,
+Frightened
+,
+Grappled
+,
+Prone
+,
+Restrained
+Senses
+Blindsight
+60 ft.; Passive Perception 8
+Languages
+None
+CR
+1/2 (XP 100; PB +2)
+Traits
+Amorphous.
+The ooze can move through a space as narrow as 1 inch without expending extra movement to do so.
+Corrosive Form.
+Nonmagical ammunition is destroyed immediately after hitting the ooze and dealing any damage. Any nonmagical weapon takes a cumulative −1 penalty to attack rolls immediately after dealing damage to the ooze and coming into contact with it. The weapon is destroyed if the penalty reaches −5. The penalty can be removed by casting the
+Mending
+spell on the weapon.
+The ooze can eat through 2-inch-thick, nonmagical metal or wood in 1 round.
+Actions
+Pseudopod.
+Melee Attack Roll:
++3, reach 5 ft.
+Hit:
+10 (2d8 + 1) Acid damage. Nonmagical armor worn by the target takes a −1 penalty to the AC it offers. The armor is destroyed if the penalty reduces its AC to 10. The penalty can be removed by casting the
+Mending
+spell on the armor.
+
+Psychic Gray Ooze
+
+Psychic gray oozes exhibit violent psionic abilities. These oozes sometimes result from failed attempts to summon or create creatures linked to the
+Elemental Plane of Earth
+, like
+gargoyles
+or
+homunculi
+.
+
+Psychic Gray Ooze
+Medium Ooze, Unaligned
+AC
+9
+Initiative
+−1 (14)
+HP
+37 (5d8 + 15)
+Speed
+10 ft., Climb 10 ft.
+Ability
+Score
+Mod
+Save
+Str
+12
++1
++1
+Dex
+8
+−1
+−1
+Con
+16
++3
++3
+Ability
+Score
+Mod
+Save
+Int
+10
++0
++0
+Wis
+6
+−2
+−2
+Cha
+2
+−4
+−4
+Skills
+Stealth
++3
+Resistances
+Acid, Cold, Fire, Psychic
+Immunities
+Blinded
+,
+Charmed
+,
+Deafened
+,
+Exhaustion
+,
+Frightened
+,
+Grappled
+,
+Prone
+,
+Restrained
+Senses
+Blindsight
+60 ft.; Passive Perception 8
+Languages
+None
+CR
+1 (XP 200; PB +2)
+Traits
+Amorphous.
+The ooze can move through a space as narrow as 1 inch without expending extra movement to do so.
+Actions
+Pseudopod.
+Melee Attack Roll:
++3, reach 5 ft.
+Hit:
+11 (3d6 + 1) Acid damage, and the target has Disadvantage on Intelligence saving throws until the end of the ooze’s next turn.
+Psychic Crush.
+Intelligence Saving Throw:
+DC 10, one creature the ooze can see within 60 feet.
+Failure:
+13 (3d8) Psychic damage.
+Reactions
+Mind Corrosion.
+Trigger:
+The ooze fails a saving throw against a spell or another magical effect created by a creature.
+Response:
+The triggering creature takes 3 (1d6) Psychic damage.
+
+Green Dragons
+
+Dragons of Deceit and Derision
+
+Habitat:
+Forest;
+Treasure:
+Arcana
+
+From forbidden forest depths, green dragons whisper evils into the world and manipulate the lives of those who listen. Elusive, conniving, and egotistical, these chromatic dragons patiently prey on the fears of shorter-lived beings, corrupting and isolating them. Green dragons might lurk amid labyrinthine wildernesses for centuries without revealing themselves; even their most devoted followers might know them only as the voice of the woodlands or a whisper in their dreams.
+
+Despite their might, most green dragons disdain physical violence, viewing combat as servants’ work and preferring to trick foes into dangerous or exploitative scenarios. These dragons collect “baubles” that embody their webs of manipulation and serve as tools of extortion, such as compromising documents, family heirlooms, and sentimental treasures.
+
+Green Dragon Wyrmling
+
+Green dragon wyrmlings often serve as pawns in older dragons’ schemes. By spying on those dragons’ agents, wyrmlings learn the art of manipulation. Once they’ve accumulated influence and lackeys, these wyrmlings depart to claim their own territories and pursue their sinister ambitions.
+
+Green Dragon Wyrmling
+Medium Dragon (Chromatic), Lawful Evil
+AC
+17
+Initiative
++3 (13)
+HP
+38 (7d8 + 7)
+Speed
+30 ft., Fly 60 ft., Swim 30 ft.
+Ability
+Score
+Mod
+Save
+Str
+15
++2
++2
+Dex
+12
++1
++3
+Con
+13
++1
++1
+Ability
+Score
+Mod
+Save
+Int
+14
++2
++2
+Wis
+11
++0
++2
+Cha
+13
++1
++1
+Skills
+Perception
++4,
+Stealth
++3
+Immunities
+Poison;
+Poisoned
+Senses
+Blindsight
+10 ft.,
+Darkvision
+60 ft.; Passive Perception 14
+Languages
+Draconic
+CR
+2 (XP 450; PB +2)
+Traits
+Amphibious.
+The dragon can breathe air and water.
+Actions
+Multiattack.
+The dragon makes two Rend attacks.
+Rend.
+Melee Attack Roll:
++4, reach 5 ft.
+Hit:
+7 (1d10 + 2) Slashing damage plus 3 (1d6) Poison damage.
+Poison Breath (Recharge 5–6).
+Constitution Saving Throw:
+DC 11, each creature in a 15-foot
+Cone
+.
+Failure:
+21 (6d6) Poison damage.
+Success:
+Half damage.
+Alexander Ostrowski
+
+Young Green Dragon
+
+Young green dragons frequently control groups of ettercaps, kobolds, thieves, or other cowardly servants. These dragons do so while avoiding other evil dragons, who would sabotage them. Gradually, oppressing weaker creatures and amassing meaningless fortunes bore young green dragons, and they pursue more ambitious ways to indulge their egos.
+
+Young Green Dragon
+Large Dragon (Chromatic), Lawful Evil
+AC
+18
+Initiative
++4 (14)
+HP
+136 (16d10 + 48)
+Speed
+40 ft., Fly 80 ft., Swim 40 ft.
+Ability
+Score
+Mod
+Save
+Str
+19
++4
++4
+Dex
+12
++1
++4
+Con
+17
++3
++3
+Ability
+Score
+Mod
+Save
+Int
+16
++3
++3
+Wis
+13
++1
++4
+Cha
+15
++2
++2
+Skills
+Deception
++5,
+Perception
++7,
+Stealth
++4
+Immunities
+Poison;
+Poisoned
+Senses
+Blindsight
+30 ft.,
+Darkvision
+120 ft.; Passive Perception 17
+Languages
+Common, Draconic
+CR
+8 (XP 3,900; PB +3)
+Traits
+Amphibious.
+The dragon can breathe air and water.
+Actions
+Multiattack.
+The dragon makes three Rend attacks.
+Rend.
+Melee Attack Roll:
++7, reach 10 ft.
+Hit:
+11 (2d6 + 4) Slashing damage plus 7 (2d6) Poison damage.
+Poison Breath (Recharge 5–6).
+Constitution Saving Throw:
+DC 14, each creature in a 30-foot
+Cone
+.
+Failure:
+42 (12d6) Poison damage.
+Success:
+Half damage.
+
+Alexander Ostrowski
+An adult green dragon
+shadows its prey
+Green Dragon Lairs
+Green dragons lair in ancient forests, often shaping stands of massive trees into compounds of interwoven branches, hollow trunks, and caverns amid mighty roots. They might also dwell amid forested ruins, particularly the former homes of those they’ve conquered.
+The region containing an adult or ancient green dragon’s lair is warped by its presence, creating the following effects:
+Beast Spies.
+Tiny Beasts magically gain the ability to understand Draconic and can communicate telepathically with the dragon while within 1 mile of the lair.
+Poisonous Thicket.
+Ordinary plants growing within 1 mile of the lair poison the air around them. Whenever a creature other than the dragon or its allies finishes a Long Rest in that area, it must succeed on a DC 15 Constitution saving throw or have the
+Poisoned
+condition for 1 hour.
+If the dragon dies or moves its lair elsewhere, these effects end immediately.
+Adult Green Dragon
+The words of adult green dragons are as deadly as their poisonous breath. They are brilliant schemers that pride themselves on influencing communities near their lairs. They obsess over information and create vast spy networks. Many of these dragons seek magical methods of surveillance or domination, and they manipulate adventurers into hunting down lost magic to aid in such control.
+
+Adult Green Dragon
+Huge Dragon (Chromatic), Lawful Evil
+AC
+19
+Initiative
++11 (21)
+HP
+207 (18d12 + 90)
+Speed
+40 ft., Fly 80 ft., Swim 40 ft.
+Ability
+Score
+Mod
+Save
+Str
+23
++6
++6
+Dex
+12
++1
++6
+Con
+21
++5
++5
+Ability
+Score
+Mod
+Save
+Int
+18
++4
++4
+Wis
+15
++2
++7
+Cha
+18
++4
++4
+Skills
+Deception
++9,
+Perception
++12,
+Persuasion
++9,
+Stealth
++6
+Immunities
+Poison;
+Poisoned
+Senses
+Blindsight
+60 ft.,
+Darkvision
+120 ft.; Passive Perception 22
+Languages
+Common, Draconic
+CR
+15 (XP 13,000, or 15,000 in lair; PB +5)
+Traits
+Amphibious.
+The dragon can breathe air and water.
+Legendary Resistance (3/Day, or 4/Day in Lair).
+If the dragon fails a saving throw, it can choose to succeed instead.
+Actions
+Multiattack.
+The dragon makes three Rend attacks. It can replace one attack with a use of Spellcasting to cast
+Mind Spike
+(level 3 version).
+Rend.
+Melee Attack Roll:
++11, reach 10 ft.
+Hit:
+15 (2d8 + 6) Slashing damage plus 7 (2d6) Poison damage.
+Poison Breath (Recharge 5–6).
+Constitution Saving Throw:
+DC 18, each creature in a 60-foot
+Cone
+.
+Failure:
+56 (16d6) Poison damage.
+Success:
+Half damage.
+Spellcasting.
+The dragon casts one of the following spells, requiring no Material components and using Charisma as the spellcasting ability (spell save DC 17):
+At Will:
+Detect Magic
+,
+Mind Spike
+(level 3 version)
+1/Day:
+Geas
+Legendary Actions
+Legendary Action Uses: 3 (4 in Lair). Immediately after another creature’s turn, the dragon can expend a use to take one of the following actions. The dragon regains all expended uses at the start of each of its turns.
+Mind Invasion.
+The dragon uses Spellcasting to cast
+Mind Spike
+(level 3 version).
+Noxious Miasma.
+Constitution Saving Throw:
+DC 17, each creature in a 20-foot-radius
+Sphere
+centered on a point the dragon can see within 90 feet.
+Failure:
+7 (2d6) Poison damage, and the target takes a −2 penalty to AC until the end of its next turn.
+Failure or Success:
+The dragon can’t take this action again until the start of its next turn.
+Pounce.
+The dragon moves up to half its Speed, and it makes one Rend attack.
+
+Ancient Green Dragon
+
+Ancient green dragons are creatures of legend, rarely seen by their servants or foes. Via magic and well-hidden agents, these dragons stoke suspicion between allies and undermine noble works. As bonds fray, the dragons reap rewards of greater wealth and control. Eventually the ambitions of ancient green dragons stretch beyond their territories as they seek control over empires, planar realms, or death itself.
+
+Alexander Ostrowski
+An ancient green dragon manipulates the fates
+of its pawns from deep within its forest lair
+
+Ancient Green Dragon
+Gargantuan Dragon (Chromatic), Lawful Evil
+AC
+21
+Initiative
++15 (25)
+HP
+402 (23d20 + 161)
+Speed
+40 ft., Fly 80 ft., Swim 40 ft.
+Ability
+Score
+Mod
+Save
+Str
+27
++8
++8
+Dex
+12
++1
++8
+Con
+25
++7
++7
+Ability
+Score
+Mod
+Save
+Int
+20
++5
++5
+Wis
+17
++3
++10
+Cha
+22
++6
++6
+Skills
+Deception
++13,
+Perception
++17,
+Persuasion
++13,
+Stealth
++8
+Immunities
+Poison;
+Poisoned
+Senses
+Blindsight
+60 ft.,
+Darkvision
+120 ft.; Passive Perception 27
+Languages
+Common, Draconic
+CR
+22 (XP 41,000, or 50,000 in lair; PB +7)
+Traits
+Amphibious.
+The dragon can breathe air and water.
+Legendary Resistance (4/Day, or 5/Day in Lair).
+If the dragon fails a saving throw, it can choose to succeed instead.
+Actions
+Multiattack.
+The dragon makes three Rend attacks. It can replace one attack with a use of Spellcasting to cast
+Mind Spike
+(level 5 version).
+Rend.
+Melee Attack Roll:
++15, reach 15 ft.
+Hit:
+17 (2d8 + 8) Slashing damage plus 10 (3d6) Poison damage.
+Poison Breath (Recharge 5–6).
+Constitution Saving Throw:
+DC 22, each creature in a 90-foot
+Cone
+.
+Failure:
+77 (22d6) Poison damage.
+Success:
+Half damage.
+Spellcasting.
+The dragon casts one of the following spells, requiring no Material components and using Charisma as the spellcasting ability (spell save DC 21):
+At Will:
+Detect Magic
+,
+Mind Spike
+(level 5 version)
+1/Day Each:
+Geas
+,
+Modify Memory
+Legendary Actions
+Legendary Action Uses: 3 (4 in Lair). Immediately after another creature’s turn, the dragon can expend a use to take one of the following actions. The dragon regains all expended uses at the start of each of its turns.
+Mind Invasion.
+The dragon uses Spellcasting to cast
+Mind Spike
+(level 5 version).
+Noxious Miasma.
+Constitution Saving Throw:
+DC 21, each creature in a 30-foot-radius
+Sphere
+centered on a point the dragon can see within 90 feet.
+Failure:
+17 (5d6) Poison damage, and the target takes a −2 penalty to AC until the end of its next turn.
+Failure or Success:
+The dragon can’t take this action again until the start of its next turn.
+Pounce.
+The dragon moves up to half its Speed, and it makes one Rend attack.
+
+Helge C. balzer
+Green Hag
+Foul Witch of the Wicked Wild
+Habitat:
+Forest, Hill, Swamp;
+Treasure:
+Arcana
+Green hags work bitter magic to foul all that is beautiful and pure. Whether alone or in covens of other hags, these ancient witches call on eerie forces, spreading corruption and plotting doom for those who earn their ire. Green hags are adept deceivers, and they use illusions to cloak themselves in unassuming forms, hoping to tempt innocents into peril. These hags often spirit their victims back to surreal lairs where they hold captives prisoner or cook them into monstrous meals.
+Green hags frequently know strange magic or forgotten secrets, such as the weaknesses of villains, the locations of lost treasures, or the ways to break curses. They might trade such knowledge for rare magic or symbolic treasures. Roll on or choose a result from the Green Hag Bargains table to inspire what a green hag charges for its secrets.
+
+Green Hag Bargains
+1d6
+A Green Hag Trades Its Knowledge For...
+1
+A bargainer’s memories of a loved one.
+2
+The cauldron of a rival hag.
+3
+A favor to be redeemed when the hag wishes.
+4
+A flower from a hidden Feywild garden.
+5
+A gift given freely by a yugoloth.
+6
+A vial filled with a ruler’s tears.
+
+Green Hag
+Medium Fey, Neutral Evil
+AC
+17
+Initiative
++1 (11)
+HP
+82 (11d8 + 33)
+Speed
+30 ft., Swim 30 ft.
+Ability
+Score
+Mod
+Save
+Str
+18
++4
++4
+Dex
+12
++1
++1
+Con
+16
++3
++3
+Ability
+Score
+Mod
+Save
+Int
+13
++1
++1
+Wis
+14
++2
++2
+Cha
+14
++2
++2
+Skills
+Arcana
++5,
+Deception
++4,
+Perception
++4,
+Stealth
++3
+Senses
+Darkvision
+60 ft.; Passive Perception 14
+Languages
+Common, Elvish, Sylvan
+CR
+3 (XP 700; PB +2)
+Traits
+Amphibious.
+The hag can breathe air and water.
+Coven Magic.
+While within 30 feet of at least two hag allies, the hag can cast one of the following spells, requiring no Material components, using the spell’s normal casting time, and using Intelligence as the spellcasting ability (spell save DC 11):
+Augury
+,
+Find Familiar
+,
+Identify
+,
+Locate Object
+,
+Scrying
+, or
+Unseen Servant
+. The hag must finish a Long Rest before using this trait to cast that spell again.
+Mimicry.
+The hag can mimic animal sounds and humanoid voices. A creature that hears the sounds can tell they are imitations only with a successful DC 14 Wisdom (
+Insight
+) check.
+Actions
+Multiattack.
+The hag makes two Claw attacks.
+Claw.
+Melee Attack Roll:
++6, reach 5 ft.
+Hit:
+8 (1d8 + 4) Slashing damage plus 3 (1d6) Poison damage.
+Spellcasting.
+The hag casts one of the following spells, requiring no Material components and using Wisdom as the spellcasting ability (spell save DC 12, +4 to hit with spell attacks):
+At Will:
+Dancing Lights
+,
+Disguise Self
+(24-hour duration),
+Invisibility
+(self only, and the hag leaves no tracks while
+Invisible
+),
+Minor Illusion
+,
+Ray of Sickness
+(level 3 version)
+
+Grell
+
+Bizarre Hunter That Travels between Worlds
+
+Habitat:
+Underdark;
+Treasure:
+None
+
+Domenico Cava
+
+With barbed tentacles sprouting from their brain-shaped bodies, grells hunt the lightless depths. These silent predators defy gravity, allowing them to strike from unexpected places, and they perceive their surroundings via sound and electrical fields. Their tentacles secrete paralytic venom, which prevents most creatures ambushed by grells from crying out before being dragged into the dark and consumed.
+
+Grells are sapient beings, but their intellects and motivations are alien to most. They typically cooperate with one another only to defeat more powerful prey. Most demonstrate no interest in creating things or in communicating with other creatures, including their own kind.
+
+Many grells pursue methods of traveling between worlds and planes of existence. They sometimes slip onto star-faring vessels or enter portals heedless of their destination. Roll on or choose a result from the Grell Explorations table to inspire why grells seek passage between realms.
+
+Grell Explorations
+1d6
+Grells Travel Because They Are...
+1
+Advanced viruses, each the clone of all other grell. They exist only to feed and spread.
+2
+The larvae of another creature and require electrically charged environs to reproduce.
+3
+Seeking to escape some catastrophe or terror lurking in the depths.
+4
+Supernaturally connected to ravenous alien beings and serve as their feeding appendages.
+5
+Vestiges of an ancient evil that will return if grells collectively consume enough creatures.
+6
+Without souls, but convinced they can attain souls by eating certain beings.
+
+For meal, my hunger grinds within my teeth. For might, my hunger clenches in my grip. But for what we’re told we mustn’t know, my hunger snaps a raptor’s beak and makes my mind a muscle that knows only how to chew.
+—Evard,
+Eighth Eye of the Necrophilosopher
+
+Grell
+Medium Aberration, Neutral Evil
+AC
+12
+Initiative
++6 (16)
+HP
+55 (10d8 + 10)
+Speed
+10 ft., Fly 30 ft. (hover)
+Ability
+Score
+Mod
+Save
+Str
+15
++2
++2
+Dex
+14
++2
++2
+Con
+13
++1
++1
+Ability
+Score
+Mod
+Save
+Int
+12
++1
++1
+Wis
+11
++0
++0
+Cha
+9
+−1
+−1
+Skills
+Perception
++4,
+Stealth
++6
+Immunities
+Lightning;
+Blinded
+,
+Prone
+Senses
+Blindsight
+60 ft.; Passive Perception 14
+Languages
+Deep Speech
+CR
+3 (XP 700; PB +2)
+Traits
+Abduct.
+The grell needn’t spend extra movement to move a creature it is grappling.
+Actions
+Multiattack.
+The grell makes one Beak attack and one Paralyzing Tentacles attack.
+Beak.
+Melee Attack Roll:
++4, reach 5 ft.
+Hit:
+11 (2d8 + 2) Piercing damage.
+Paralyzing Tentacles.
+Melee Attack Roll:
++4, reach 10 ft.
+Hit:
+7 (1d10 + 2) Piercing damage. If the target is a Medium or smaller creature, it has the
+Grappled
+condition (escape DC 12) from two of ten tentacles. The target is also subjected to the following effect.
+Constitution Saving Throw:
+DC 11.
+Failure:
+The target has the
+Poisoned
+condition and repeats the save at the end of each of its turns, ending the effect on itself on a success. After 1 minute, it succeeds automatically. While Poisoned, the target has the
+Paralyzed
+condition.
+
+Gricks
+
+Worms That Hunt the Dark and Decaying
+
+Habitat:
+Forest, Underdark;
+Treasure:
+Any
+
+Domenico Cava
+Gricks are wormlike predators that burst from hiding—flailing and snapping—to consume whatever prey passes near. They hide in cavernous crags or amid deadfalls, the scattered bones and possessions of past meals the only evidence of their threat.
+Gricks’ origins are unclear, but some suggest these creatures arise from natural worms or similar invertebrates mutated by magical phenomena. Many cite the presence of gricks in a region as evidence of portals to other planes of existence, legendary magic items, or powerful supernatural beings.
+Grick
+Gricks tend to be solitary hunters, but young gricks might lurk near dozens of their brood mates for years before gradually drifting apart.
+
+Grick
+Medium Aberration, Unaligned
+AC
+14
+Initiative
++2 (12)
+HP
+54 (12d8)
+Speed
+30 ft., Climb 30 ft.
+Ability
+Score
+Mod
+Save
+Str
+14
++2
++2
+Dex
+14
++2
++2
+Con
+11
++0
++0
+Ability
+Score
+Mod
+Save
+Int
+3
+−4
+−4
+Wis
+14
++2
++2
+Cha
+5
+−3
+−3
+Skills
+Stealth
++4
+Senses
+Darkvision
+60 ft.; Passive Perception 12
+Languages
+None
+CR
+2 (XP 450; PB +2)
+Actions
+Multiattack.
+The grick makes one Beak attack and one Tentacles attack.
+Beak.
+Melee Attack Roll:
++4, reach 5 ft.
+Hit:
+9 (2d6 + 2) Piercing damage.
+Tentacles.
+Melee Attack Roll:
++4, reach 5 ft.
+Hit:
+7 (1d10 + 2) Slashing damage. If the target is a Medium or smaller creature, it has the
+Grappled
+condition (escape DC 12) from all four tentacles.
+
+Grick Ancient
+
+Gricks can live for centuries, with the eldest growing to monstrous sizes. Grick ancients actively hunt more than they wait in ambush, and they have no qualms about devouring smaller gricks.
+
+Grick Ancient
+Large Aberration, Unaligned
+AC
+18
+Initiative
++3 (13)
+HP
+135 (18d10 + 36)
+Speed
+30 ft., Climb 30 ft.
+Ability
+Score
+Mod
+Save
+Str
+18
++4
++4
+Dex
+16
++3
++3
+Con
+15
++2
++2
+Ability
+Score
+Mod
+Save
+Int
+4
+−3
+−3
+Wis
+14
++2
++2
+Cha
+9
+−1
+−1
+Skills
+Stealth
++6
+Senses
+Darkvision
+60 ft.; Passive Perception 12
+Languages
+None
+CR
+7 (XP 2,900; PB +3)
+Actions
+Multiattack.
+The grick makes one Beak attack, one Slam attack, and one Tentacles attack.
+Beak.
+Melee Attack Roll:
++7, reach 10 ft.
+Hit:
+22 (4d8 + 4) Piercing damage.
+Slam.
+Melee Attack Roll: +
+7, reach 10 ft.
+Hit:
+7 (1d6 + 4) Bludgeoning damage. If the target is a Large or smaller creature, it has the
+Prone
+condition.
+Tentacles.
+Melee Attack Roll:
++7, reach 10 ft.
+Hit:
+15 (2d10 + 4) Slashing damage. If the target is a Large or smaller creature, it has the
+Grappled
+condition (escape DC 14) from all four tentacles.
+
+Griffon
+
+Majestic Hunter of Land and Sky
+
+Habitat:
+Arctic, Coastal, Grassland, Hill, Mountain;
+Treasure:
+None
+
+Adam Rex
+
+Griffons combine the features of raptors and big cats—most commonly eagles and lions—and possess the precision and ferocity of such predators. Rarer breeds of griffons have the features of condors and panthers, while others resemble hawks and tigers. Regardless of their appearances, griffons are often associated with royalty and are widely called the Masters of Animals.
+
+Countless tales surround griffons. Roll on or choose a result from the Griffon Tales table to inspire stories about them.
+
+People think we flew high over the city to avoid weather vanes and laundry lines and whatnot. Truth is, if the griffons smelled how much horse meat trotted just below, folks would have worse than joy-flying mages and stirges to worry about!
+—Sildar Hallwinter, retired member of the Waterdeep Griffon Cavalry
+
+Griffon Tales
+1d6
+Legends Claim That Griffons...
+1
+Attack anything in the skies near their lairs.
+2
+Curse their killers. Those who slay a griffon face the enmity of all animals.
+3
+Lay eggs with remarkable healing properties.
+4
+Prefer the taste of horses over all other prey.
+5
+Serve the first creature they see after hatching.
+6
+Won’t attack those with royal blood.
+
+Griffon
+Large Monstrosity, Unaligned
+AC
+12
+Initiative
++2 (12)
+HP
+59 (7d10 + 21)
+Speed
+30 ft., Fly 80 ft.
+Ability
+Score
+Mod
+Save
+Str
+18
++4
++4
+Dex
+15
++2
++2
+Con
+16
++3
++3
+Ability
+Score
+Mod
+Save
+Int
+2
+−4
+−4
+Wis
+13
++1
++1
+Cha
+8
+−1
+−1
+Skills
+Perception
++5
+Senses
+Darkvision
+60 ft.; Passive Perception 15
+Languages
+None
+CR
+2 (XP 450; PB +2)
+Actions
+Multiattack.
+The griffon makes two Rend attacks.
+Rend.
+Melee Attack Roll:
++6, reach 5 ft.
+Hit:
+8 (1d8 + 4) Piercing damage. If the target is a Medium or smaller creature, it has the
+Grappled
+condition (escape DC 14) from both of the griffon’s front claws.
+
+Grimlock
+
+Puppet of the Mind Flayer Menace
+
+Habitat:
+Underdark;
+Treasure:
+Any
+
+John Tedrick
+
+Grimlocks are victims of biological manipulation by
+mind flayers
+. To create grimlocks, illithids capture Humanoids, expose them to strange forms of Underdark radiation, and implant new directives into their brains. The process of creating a grimlock rends the creature’s mind such that no semblance of the individual’s former personality remains.
+
+Grimlocks have shallow depressions rather than eyes. A sixth sense allows grimlocks to perceive their surroundings. Psychic energies from their transformations linger in grimlocks’ bodies, and they channel these eerie forces into their attacks.
+
+Roll on or choose a result from the Grimlock Tasks table to inspire how grimlocks serve illithids.
+
+Grimlock Tasks
+1d4
+The Grimlock Serves Mind Flayers By...
+1
+Carving caves to serve as illithid outposts.
+2
+Hiding the threat of mind flayers beneath fake, purposefully crude dwellings.
+3
+Pretending to be helpful and luring travelers into false senses of security.
+4
+Raiding surface communities and tempting other creatures to pursue it into illithid traps.
+
+Grimlock
+Medium Aberration, Neutral Evil
+AC
+11
+Initiative
++1 (11)
+HP
+11 (2d8 + 2)
+Speed
+30 ft., Climb 30 ft.
+Ability
+Score
+Mod
+Save
+Str
+16
++3
++3
+Dex
+12
++1
++1
+Con
+12
++1
++1
+Ability
+Score
+Mod
+Save
+Int
+9
+−1
+−1
+Wis
+8
+−1
+−1
+Cha
+6
+−2
+−2
+Skills
+Athletics
++5,
+Perception
++3,
+Stealth
++5
+Senses
+Blindsight
+30 ft.; Passive Perception 13
+Languages
+None
+CR
+1/4 (XP 50; PB +2)
+Actions
+Bone Cudgel.
+Melee Attack Roll:
++5, reach 5 ft.
+Hit:
+6 (1d6 + 3) Bludgeoning damage plus 2 (1d4) Psychic damage.
+
+We thought we’d discovered a new people living deeper than we believed possible. The truth was something far worse.
+—Aljayera, Underdark seer
+
+Guardian Naga
+
+Enduring Serpentine Lore Keeper
+
+Habitat:
+Desert, Forest, Planar (Upper Planes);
+Treasure:
+Relics
+
+Alejandro Pacheco
+
+Guardian nagas are immortal, serpentine scholars that possess perfect memories. They collect the histories and lore of those they live among, guarding cultures’ stories and passing them on to new generations with infallible accuracy. Guardian nagas that outlive their host civilizations might linger in whatever ruins remain, preserving the civilizations’ stories so their lost people might live on.
+
+Roll on or choose a result from the Guardian Naga Lore table to inspire what a naga knows.
+
+Guardian Naga Lore
+1d8
+The Guardian Naga Recalls...
+1
+The last words of an ancient sage or leader.
+2
+The location of a hidden city or continent.
+3
+A magic word, password, or riddle’s answer.
+4
+The names of all who have told it stories.
+5
+An otherwise forgotten ritual or spell.
+6
+Recipes using regional ingredients.
+7
+Stories of forgotten gods and local spirits.
+8
+The vulnerabilities of a legendary monster.
+
+Guardian Naga
+Large Celestial, Lawful Good
+AC
+18
+Initiative
++4 (14)
+HP
+136 (16d10 + 48)
+Speed
+40 ft., Climb 40 ft., Swim 40 ft.
+Ability
+Score
+Mod
+Save
+Str
+19
++4
++4
+Dex
+18
++4
++8
+Con
+16
++3
++7
+Ability
+Score
+Mod
+Save
+Int
+16
++3
++7
+Wis
+19
++4
++8
+Cha
+18
++4
++8
+Skills
+Arcana
++11,
+History
++11,
+Religion
++11
+Immunities
+Poison;
+Charmed
+,
+Paralyzed
+,
+Poisoned
+,
+Restrained
+Senses
+Darkvision
+60 ft.; Passive Perception 14
+Languages
+Celestial, Common
+CR
+10 (XP 5,900; PB +4)
+Traits
+Celestial Restoration.
+If the naga dies, it returns to life in 1d6 days and regains all its Hit Points unless
+Dispel Evil and Good
+is cast on its remains.
+Actions
+Multiattack.
+The naga makes two Bite attacks. It can replace any attack with a use of Poisonous Spittle.
+Bite.
+Melee Attack Roll:
++8, reach 10 ft.
+Hit:
+17 (2d12 + 4) Piercing damage plus 22 (4d10) Poison damage.
+Poisonous Spittle.
+Constitution Saving Throw:
+DC 16, one creature the naga can see within 60 feet.
+Failure:
+31 (7d8) Poison damage, and the target has the
+Blinded
+condition until the start of the naga’s next turn.
+Success:
+Half damage only.
+Spellcasting.
+The naga casts one of the following spells, requiring no Somatic or Material components and using Wisdom as the spellcasting ability (spell save DC 16):
+At Will:
+Thaumaturgy
+1/Day Each:
+Clairvoyance
+,
+Cure Wounds
+(level 6 version),
+Flame Strike
+(level 6 version),
+Geas
+,
+True Seeing
+
+Guards
+Sentries and Watch Members
+Habitat:
+Any;
+Treasure:
+Armaments
+,
+Individual
+Guards protect people, places, and things, either for pay or from a sense of duty. They might perform their duties vigilantly or distractedly. Some raise alarms at the first sign of danger and defend their charges with their lives. Others flee outright if their compensation doesn’t match the danger they face.
+To distinguish between Waterdeep’s different groups of guardians, keep this handy mnemonic in mind: the Guard guards the walls while the Watch watches all.
+—Volothamp Geddarm, legendary explorer
+Guard
+Guards are perceptive, but most have little martial training. They might be bouncers, lookouts, members of a city watch, or other keen-eyed warriors.
+Riccardo Moscatello
+
+Guard
+Medium or Small Humanoid, Neutral
+AC
+16
+Initiative
++1 (11)
+HP
+11 (2d8 + 2)
+Speed
+30 ft.
+Ability
+Score
+Mod
+Save
+Str
+13
++1
++1
+Dex
+12
++1
++1
+Con
+12
++1
++1
+Ability
+Score
+Mod
+Save
+Int
+10
++0
++0
+Wis
+11
++0
++0
+Cha
+10
++0
++0
+Skills
+Perception
++2
+Gear
+Chain Shirt
+,
+Shield
+,
+Spear
+Senses
+Passive Perception 12
+Languages
+Common
+CR
+1/8 (XP 25; PB +2)
+Actions
+Spear.
+Melee or Ranged Attack Roll:
++3, reach 5 ft. or range 20/60 ft.
+Hit:
+4 (1d6 + 1) Piercing damage.
+
+Guard Captain
+
+Guard captains often have ample professional experience. They might be accomplished bodyguards, protectors of magic treasures, veteran watch members, or similar wardens.
+
+Guard Captain
+Medium or Small Humanoid, Neutral
+AC
+18
+Initiative
++4 (14)
+HP
+75 (10d8 + 30)
+Speed
+30 ft.
+Ability
+Score
+Mod
+Save
+Str
+18
++4
++4
+Dex
+14
++2
++2
+Con
+16
++3
++3
+Ability
+Score
+Mod
+Save
+Int
+12
++1
++1
+Wis
+14
++2
++2
+Cha
+13
++1
++1
+Skills
+Athletics
++6,
+Perception
++4
+Gear
+Breastplate
+,
+Javelins
+(6),
+Longsword
+,
+Shield
+Senses
+Passive Perception 14
+Languages
+Common
+CR
+4 (XP 1,100; PB +2)
+Actions
+Multiattack.
+The guard makes two attacks, using Javelin or Longsword in any combination.
+Javelin.
+Melee or Ranged Attack Roll:
++6, reach 5 ft. or range 30/120 ft.
+Hit:
+14 (3d6 + 4) Piercing damage.
+Longsword.
+Melee Attack Roll:
++6, reach 5 ft.
+Hit:
+15 (2d10 + 4) Slashing damage.

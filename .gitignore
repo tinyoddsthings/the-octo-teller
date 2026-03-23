@@ -43,3 +43,5 @@ mcp_*.log
 *.sqlite3
 
 docs/*
+!docs/2024_translate/
+!docs/2024/
