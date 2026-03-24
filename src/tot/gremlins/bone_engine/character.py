@@ -311,24 +311,30 @@ def validate_skill_selection(
     selected: list[Skill],
     char_class: str,
     bg_skills: list[Skill] | None = None,
+    allowed_skills: list[Skill] | None = None,
 ) -> tuple[bool, str]:
     """驗證技能選擇的數量與合法性。
 
     檢查：
     1. 選擇數量是否等於該職業可選技能數
-    2. 每個技能是否在職業可選列表中
+    2. 每個技能是否在允許的技能集中（職業可選 + 額外允許）
     3. 是否與背景技能重複
+
+    Args:
+        allowed_skills: UI 實際顯示的可選技能清單。若提供，以此為準；
+                        否則回退到職業 skill_choices。
     """
     if char_class not in CLASS_REGISTRY:
         return False, f"未知職業: {char_class!r}"
 
     cls = CLASS_REGISTRY[char_class]
     bg_set = set(bg_skills) if bg_skills else set()
+    valid_set = set(allowed_skills) if allowed_skills else set(cls.skill_choices)
 
     for s in selected:
         if s in bg_set:
             return False, f"技能 {s.value} 已由背景提供，不可重複選擇"
-        if s not in cls.skill_choices:
+        if s not in valid_set:
             return False, f"{char_class} 無法選擇技能 {s.value}"
 
     if len(selected) != cls.num_skills:
@@ -1274,18 +1280,15 @@ class CharacterBuilder:
     # -- Step 6: 技能 --
 
     def set_skills(self, skills: list[Skill]) -> None:
-        """Step 6: 選擇技能熟練項。"""
+        """Step 6: 選擇技能熟練項。
+
+        接受所有來源的技能（職業 + 背景 + 專長 + 種族），不做職業限制檢查。
+        數量驗證由呼叫端（TUI validate_skill_selection）負責。
+        """
         if self._step < 5:
             raise ValueError("請先設定屬性值")
         if self._step > 5:
             raise ValueError("技能必須在第六步設定")
-
-        cls = CLASS_REGISTRY[self._char_class]
-        for s in skills:
-            if s not in cls.skill_choices:
-                raise ValueError(f"{self._char_class} 無法選擇技能 {s.value}")
-        if len(skills) != cls.num_skills:
-            raise ValueError(f"{self._char_class} 應選 {cls.num_skills} 項技能，收到 {len(skills)}")
 
         self._skill_proficiencies = skills
         self._step = 6

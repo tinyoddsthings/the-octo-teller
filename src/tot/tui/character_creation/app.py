@@ -28,7 +28,7 @@ from tot.data.classes import (
     CLASS_DISPLAY,
     STANDARD_ARRAY_SUGGESTION,
 )
-from tot.data.feats import ORIGIN_FEAT_REGISTRY
+from tot.data.feats import FeatData, ORIGIN_FEAT_REGISTRY, get_available_class_skills
 from tot.data.origins import (
     ABILITY_ZH,
     BACKGROUND_REGISTRY,
@@ -75,17 +75,35 @@ ABILITY_ORDER: list[Ability] = [
     Ability.CHA,
 ]
 
+DAMAGE_TYPE_ZH: dict[str, str] = {
+    "Fire": "火焰", "Cold": "寒冷", "Lightning": "閃電", "Thunder": "雷鳴",
+    "Acid": "酸液", "Poison": "毒素", "Necrotic": "黯蝕", "Radiant": "光輝",
+    "Force": "力場", "Psychic": "心靈", "Bludgeoning": "鈍擊",
+    "Piercing": "穿刺", "Slashing": "揮砍",
+}
+
+EFFECT_TYPE_ZH: dict[str, str] = {
+    "damage": "傷害", "healing": "治療", "condition": "狀態",
+    "buff": "增益", "utility": "功能",
+}
+
 # ── 法術載入 ──────────────────────────────────────────────────────────────────
 
-_SPELLS_JSON = Path(__file__).resolve().parents[2] / "data" / "spells.json"
+_SPELLS_DIR = Path(__file__).resolve().parents[2] / "data" / "spells"
+_SPELLS_JSON_LEGACY = Path(__file__).resolve().parents[2] / "data" / "spells.json"
 
 
 def _load_spells() -> list[dict]:
-    """從 spells.json 載入法術列表。"""
-    if _SPELLS_JSON.exists():
-        with open(_SPELLS_JSON) as f:
-            return json.load(f)
-    return []
+    """從 spells 目錄載入所有法術列表。"""
+    result: list[dict] = []
+    if _SPELLS_DIR.is_dir():
+        for f in sorted(_SPELLS_DIR.glob("*.json")):
+            with open(f) as fp:
+                result.extend(json.load(fp))
+    elif _SPELLS_JSON_LEGACY.exists():
+        with open(_SPELLS_JSON_LEGACY) as f:
+            result = json.load(f)
+    return result
 
 
 def _spells_for_class(class_id: str, level: int) -> list[dict]:
@@ -160,8 +178,9 @@ class CharacterCreationApp(App[Character | None]):
             "lineage": "",
             "score_method": "standard",  # "standard" / "point_buy" / "roll"
             "scores": {a: 10 for a in Ability},
-            "bg_adjust_mode": "+2/+1",  # "+2/+1" or "+1/+1/+1"
+            "bg_adjust_mode": "+1/+1/+1",  # "+1/+1/+1" or "+2/+1"
             "bg_adjust": {},  # {Ability: int} 背景調整值
+            "feat_skills": [],  # 起源專長選位技能（如 Skilled）
             "class_skills": [],
             "bg_equipment": "A",
             "class_equipment": "A",
@@ -255,7 +274,7 @@ class CharacterCreationApp(App[Character | None]):
         sp = self._data["species"]
         btns = []
         for sid, sd in SPECIES_REGISTRY.items():
-            label = f"{sd.name_zh}（{sd.name_en}）— {sd.size} {sd.speed}"
+            label = f"{sd.name_zh}（{sd.name_en}）— {sd.description}"
             btns.append(RadioButton(label, value=(sid == sp)))
         w.append(RadioSet(*btns, id="species-radio"))
 
@@ -267,7 +286,7 @@ class CharacterCreationApp(App[Character | None]):
                 cur_lin = self._data["lineage"]
                 lin_btns = []
                 for lo in sd.lineage_options:
-                    lb = f"{lo.name_zh}（{lo.name_en}）— {lo.description[:30]}"
+                    lb = f"{lo.name_zh}（{lo.name_en}）— {lo.description}"
                     lin_btns.append(RadioButton(lb, value=(lo.id == cur_lin)))
                 w.append(RadioSet(*lin_btns, id="lineage-radio"))
 
@@ -304,8 +323,8 @@ class CharacterCreationApp(App[Character | None]):
             )
             adj_mode = self._data["bg_adjust_mode"]
             adj_btns = [
+                RadioButton("三項各 +1（預設）", value=(adj_mode == "+1/+1/+1")),
                 RadioButton("一項 +2，一項 +1", value=(adj_mode == "+2/+1")),
-                RadioButton("三項各 +1", value=(adj_mode == "+1/+1/+1")),
             ]
             w.append(RadioSet(*adj_btns, id="adjust-mode-radio"))
 
@@ -314,33 +333,33 @@ class CharacterCreationApp(App[Character | None]):
                 opts_2 = [(ABILITY_ZH[a], a) for a in bg.ability_tags]
                 cur_adj = self._data.get("bg_adjust", {})
                 plus2_ab = next((a for a, v in cur_adj.items() if v == 2), None)
-                w.append(
-                    Select(opts_2, value=plus2_ab if plus2_ab else Select.BLANK, id="adj-plus2")
-                )
+                plus2_sel = Select(opts_2, allow_blank=True, id="adj-plus2")
+                if plus2_ab is not None:
+                    plus2_sel.value = plus2_ab
+                w.append(plus2_sel)
                 w.append(Label("  +1 給："))
                 plus1_ab = next((a for a, v in cur_adj.items() if v == 1), None)
-                w.append(
-                    Select(opts_2, value=plus1_ab if plus1_ab else Select.BLANK, id="adj-plus1")
-                )
+                plus1_sel = Select(opts_2, allow_blank=True, id="adj-plus1")
+                if plus1_ab is not None:
+                    plus1_sel.value = plus1_ab
+                w.append(plus1_sel)
 
     def _widgets_standard_array(self, w: list) -> None:
-        w.append(Label("── 分配標準陣列 ──", classes="section-label"))
-        # 建議分配
+        w.append(Label("── 標準陣列（依職業建議自動分配）──", classes="section-label"))
         cc = self._data["char_class"]
+        # 自動帶入職業建議值
         if cc in STANDARD_ARRAY_SUGGESTION:
             sug = STANDARD_ARRAY_SUGGESTION[cc]
-            sug_parts = [f"{ABILITY_ZH[a]}={v}" for a, v in zip(ABILITY_ORDER, sug)]
-            w.append(Label(f"  建議（{CLASS_DISPLAY[cc].name_zh}）：{', '.join(sug_parts)}"))
-
-        vals = list(STANDARD_ARRAY)
-        assign = self._data.get("_std_assign", {})
-        opts = [(str(v), v) for v in vals]
-        opts.insert(0, ("─ 未指定 ─", 0))
+            assign = dict(zip(ABILITY_ORDER, sug, strict=False))
+        else:
+            assign = dict(zip(ABILITY_ORDER, STANDARD_ARRAY, strict=False))
+        self._data["_std_assign"] = assign
+        self._data["scores"] = assign
         for ab in ABILITY_ORDER:
-            cur = assign.get(ab, 0)
-            with_label = Horizontal(classes="ability-row")
-            w.append(Label(f"  {ab.value} {ABILITY_ZH[ab]}", classes="ability-label"))
-            w.append(Select(opts, value=cur if cur else Select.BLANK, id=f"std-{ab.value}"))
+            val = assign[ab]
+            mod = (val - 10) // 2
+            sign = "+" if mod >= 0 else ""
+            w.append(Label(f"  {ABILITY_ZH[ab]}（{ab.value}）：{val}（{sign}{mod}）"))
 
     def _widgets_point_buy(self, w: list) -> None:
         scores = self._data["scores"]
@@ -363,20 +382,39 @@ class CharacterCreationApp(App[Character | None]):
     def _widgets_roll(self, w: list) -> None:
         rolled = self._data.get("_rolled_values", [])
         if not rolled:
-            w.append(Label("  按「確認→下一步」後自動擲骰"))
+            w.append(Label("  按「確認→下一步」後自動擲骰並分配"))
         else:
             w.append(
-                Label(f"── 擲骰結果：{sorted(rolled, reverse=True)} ──", classes="section-label")
+                Label(f"── 擲骰結果：{sorted(rolled, reverse=True)}（依職業最優分配）──", classes="section-label")
             )
-            w.append(Label("  將結果分配到各屬性："))
-            opts = [(str(v), v) for v in sorted(rolled, reverse=True)]
-            opts.insert(0, ("─ 未指定 ─", 0))
-            assign = self._data.get("_std_assign", {})
+            # 自動分配：按職業主屬性優先
+            assign = self._auto_assign_rolls(rolled)
+            self._data["_std_assign"] = assign
+            self._data["scores"] = assign
             for ab in ABILITY_ORDER:
-                cur = assign.get(ab, 0)
-                w.append(Label(f"  {ab.value} {ABILITY_ZH[ab]}", classes="ability-label"))
-                w.append(Select(opts, value=cur if cur else Select.BLANK, id=f"roll-{ab.value}"))
+                val = assign.get(ab, 10)
+                mod = (val - 10) // 2
+                sign = "+" if mod >= 0 else ""
+                w.append(Label(f"  {ABILITY_ZH[ab]}（{ab.value}）：{val}（{sign}{mod}）"))
             w.append(Button("重新擲骰", id="reroll-btn", variant="warning"))
+
+    def _auto_assign_rolls(self, rolled: list[int]) -> dict[Ability, int]:
+        """依職業屬性優先順序自動分配擲骰結果。"""
+        cc = self._data["char_class"]
+        sorted_vals = sorted(rolled, reverse=True)
+        # 用標準陣列建議的順序來決定優先度
+        if cc in STANDARD_ARRAY_SUGGESTION:
+            sug = STANDARD_ARRAY_SUGGESTION[cc]
+            # 建議值越高的屬性越重要，給越高的擲骰結果
+            priority = sorted(range(6), key=lambda i: sug[i], reverse=True)
+        else:
+            # 預設 STR>DEX>CON>INT>WIS>CHA
+            priority = list(range(6))
+        assign: dict[Ability, int] = {}
+        for rank, val in enumerate(sorted_vals):
+            ab_idx = priority[rank]
+            assign[ABILITY_ORDER[ab_idx]] = val
+        return assign
 
     # ── Step 5: 技能 ──────────────────────────────────────────────────────────
 
@@ -384,14 +422,37 @@ class CharacterCreationApp(App[Character | None]):
         bg_id = self._data["background"]
         cc = self._data["char_class"]
 
-        # 背景固定技能
+        # ── Section A：背景固定技能 ──
+        bg_skill_set: set[Skill] = set()
         if bg_id and bg_id in BACKGROUND_REGISTRY:
             bg = BACKGROUND_REGISTRY[bg_id]
-            bg_skills = [f"{SKILL_ZH[s]}（{s.value}）" for s in bg.skill_proficiencies]
+            bg_skill_set = set(bg.skill_proficiencies)
+            bg_labels = [f"{SKILL_ZH[s]}（{s.value}）" for s in bg.skill_proficiencies]
             w.append(Label(f"── 背景技能（{bg.name_zh}，已固定）──", classes="section-label"))
-            w.append(Label(f"  {', '.join(bg_skills)}"))
+            w.append(Label(f"  {', '.join(bg_labels)}"))
 
-        # 職業可選技能
+        # ── Section B：起源專長選位（如 Skilled 的 3 項自選）──
+        feat_skill_set: set[Skill] = set()
+        feat = self._get_origin_feat()
+        if feat and feat.skill_choice_count > 0:
+            pool = list(feat.skill_choice_pool) if feat.skill_choice_pool else list(Skill)
+            # 排除背景已佔
+            pool = [s for s in pool if s not in bg_skill_set]
+            n = feat.skill_choice_count
+            w.append(Label(
+                f"── 起源專長技能（{feat.name_zh}，選 {n} 項）──",
+                classes="section-label",
+            ))
+            feat_selected = self._data.get("feat_skills", [])
+            feat_skill_set = set(feat_selected)
+            opts = []
+            for s in pool:
+                label = f"{SKILL_ZH.get(s, s.value)}（{s.value}）— {ABILITY_ZH.get(_skill_ability(s), '')}"
+                opts.append((label, s, s in feat_selected))
+            w.append(SelectionList(*opts, id="feat-skills-list"))
+
+        # ── Section C：職業技能選位 ──
+        # Available = ClassList - (BackgroundSkills ∪ FeatSkills)
         if cc and cc in CLASS_REGISTRY:
             cls = CLASS_REGISTRY[cc]
             cd = CLASS_DISPLAY.get(cc)
@@ -399,19 +460,22 @@ class CharacterCreationApp(App[Character | None]):
             name = cd.name_zh if cd else cc
             w.append(Label(f"── 職業技能（{name}，選 {num} 項）──", classes="section-label"))
 
-            # 排除背景已有的技能
-            bg_skill_set = set()
-            if bg_id and bg_id in BACKGROUND_REGISTRY:
-                bg_skill_set = set(BACKGROUND_REGISTRY[bg_id].skill_proficiencies)
-
+            occupied = bg_skill_set | feat_skill_set
+            available = get_available_class_skills(cls.skill_choices, list(bg_skill_set), list(feat_skill_set))
             selected = self._data.get("class_skills", [])
             options = []
-            for s in cls.skill_choices:
-                if s in bg_skill_set:
-                    continue  # 背景已有，不重複
+            for s in available:
                 label = f"{SKILL_ZH.get(s, s.value)}（{s.value}）— {ABILITY_ZH.get(_skill_ability(s), '')}"
                 options.append((label, s, s in selected))
             w.append(SelectionList(*options, id="skills-list"))
+
+    def _get_origin_feat(self) -> FeatData | None:
+        """取得當前背景的起源專長資料。"""
+        bg_id = self._data["background"]
+        if bg_id and bg_id in BACKGROUND_REGISTRY:
+            feat_id = BACKGROUND_REGISTRY[bg_id].feat
+            return ORIGIN_FEAT_REGISTRY.get(feat_id)
+        return None
 
     # ── Step 6: 裝備 ──────────────────────────────────────────────────────────
 
@@ -422,20 +486,24 @@ class CharacterCreationApp(App[Character | None]):
         if bg_id and bg_id in BACKGROUND_REGISTRY:
             bg = BACKGROUND_REGISTRY[bg_id]
             w.append(Label(f"── 背景裝備（{bg.name_zh}）──", classes="section-label"))
+            w.append(Label(f"  A：{bg.equipment_a}"))
+            w.append(Label(f"  B：{bg.equipment_b}"))
             cur_bg = self._data.get("bg_equipment", "A")
             btns = [
-                RadioButton(f"A：{bg.equipment_a}", value=(cur_bg == "A")),
-                RadioButton(f"B：{bg.equipment_b}", value=(cur_bg == "B")),
+                RadioButton("選 A", value=(cur_bg == "A")),
+                RadioButton("選 B", value=(cur_bg == "B")),
             ]
             w.append(RadioSet(*btns, id="bg-equip-radio"))
 
         if cc and cc in CLASS_DISPLAY:
             cd = CLASS_DISPLAY[cc]
             w.append(Label(f"── 職業裝備（{cd.name_zh}）──", classes="section-label"))
+            w.append(Label(f"  A：{cd.equipment_a}"))
+            w.append(Label(f"  B：{cd.equipment_b}"))
             cur_cls = self._data.get("class_equipment", "A")
             btns = [
-                RadioButton(f"A：{cd.equipment_a}", value=(cur_cls == "A")),
-                RadioButton(f"B：{cd.equipment_b}", value=(cur_cls == "B")),
+                RadioButton("選 A", value=(cur_cls == "A")),
+                RadioButton("選 B", value=(cur_cls == "B")),
             ]
             w.append(RadioSet(*btns, id="cls-equip-radio"))
 
@@ -463,14 +531,16 @@ class CharacterCreationApp(App[Character | None]):
             )
             if cantrips:
                 sel = self._data.get("cantrips", [])
-                opts = [
-                    (
-                        f"{s['name']}（{s['en_name']}）— {s.get('damage_type', s.get('effect_type', ''))}",
+                opts = []
+                for s in cantrips:
+                    dt = DAMAGE_TYPE_ZH.get(s.get("damage_type", ""), "")
+                    et = EFFECT_TYPE_ZH.get(s.get("effect_type", ""), "")
+                    tag = dt if dt else et
+                    opts.append((
+                        f"{s['name']}（{s['en_name']}）— {tag}",
                         s["en_name"],
                         s["en_name"] in sel,
-                    )
-                    for s in cantrips
-                ]
+                    ))
                 w.append(SelectionList(*opts, id="cantrip-list"))
             else:
                 w.append(Label("  （法術資料庫尚無此職業的戲法）"))
@@ -486,14 +556,16 @@ class CharacterCreationApp(App[Character | None]):
             )
             if spells_1:
                 sel = self._data.get("spells", [])
-                opts = [
-                    (
-                        f"{s['name']}（{s['en_name']}）— {s.get('effect_type', '')}",
+                opts = []
+                for s in spells_1:
+                    dt = DAMAGE_TYPE_ZH.get(s.get("damage_type", ""), "")
+                    et = EFFECT_TYPE_ZH.get(s.get("effect_type", ""), "")
+                    tag = dt if dt else et
+                    opts.append((
+                        f"{s['name']}（{s['en_name']}）— {tag}",
                         s["en_name"],
                         s["en_name"] in sel,
-                    )
-                    for s in spells_1
-                ]
+                    ))
                 w.append(SelectionList(*opts, id="spell-list"))
             else:
                 w.append(Label("  （法術資料庫尚無此職業的 1 環法術）"))
@@ -561,11 +633,7 @@ class CharacterCreationApp(App[Character | None]):
             lines.append(f"  {bg.description}")
             lines.append(f"  專長：{bg.feat_zh}")
             if feat:
-                lines.append(
-                    f"    {feat.description[:60]}…"
-                    if len(feat.description) > 60
-                    else f"    {feat.description}"
-                )
+                lines.append(f"    {feat.description}")
             bg_skills = [f"{SKILL_ZH[s]}" for s in bg.skill_proficiencies]
             lines.append(f"  技能：{', '.join(bg_skills)}　工具：{bg.tool_proficiency}")
             tags = [ABILITY_ZH[a] for a in bg.ability_tags]
@@ -583,11 +651,7 @@ class CharacterCreationApp(App[Character | None]):
             lines.append(f"  {sd.description}")
             lines.append(f"  體型：{sd.size}　速度：{sd.speed}")
             lines.append(f"  特性：{', '.join(sd.traits)}")
-            lines.append(
-                f"  {sd.traits_description[:80]}…"
-                if len(sd.traits_description) > 80
-                else f"  {sd.traits_description}"
-            )
+            lines.append(f"  {sd.traits_description}")
             lin = d.get("lineage")
             if lin and sd.lineage_options:
                 lo = next((l for l in sd.lineage_options if l.id == lin), None)
@@ -616,11 +680,62 @@ class CharacterCreationApp(App[Character | None]):
         else:
             lines.append("屬性值：—")
 
-        # 技能
+        # 技能（所有來源合併顯示）
+        feat_skills = d.get("feat_skills", [])
         cls_skills = d.get("class_skills", [])
+        if feat_skills:
+            sk_str = ", ".join(SKILL_ZH.get(s, s.value) for s in feat_skills)
+            lines.append(f"\n專長技能：{sk_str}")
         if cls_skills:
             sk_str = ", ".join(SKILL_ZH.get(s, s.value) for s in cls_skills)
-            lines.append(f"\n職業技能：{sk_str}")
+            lines.append(f"職業技能：{sk_str}")
+
+        # 裝備
+        bg_eq = d.get("bg_equipment", "A")
+        cls_eq = d.get("class_equipment", "A")
+        bg_id_eq = d["background"]
+        cc_eq = d["char_class"]
+        equip_lines = []
+        if bg_id_eq and bg_id_eq in BACKGROUND_REGISTRY:
+            bg_data = BACKGROUND_REGISTRY[bg_id_eq]
+            eq_text = bg_data.equipment_a if bg_eq == "A" else bg_data.equipment_b
+            equip_lines.append(f"  背景（{bg_eq}）：{eq_text}")
+        if cc_eq and cc_eq in CLASS_DISPLAY:
+            cd_data = CLASS_DISPLAY[cc_eq]
+            eq_text = cd_data.equipment_a if cls_eq == "A" else cd_data.equipment_b
+            equip_lines.append(f"  職業（{cls_eq}）：{eq_text}")
+        if equip_lines:
+            lines.append("\n裝備：")
+            lines.extend(equip_lines)
+
+        # 法術
+        cantrips = d.get("cantrips", [])
+        spells = d.get("spells", [])
+        if cantrips or spells:
+            lines.append("")
+            all_spell_data = _load_spells()
+            spell_lookup = {s["en_name"]: s for s in all_spell_data}
+            if cantrips:
+                names = []
+                for en in cantrips:
+                    sd = spell_lookup.get(en)
+                    names.append(sd["name"] if sd else en)
+                lines.append(f"戲法：{', '.join(names)}")
+            if spells:
+                names = []
+                for en in spells:
+                    sd = spell_lookup.get(en)
+                    names.append(sd["name"] if sd else en)
+                lines.append(f"1 環法術：{', '.join(names)}")
+            # 所有選中的法術都顯示詳情
+            all_selected = list(cantrips) + list(spells)
+            for en in all_selected:
+                sd = spell_lookup.get(en)
+                if sd:
+                    dt = DAMAGE_TYPE_ZH.get(sd.get("damage_type", ""), "")
+                    et = EFFECT_TYPE_ZH.get(sd.get("effect_type", ""), "")
+                    tag = dt if dt else et
+                    lines.append(f"  ▸ {sd['name']}（{tag}）：{sd.get('description', '')[:60]}")
 
         preview.update("\n".join(lines))
 
@@ -656,13 +771,19 @@ class CharacterCreationApp(App[Character | None]):
             final_scores = base_scores
         builder.set_ability_scores(final_scores)
 
-        # 技能：背景 + 職業
-        all_skills = list(d.get("class_skills", []))
+        # 技能：背景（固定） + 專長（選位） + 職業（選位）
+        all_skills: list[Skill] = []
         bg_id = d["background"]
         if bg_id and bg_id in BACKGROUND_REGISTRY:
             for s in BACKGROUND_REGISTRY[bg_id].skill_proficiencies:
                 if s not in all_skills:
-                    all_skills.insert(0, s)
+                    all_skills.append(s)
+        for s in d.get("feat_skills", []):
+            if s not in all_skills:
+                all_skills.append(s)
+        for s in d.get("class_skills", []):
+            if s not in all_skills:
+                all_skills.append(s)
 
         # 確保數量至少足夠 CharacterBuilder
         cc = d["char_class"]
@@ -833,7 +954,13 @@ class CharacterCreationApp(App[Character | None]):
         if idx is None:
             raise ValueError("請選擇職業")
         keys = list(CLASS_DISPLAY.keys())
-        self._data["char_class"] = keys[idx]
+        new_class = keys[idx]
+        if new_class != self._data["char_class"]:
+            # 切換職業時清空依賴資料
+            self._data["class_skills"] = []
+            self._data["_std_assign"] = {}
+            self._data["scores"] = {a: 10 for a in Ability}
+        self._data["char_class"] = new_class
 
     def _collect_background(self) -> None:
         rs = self.query_one("#bg-radio", RadioSet)
@@ -858,11 +985,14 @@ class CharacterCreationApp(App[Character | None]):
             try:
                 lin_rs = self.query_one("#lineage-radio", RadioSet)
                 lin_idx = lin_rs.pressed_index
-                if lin_idx is None:
-                    raise ValueError(f"請選擇{sd.name_zh}的血統/先祖")
-                self._data["lineage"] = sd.lineage_options[lin_idx].id
+                if lin_idx is not None:
+                    self._data["lineage"] = sd.lineage_options[lin_idx].id
+                else:
+                    # 未選血統，自動選第一個
+                    self._data["lineage"] = sd.lineage_options[0].id
             except Exception:
-                raise ValueError(f"請選擇{sd.name_zh}的血統/先祖")
+                # RadioSet 尚未渲染（首次選擇種族），預設第一個
+                self._data["lineage"] = sd.lineage_options[0].id
         else:
             self._data["lineage"] = ""
 
@@ -889,36 +1019,17 @@ class CharacterCreationApp(App[Character | None]):
         self._collect_bg_adjust()
 
     def _collect_standard_array(self) -> None:
-        assign: dict[Ability, int] = {}
-        for ab in ABILITY_ORDER:
-            try:
-                sel = self.query_one(f"#std-{ab.value}", Select)
-                val = sel.value
-                if val is not None and val != Select.BLANK and val != 0:
-                    assign[ab] = int(val)
-            except Exception:
-                pass
-
-        # 若沒有分配完整，用建議值補齊
-        if len(assign) < 6:
+        # 標準陣列已在 _widgets_standard_array 中自動分配
+        # 這裡只確認 scores 已設定
+        if not self._data.get("scores") or all(v == 10 for v in self._data["scores"].values()):
             cc = self._data["char_class"]
             if cc in STANDARD_ARRAY_SUGGESTION:
                 sug = STANDARD_ARRAY_SUGGESTION[cc]
-                assign = dict(zip(ABILITY_ORDER, sug))
+                assign = dict(zip(ABILITY_ORDER, sug, strict=False))
             else:
-                assign = dict(zip(ABILITY_ORDER, STANDARD_ARRAY))
-
-        # 使用 bone_engine 驗證標準陣列
-        ok, msg = validate_standard_array(assign)
-        if not ok:
-            # 自動用建議補齊
-            cc = self._data["char_class"]
-            if cc in STANDARD_ARRAY_SUGGESTION:
-                sug = STANDARD_ARRAY_SUGGESTION[cc]
-                assign = dict(zip(ABILITY_ORDER, sug))
-
-        self._data["scores"] = assign
-        self._data["_std_assign"] = assign
+                assign = dict(zip(ABILITY_ORDER, STANDARD_ARRAY, strict=False))
+            self._data["scores"] = assign
+            self._data["_std_assign"] = assign
 
     def _collect_point_buy(self) -> None:
         scores: dict[Ability, int] = {}
@@ -942,26 +1053,19 @@ class CharacterCreationApp(App[Character | None]):
     def _collect_roll(self) -> None:
         rolled = self._data.get("_rolled_values", [])
         if not rolled:
-            # 首次進入擲骰模式，自動擲骰
-            self._data["_rolled_values"] = roll_ability_scores()
-            raise ValueError("已擲骰，請分配結果後再確認")
+            # 首次進入擲骰模式，自動擲骰並分配
+            rolled = roll_ability_scores()
+            self._data["_rolled_values"] = rolled
+            assign = self._auto_assign_rolls(rolled)
+            self._data["scores"] = assign
+            self._data["_std_assign"] = assign
+            raise ValueError("已擲骰並自動分配，請確認結果")
 
-        # 收集分配
-        assign: dict[Ability, int] = {}
-        for ab in ABILITY_ORDER:
-            try:
-                sel = self.query_one(f"#roll-{ab.value}", Select)
-                val = sel.value
-                if val is not None and val != Select.BLANK and val != 0:
-                    assign[ab] = int(val)
-            except Exception:
-                pass
-
-        if len(assign) < 6:
-            raise ValueError(f"請將所有擲骰結果分配到屬性（已分配 {len(assign)}/6）")
-
-        self._data["scores"] = assign
-        self._data["_std_assign"] = assign
+        # 擲骰結果已在 _widgets_roll 中自動分配
+        if not self._data.get("scores") or all(v == 10 for v in self._data["scores"].values()):
+            assign = self._auto_assign_rolls(rolled)
+            self._data["scores"] = assign
+            self._data["_std_assign"] = assign
 
     def _collect_bg_adjust(self) -> None:
         bg_id = self._data["background"]
@@ -975,7 +1079,7 @@ class CharacterCreationApp(App[Character | None]):
             adj_rs = self.query_one("#adjust-mode-radio", RadioSet)
             idx = adj_rs.pressed_index
             if idx is not None:
-                self._data["bg_adjust_mode"] = ["+2/+1", "+1/+1/+1"][idx]
+                self._data["bg_adjust_mode"] = ["+1/+1/+1", "+2/+1"][idx]
         except Exception:
             pass
 
@@ -987,13 +1091,13 @@ class CharacterCreationApp(App[Character | None]):
             adj: dict[Ability, int] = {}
             try:
                 sel2 = self.query_one("#adj-plus2", Select)
-                if sel2.value and sel2.value != Select.BLANK:
+                if isinstance(sel2.value, Ability):
                     adj[sel2.value] = 2
             except Exception:
                 pass
             try:
                 sel1 = self.query_one("#adj-plus1", Select)
-                if sel1.value and sel1.value != Select.BLANK and sel1.value not in adj:
+                if isinstance(sel1.value, Ability) and sel1.value not in adj:
                     adj[sel1.value] = 1
             except Exception:
                 pass
@@ -1008,16 +1112,41 @@ class CharacterCreationApp(App[Character | None]):
         cc = self._data["char_class"]
         if not cc or cc not in CLASS_REGISTRY:
             return
+        cls = CLASS_REGISTRY[cc]
         bg_id = self._data["background"]
         bg_skills = (
             list(BACKGROUND_REGISTRY[bg_id].skill_proficiencies)
             if bg_id and bg_id in BACKGROUND_REGISTRY
-            else None
+            else []
         )
+
+        # 收集專長技能選位
+        feat = self._get_origin_feat()
+        feat_skills: list[Skill] = []
+        if feat and feat.skill_choice_count > 0:
+            try:
+                fsl = self.query_one("#feat-skills-list", SelectionList)
+                feat_skills = list(fsl.selected)
+                if len(feat_skills) != feat.skill_choice_count:
+                    raise ValueError(
+                        f"起源專長「{feat.name_zh}」需選 {feat.skill_choice_count} 項技能，"
+                        f"已選 {len(feat_skills)}"
+                    )
+            except ValueError:
+                raise
+            except Exception:
+                pass
+        self._data["feat_skills"] = feat_skills
+
+        # 收集職業技能選位
+        # Available = ClassList - (BackgroundSkills ∪ FeatSkills)
+        available = get_available_class_skills(cls.skill_choices, bg_skills, feat_skills)
         try:
             sl = self.query_one("#skills-list", SelectionList)
             selected = list(sl.selected)
-            ok, msg = validate_skill_selection(selected, cc, bg_skills)
+            ok, msg = validate_skill_selection(
+                selected, cc, bg_skills, allowed_skills=available,
+            )
             if not ok:
                 raise ValueError(msg)
             self._data["class_skills"] = selected
@@ -1143,6 +1272,59 @@ class CharacterCreationApp(App[Character | None]):
             self._data["_std_assign"] = {a: 0 for a in Ability}
             await self._render_step()
 
+    async def on_select_changed(self, event: Select.Changed) -> None:
+        """Select 變更時即時更新。"""
+        sel_id = event.select.id or ""
+        if sel_id.startswith("pb-"):
+            # 重新計算剩餘點數
+            total_cost = 0
+            for ab in ABILITY_ORDER:
+                try:
+                    sel = self.query_one(f"#pb-{ab.value}", Select)
+                    val = sel.value
+                    if isinstance(val, int):
+                        total_cost += POINT_BUY_COSTS.get(val, 0)
+                except Exception:
+                    pass
+            remaining = POINT_BUY_BUDGET - total_cost
+            self._update_preview()
+            self.notify(f"剩餘點數：{remaining}/{POINT_BUY_BUDGET}", severity="information")
+        elif sel_id in ("adj-plus2", "adj-plus1"):
+            # +2/+1 不可選同一屬性
+            try:
+                sel2 = self.query_one("#adj-plus2", Select)
+                sel1 = self.query_one("#adj-plus1", Select)
+                if (isinstance(sel2.value, Ability) and isinstance(sel1.value, Ability)
+                        and sel2.value == sel1.value):
+                    self.notify("+2 和 +1 不能選同一屬性！", severity="error")
+                else:
+                    # 即時更新 bg_adjust 資料
+                    adj: dict[Ability, int] = {}
+                    if isinstance(sel2.value, Ability):
+                        adj[sel2.value] = 2
+                    if isinstance(sel1.value, Ability) and sel1.value not in adj:
+                        adj[sel1.value] = 1
+                    self._data["bg_adjust"] = adj
+                    self._update_preview()
+            except Exception:
+                pass
+
+    def on_selection_list_selected_changed(self, event: SelectionList.SelectedChanged) -> None:
+        """技能/法術勾選時即時更新預覽。"""
+        sl_id = event.selection_list.id or ""
+        if sl_id == "feat-skills-list":
+            self._data["feat_skills"] = list(event.selection_list.selected)
+            self._update_preview()
+        elif sl_id == "skills-list":
+            self._data["class_skills"] = list(event.selection_list.selected)
+            self._update_preview()
+        elif sl_id == "cantrip-list":
+            self._data["cantrips"] = list(event.selection_list.selected)
+            self._update_preview()
+        elif sl_id == "spell-list":
+            self._data["spells"] = list(event.selection_list.selected)
+            self._update_preview()
+
     async def on_input_submitted(self, event: Input.Submitted) -> None:
         if event.input.id == "name-input":
             await self.action_next_step()
@@ -1174,11 +1356,9 @@ class CharacterCreationApp(App[Character | None]):
                 self._data["species"] = new_sp
                 self._data["lineage"] = ""
                 self._update_preview()
-                # 若新種族有血統子選項，需重新渲染以顯示
+                # 切換種族時重新渲染（顯示或隱藏血統選項）
                 if new_sp != old_sp:
-                    sd = SPECIES_REGISTRY[new_sp]
-                    if sd.lineage_options:
-                        await self._render_step()
+                    await self._render_step()
 
         elif rs_id == "lineage-radio":
             sp_id = self._data.get("species", "")
@@ -1188,6 +1368,24 @@ class CharacterCreationApp(App[Character | None]):
                 if idx is not None and idx < len(sd.lineage_options):
                     self._data["lineage"] = sd.lineage_options[idx].id
                     self._update_preview()
+
+        elif rs_id == "adjust-mode-radio":
+            idx = event.radio_set.pressed_index
+            if idx is not None:
+                self._data["bg_adjust_mode"] = ["+1/+1/+1", "+2/+1"][idx]
+                await self._render_step()
+
+        elif rs_id == "bg-equip-radio":
+            idx = event.radio_set.pressed_index
+            if idx is not None:
+                self._data["bg_equipment"] = "A" if idx == 0 else "B"
+                self._update_preview()
+
+        elif rs_id == "cls-equip-radio":
+            idx = event.radio_set.pressed_index
+            if idx is not None:
+                self._data["class_equipment"] = "A" if idx == 0 else "B"
+                self._update_preview()
 
         elif rs_id == "method-radio":
             idx = event.radio_set.pressed_index
@@ -1199,6 +1397,11 @@ class CharacterCreationApp(App[Character | None]):
         try:
             self._collect_step_data(TOTAL_STEPS)
             char = self._build_character()
+            # 自動存檔角色卡
+            from tot.tui.character_io import save_character
+
+            saved_path = save_character(char)
+            self.notify(f"角色卡已儲存：{saved_path}", severity="information")
             self.exit(result=char)
         except ValueError as e:
             self.notify(str(e), severity="error")

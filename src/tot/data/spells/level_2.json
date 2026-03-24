@@ -1,0 +1,105 @@
+[
+  {
+    "name": "定身術",
+    "en_name": "Hold Person",
+    "level": 2,
+    "school": "Enchantment",
+    "casting_time": "1 action",
+    "range": "60ft",
+    "duration": "1 minute",
+    "concentration": true,
+    "effect_type": "condition",
+    "save_ability": "WIS",
+    "applies_condition": "Paralyzed",
+    "components": [
+      "V",
+      "S",
+      "M"
+    ],
+    "material_description": "一小段直鐵條",
+    "max_targets": 1,
+    "upcast_additional_targets": 1,
+    "description": "需求：V（語言）、S（姿勢）、M（一小段直鐵條，可用法器替代）。一名類人生物須感知豁免，失敗時麻痺。每回合結束可重擲豁免。升環每環多 1 目標。",
+    "classes": [
+      "Bard",
+      "Cleric",
+      "Druid",
+      "Sorcerer",
+      "Warlock",
+      "Wizard"
+    ]
+  },
+  {
+    "name": "粉碎音波",
+    "en_name": "Shatter",
+    "level": 2,
+    "school": "Evocation",
+    "casting_time": "1 action",
+    "range": "60ft",
+    "duration": "Instantaneous",
+    "effect_type": "damage",
+    "save_ability": "CON",
+    "save_half": true,
+    "damage_dice": "3d8",
+    "damage_type": "Thunder",
+    "upcast_dice": "1d8",
+    "aoe_shape": "sphere",
+    "aoe_radius_ft": 10,
+    "components": [
+      "V",
+      "S",
+      "M"
+    ],
+    "material_description": "一片雲母",
+    "description": "需求：V（語言）、S（姿勢）、M（一片雲母，可用法器替代）。10ft 半徑球體內每個生物須體質豁免，失敗受 3d8 雷鳴傷害，成功減半。無機物質構成的生物劣勢。",
+    "classes": [
+      "Bard",
+      "Sorcerer",
+      "Warlock",
+      "Wizard"
+    ]
+  },
+  {
+    "name": "目盲/耳聾術",
+    "en_name": "Blindness/Deafness",
+    "level": 2,
+    "school": "Necromancy",
+    "casting_time": "1 action",
+    "range": "30ft",
+    "duration": "1 minute",
+    "effect_type": "condition",
+    "save_ability": "CON",
+    "applies_condition": "Blinded",
+    "components": [
+      "V"
+    ],
+    "max_targets": 1,
+    "upcast_additional_targets": 1,
+    "description": "需求：V（語言）。一名生物須體質豁免，失敗時目盲或耳聾（施法者選擇）。每回合結束可重擲豁免。不需專注。升環每環多 1 目標。",
+    "classes": [
+      "Bard",
+      "Cleric",
+      "Sorcerer",
+      "Wizard"
+    ]
+  },
+  {
+    "name": "迷蹤步",
+    "en_name": "Misty Step",
+    "level": 2,
+    "school": "Conjuration",
+    "casting_time": "1 bonus action",
+    "range": "Self",
+    "duration": "Instantaneous",
+    "effect_type": "utility",
+    "components": [
+      "V"
+    ],
+    "description": "需求：V（語言）。瞬間傳送至 30ft 內你能看見的未佔用空間。",
+    "classes": [
+      "Sorcerer",
+      "Warlock",
+      "Wizard"
+    ]
+  }
+]

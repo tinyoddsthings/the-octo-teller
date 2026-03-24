@@ -221,17 +221,20 @@ class TestClassValidation:
         with pytest.raises(ValueError, match="未知職業"):
             builder.set_class("Artificer")
 
-    def test_wrong_skill_for_class(self):
+    def test_cross_source_skills_accepted(self):
+        """set_skills 接受所有來源的技能（職業+背景+專長+種族）。"""
         b = _builder_up_to_class()
         b.set_ability_scores(AbilityScores())
-        with pytest.raises(ValueError, match="無法選擇"):
-            b.set_skills([Skill.ARCANA, Skill.PERCEPTION])
+        # Perception 不在 Fighter skill_choices 中，但可能來自背景/專長
+        b.set_skills([Skill.ARCANA, Skill.PERCEPTION])
+        # 不應拋錯，驗證已移至 TUI 層
 
-    def test_wrong_skill_count(self):
+    def test_any_skill_count_accepted(self):
+        """set_skills 接受任意數量（背景+職業+專長合計可能超過 num_skills）。"""
         b = _builder_up_to_class()
         b.set_ability_scores(AbilityScores())
-        with pytest.raises(ValueError, match="應選"):
-            b.set_skills([Skill.ATHLETICS])  # Fighter 需要 2 個
+        b.set_skills([Skill.ATHLETICS])  # 少於 Fighter 的 num_skills=2 也可以
+        # 數量驗證在 TUI 層做
 
 
 # ---------------------------------------------------------------------------

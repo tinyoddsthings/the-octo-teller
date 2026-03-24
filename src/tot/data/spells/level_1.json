@@ -1,0 +1,1246 @@
+[
+  {
+    "name": "魔法飛彈",
+    "en_name": "Magic Missile",
+    "level": 1,
+    "school": "Evocation",
+    "casting_time": "1 action",
+    "range": "120ft",
+    "duration": "Instantaneous",
+    "effect_type": "damage",
+    "damage_dice": "3d4+3",
+    "damage_type": "Force",
+    "upcast_dice": "1d4+1",
+    "components": [
+      "V",
+      "S"
+    ],
+    "description": "需求：V（語言）、S（姿勢）。三道魔力飛鏢自動命中，各造成 1d4+1 力場傷害。升環每環多 1 枚。",
+    "classes": [
+      "Wizard",
+      "Sorcerer"
+    ]
+  },
+  {
+    "name": "燃燒之手",
+    "en_name": "Burning Hands",
+    "level": 1,
+    "school": "Evocation",
+    "casting_time": "1 action",
+    "range": "Self (15ft cone)",
+    "duration": "Instantaneous",
+    "effect_type": "damage",
+    "save_ability": "DEX",
+    "save_half": true,
+    "damage_dice": "3d6",
+    "damage_type": "Fire",
+    "upcast_dice": "1d6",
+    "aoe_shape": "cone",
+    "aoe_length_ft": 15,
+    "components": [
+      "V",
+      "S"
+    ],
+    "description": "需求：V（語言）、S（姿勢）。15ft 錐形範圍內每個生物須進行敏捷豁免，失敗受 3d6 火焰傷害，成功減半。",
+    "classes": [
+      "Wizard",
+      "Sorcerer"
+    ]
+  },
+  {
+    "name": "療傷術",
+    "en_name": "Cure Wounds",
+    "level": 1,
+    "school": "Abjuration",
+    "casting_time": "1 action",
+    "range": "Touch",
+    "duration": "Instantaneous",
+    "effect_type": "healing",
+    "healing_dice": "2d8",
+    "upcast_dice": "2d8",
+    "components": [
+      "V",
+      "S"
+    ],
+    "description": "需求：V（語言）、S（姿勢）。觸碰的生物恢復 2d8 + 施法屬性調整值 HP。對不死和構裝無效。",
+    "classes": [
+      "Bard",
+      "Cleric",
+      "Druid",
+      "Paladin",
+      "Ranger"
+    ]
+  },
+  {
+    "name": "治療之言",
+    "en_name": "Healing Word",
+    "level": 1,
+    "school": "Abjuration",
+    "casting_time": "1 bonus action",
+    "range": "60ft",
+    "duration": "Instantaneous",
+    "effect_type": "healing",
+    "healing_dice": "2d4",
+    "upcast_dice": "2d4",
+    "components": [
+      "V"
+    ],
+    "description": "需求：V（語言）。射程內一個生物恢復 2d4 + 施法屬性調整值 HP。",
+    "classes": [
+      "Bard",
+      "Cleric",
+      "Druid"
+    ]
+  },
+  {
+    "name": "護盾術",
+    "en_name": "Shield",
+    "level": 1,
+    "school": "Abjuration",
+    "casting_time": "1 reaction",
+    "range": "Self",
+    "duration": "1 round",
+    "effect_type": "buff",
+    "components": [
+      "V",
+      "S"
+    ],
+    "description": "需求：V（語言）、S（姿勢）。獲得 +5 AC 加值直到下回合開始，免疫魔法飛彈。",
+    "classes": [
+      "Wizard",
+      "Sorcerer"
+    ]
+  },
+  {
+    "name": "指引之箭",
+    "en_name": "Guiding Bolt",
+    "level": 1,
+    "school": "Evocation",
+    "casting_time": "1 action",
+    "range": "120ft",
+    "duration": "1 round",
+    "effect_type": "damage",
+    "attack_type": "ranged",
+    "damage_dice": "4d6",
+    "damage_type": "Radiant",
+    "upcast_dice": "1d6",
+    "components": [
+      "V",
+      "S"
+    ],
+    "description": "需求：V（語言）、S（姿勢）。遠程法術攻擊。命中造成 4d6 光輝傷害，對目標的下次攻擊有優勢。",
+    "classes": [
+      "Cleric"
+    ]
+  },
+  {
+    "name": "雷鳴波",
+    "en_name": "Thunderwave",
+    "level": 1,
+    "school": "Evocation",
+    "casting_time": "1 action",
+    "range": "Self (15ft cube)",
+    "duration": "Instantaneous",
+    "effect_type": "damage",
+    "save_ability": "CON",
+    "save_half": true,
+    "damage_dice": "2d8",
+    "damage_type": "Thunder",
+    "upcast_dice": "2d8",
+    "aoe_shape": "cube",
+    "aoe_width_ft": 15,
+    "components": [
+      "V",
+      "S"
+    ],
+    "description": "需求：V（語言）、S（姿勢）。15ft 立方區域內每個生物須進行體質豁免，失敗受 2d8 雷鳴傷害並推開 10ft。",
+    "classes": [
+      "Wizard",
+      "Sorcerer",
+      "Bard",
+      "Druid"
+    ]
+  },
+  {
+    "name": "祝福術",
+    "en_name": "Bless",
+    "level": 1,
+    "school": "Enchantment",
+    "casting_time": "1 action",
+    "range": "30ft",
+    "duration": "1 minute",
+    "concentration": true,
+    "effect_type": "buff",
+    "components": [
+      "V",
+      "S",
+      "M"
+    ],
+    "material_description": "一滴聖水",
+    "max_targets": 3,
+    "upcast_additional_targets": 1,
+    "description": "需求：V（語言）、S（姿勢）、M（一滴聖水，可用法器替代）。至多三個生物的攻擊和豁免 +1d4。升環每環多 1 個目標。",
+    "classes": [
+      "Cleric",
+      "Paladin"
+    ]
+  },
+  {
+    "name": "災禍術",
+    "en_name": "Bane",
+    "level": 1,
+    "school": "Enchantment",
+    "casting_time": "1 action",
+    "range": "30ft",
+    "duration": "1 minute",
+    "concentration": true,
+    "effect_type": "condition",
+    "save_ability": "CHA",
+    "components": [
+      "V",
+      "S",
+      "M"
+    ],
+    "material_description": "一滴血",
+    "max_targets": 3,
+    "upcast_additional_targets": 1,
+    "description": "需求：V（語言）、S（姿勢）、M（一滴血，可用法器替代）。至多三個目標須魅力豁免，失敗時攻擊和豁免 -1d4。升環每環多 1 目標。",
+    "classes": [
+      "Bard",
+      "Cleric",
+      "Warlock"
+    ]
+  },
+  {
+    "name": "睡眠術",
+    "en_name": "Sleep",
+    "level": 1,
+    "school": "Enchantment",
+    "casting_time": "1 action",
+    "range": "60ft",
+    "duration": "1 minute",
+    "concentration": true,
+    "effect_type": "condition",
+    "save_ability": "WIS",
+    "applies_condition": "Unconscious",
+    "components": [
+      "V",
+      "S",
+      "M"
+    ],
+    "material_description": "一撮細沙、玫瑰花瓣或一隻蟋蟀",
+    "upcast_additional_targets": 1,
+    "description": "需求：V（語言）、S（姿勢）、M（一撮細沙、玫瑰花瓣或一隻蟋蟀，可用法器替代）。目標須感知豁免，失敗時陷入魔法睡眠。受傷或被喚醒可結束。升環每環多 1 目標。",
+    "classes": [
+      "Bard",
+      "Sorcerer",
+      "Wizard"
+    ]
+  },
+  {
+    "name": "法師護甲",
+    "en_name": "Mage Armor",
+    "level": 1,
+    "school": "Abjuration",
+    "casting_time": "1 action",
+    "range": "Touch",
+    "duration": "8 hours",
+    "effect_type": "buff",
+    "components": [
+      "V",
+      "S",
+      "M"
+    ],
+    "material_description": "一片鞣皮",
+    "description": "需求：V（語言）、S（姿勢）、M（一片鞣皮，可用法器替代）。未穿甲的目標基礎 AC 變為 13 + DEX 調整值。",
+    "classes": [
+      "Wizard",
+      "Sorcerer"
+    ]
+  },
+  {
+    "name": "造成傷害",
+    "en_name": "Inflict Wounds",
+    "level": 1,
+    "school": "Necromancy",
+    "casting_time": "1 action",
+    "range": "Touch",
+    "duration": "Instantaneous",
+    "effect_type": "damage",
+    "save_ability": "CON",
+    "save_half": true,
+    "damage_dice": "2d10",
+    "damage_type": "Necrotic",
+    "upcast_dice": "2d10",
+    "components": [
+      "V",
+      "S"
+    ],
+    "description": "需求：V（語言）、S（姿勢）。觸碰的生物須體質豁免，失敗受 2d10 黯蝕傷害，成功減半。",
+    "classes": [
+      "Cleric"
+    ]
+  },
+  {
+    "name": "繽紛寶珠",
+    "en_name": "Chromatic Orb",
+    "level": 1,
+    "school": "Evocation",
+    "casting_time": "1 action",
+    "range": "90ft",
+    "duration": "Instantaneous",
+    "effect_type": "damage",
+    "attack_type": "ranged",
+    "damage_dice": "3d8",
+    "damage_type": "Fire",
+    "upcast_dice": "3d8",
+    "components": [
+      "V",
+      "S",
+      "M"
+    ],
+    "material_description": "價值 50gp 的鑽石",
+    "material_cost": 50,
+    "description": "需求：V（語言）、S（姿勢）、M（價值 50gp 的鑽石，不可用法器替代）。遠程法術攻擊。命中造成 3d8 所選元素傷害（酸/寒/火/電/毒/雷）。",
+    "classes": [
+      "Wizard",
+      "Sorcerer"
+    ]
+  },
+  {
+    "name": "七彩噴射",
+    "en_name": "Color Spray",
+    "level": 1,
+    "school": "Illusion",
+    "casting_time": "1 action",
+    "range": "Self (15ft cone)",
+    "duration": "Instantaneous",
+    "effect_type": "condition",
+    "save_ability": "CON",
+    "applies_condition": "Blinded",
+    "components": [
+      "V",
+      "S",
+      "M"
+    ],
+    "material_description": "一撮紅黃藍染色的粉末或沙子",
+    "description": "需求：V（語言）、S（姿勢）、M（一撮紅黃藍染色的粉末或沙子，可用法器替代）。15ft 錐形範圍內每個生物須體質豁免，失敗則目盲至你下回合結束。",
+    "classes": [
+      "Wizard",
+      "Sorcerer",
+      "Bard"
+    ]
+  },
+  {
+    "name": "疫病射線",
+    "en_name": "Ray of Sickness",
+    "level": 1,
+    "school": "Necromancy",
+    "casting_time": "1 action",
+    "range": "60ft",
+    "duration": "Instantaneous",
+    "effect_type": "damage",
+    "attack_type": "ranged",
+    "damage_dice": "2d8",
+    "damage_type": "Poison",
+    "upcast_dice": "2d8",
+    "applies_condition": "Poisoned",
+    "components": [
+      "V",
+      "S"
+    ],
+    "description": "需求：V（語言）、S（姿勢）。遠程法術攻擊。命中造成 2d8 毒素傷害，且目標中毒至你下回合結束。",
+    "classes": [
+      "Wizard",
+      "Sorcerer"
+    ]
+  },
+  {
+    "name": "冰刃術",
+    "en_name": "Ice Knife",
+    "level": 1,
+    "school": "Conjuration",
+    "casting_time": "1 action",
+    "range": "60ft",
+    "duration": "Instantaneous",
+    "effect_type": "damage",
+    "attack_type": "ranged",
+    "damage_dice": "1d10",
+    "damage_type": "Piercing",
+    "upcast_dice": "2d6",
+    "components": [
+      "S",
+      "M"
+    ],
+    "material_description": "一滴水或一片冰",
+    "description": "需求：S（姿勢）、M（一滴水或一片冰，可用法器替代）。遠程法術攻擊。命中造成 1d10 穿刺傷害，然後爆裂，5ft 內 DEX 豁免否則 2d6 寒冷傷害。",
+    "classes": [
+      "Wizard",
+      "Sorcerer",
+      "Druid"
+    ]
+  },
+  {
+    "name": "妖火術",
+    "en_name": "Faerie Fire",
+    "level": 1,
+    "school": "Evocation",
+    "casting_time": "1 action",
+    "range": "60ft",
+    "duration": "1 minute",
+    "concentration": true,
+    "effect_type": "condition",
+    "save_ability": "DEX",
+    "components": [
+      "V"
+    ],
+    "description": "需求：V（語言）。20ft 立方區域內生物須 DEX 豁免，失敗時發光且無法隱形，對其攻擊有優勢。",
+    "classes": [
+      "Bard",
+      "Druid"
+    ]
+  },
+  {
+    "name": "糾纏術",
+    "en_name": "Entangle",
+    "level": 1,
+    "school": "Conjuration",
+    "casting_time": "1 action",
+    "range": "90ft",
+    "duration": "1 minute",
+    "concentration": true,
+    "effect_type": "condition",
+    "save_ability": "STR",
+    "applies_condition": "Restrained",
+    "components": [
+      "V",
+      "S"
+    ],
+    "description": "需求：V（語言）、S（姿勢）。20ft 正方形區域內生物須力量豁免，失敗時被束縛。區域為難行地形。",
+    "classes": [
+      "Druid",
+      "Ranger"
+    ]
+  },
+  {
+    "name": "阿加西斯之甲",
+    "en_name": "Armor of Agathys",
+    "level": 1,
+    "school": "Abjuration",
+    "casting_time": "1 bonus action",
+    "range": "Self",
+    "duration": "1 hour",
+    "effect_type": "buff",
+    "components": [
+      "V",
+      "S",
+      "M"
+    ],
+    "material_description": "一片藍色玻璃碎片",
+    "description": "需求：V（語言）、S（姿勢）、M（一片藍色玻璃碎片，可用法器替代）。獲得 5 點臨時 HP。近戰攻擊命中你的生物受 5 點寒冷傷害。臨時 HP 耗盡則法術結束。升環每環臨時 HP 和寒冷傷害各 +5。",
+    "classes": [
+      "Warlock"
+    ]
+  },
+  {
+    "name": "哈達之臂",
+    "en_name": "Arms of Hadar",
+    "level": 1,
+    "school": "Conjuration",
+    "casting_time": "1 action",
+    "range": "Self (10ft emanation)",
+    "duration": "Instantaneous",
+    "effect_type": "damage",
+    "save_ability": "STR",
+    "save_half": true,
+    "damage_dice": "2d6",
+    "damage_type": "Necrotic",
+    "upcast_dice": "1d6",
+    "aoe_shape": "sphere",
+    "aoe_radius_ft": 10,
+    "components": [
+      "V",
+      "S"
+    ],
+    "description": "需求：V（語言）、S（姿勢）。10ft 散發區域內每個生物須力量豁免，失敗受 2d6 黯蝕傷害且下回合開始前不能使用反應，成功傷害減半。",
+    "classes": [
+      "Warlock"
+    ]
+  },
+  {
+    "name": "脆弱詛咒",
+    "en_name": "Hex",
+    "level": 1,
+    "school": "Enchantment",
+    "casting_time": "1 bonus action",
+    "range": "90ft",
+    "duration": "1 hour",
+    "concentration": true,
+    "effect_type": "damage",
+    "damage_dice": "1d6",
+    "damage_type": "Necrotic",
+    "components": [
+      "V",
+      "S",
+      "M"
+    ],
+    "material_description": "一顆石化的蠑螈眼睛",
+    "description": "需求：V（語言）、S（姿勢）、M（一顆石化的蠑螈眼睛，可用法器替代）。詛咒目標，你每次攻擊命中額外造成 1d6 黯蝕傷害。選擇一項屬性，目標該屬性檢定有劣勢。目標歸零可用附贈動作轉移詛咒。升環延長專注時間。",
+    "classes": [
+      "Warlock"
+    ]
+  },
+  {
+    "name": "地獄斥責",
+    "en_name": "Hellish Rebuke",
+    "level": 1,
+    "school": "Evocation",
+    "casting_time": "1 reaction",
+    "range": "60ft",
+    "duration": "Instantaneous",
+    "effect_type": "damage",
+    "save_ability": "DEX",
+    "save_half": true,
+    "damage_dice": "2d10",
+    "damage_type": "Fire",
+    "upcast_dice": "1d10",
+    "components": [
+      "V",
+      "S"
+    ],
+    "description": "需求：V（語言）、S（姿勢）。反應：當你受到 60ft 內可見生物傷害時施放。傷害你的生物須敏捷豁免，失敗受 2d10 火焰傷害，成功減半。",
+    "classes": [
+      "Warlock"
+    ]
+  },
+  {
+    "name": "魅惑人類",
+    "en_name": "Charm Person",
+    "level": 1,
+    "school": "Enchantment",
+    "casting_time": "1 action",
+    "range": "30ft",
+    "duration": "1 hour",
+    "effect_type": "condition",
+    "save_ability": "WIS",
+    "applies_condition": "Charmed",
+    "components": [
+      "V",
+      "S"
+    ],
+    "description": "需求：V（語言）、S（姿勢）。一個類人生物須感知豁免（與你方戰鬥中有優勢）。失敗則被魅惑，對你友善。受傷或法術結束時目標知道被魅惑。升環每環多 1 目標。",
+    "classes": [
+      "Bard",
+      "Druid",
+      "Sorcerer",
+      "Warlock",
+      "Wizard"
+    ]
+  },
+  {
+    "name": "通曉語言",
+    "en_name": "Comprehend Languages",
+    "level": 1,
+    "school": "Divination",
+    "casting_time": "1 action",
+    "range": "Self",
+    "duration": "1 hour",
+    "effect_type": "utility",
+    "components": [
+      "V",
+      "S",
+      "M"
+    ],
+    "material_description": "一撮煤灰和鹽",
+    "description": "需求：V（語言）、S（姿勢）、M（一撮煤灰和鹽，可用法器替代）。持續時間內理解你聽到的任何口語和手語的字面含義，也能閱讀任何書面語言。不解碼密語。可以儀式施放。",
+    "classes": [
+      "Bard",
+      "Sorcerer",
+      "Warlock",
+      "Wizard"
+    ]
+  },
+  {
+    "name": "偵測魔法",
+    "en_name": "Detect Magic",
+    "level": 1,
+    "school": "Divination",
+    "casting_time": "1 action",
+    "range": "Self",
+    "duration": "10 minutes",
+    "concentration": true,
+    "effect_type": "utility",
+    "components": [
+      "V",
+      "S"
+    ],
+    "description": "需求：V（語言）、S（姿勢）。持續時間內感知 30ft 內魔法效果的存在，可用魔法動作看到光環並得知法術學派。被石/土/木/金屬/鉛阻擋。可以儀式施放。",
+    "classes": [
+      "Bard",
+      "Cleric",
+      "Druid",
+      "Paladin",
+      "Ranger",
+      "Sorcerer",
+      "Warlock",
+      "Wizard"
+    ]
+  },
+  {
+    "name": "加速撤退",
+    "en_name": "Expeditious Retreat",
+    "level": 1,
+    "school": "Transmutation",
+    "casting_time": "1 bonus action",
+    "range": "Self",
+    "duration": "10 minutes",
+    "concentration": true,
+    "effect_type": "buff",
+    "components": [
+      "V",
+      "S"
+    ],
+    "description": "需求：V（語言）、S（姿勢）。施放時執行衝刺動作，且持續時間內可用附贈動作再次衝刺。",
+    "classes": [
+      "Sorcerer",
+      "Warlock",
+      "Wizard"
+    ]
+  },
+  {
+    "name": "動物交談",
+    "en_name": "Speak with Animals",
+    "level": 1,
+    "school": "Divination",
+    "casting_time": "1 action",
+    "range": "Self",
+    "duration": "10 minutes",
+    "effect_type": "utility",
+    "components": [
+      "V",
+      "S"
+    ],
+    "description": "需求：V（語言）、S（姿勢）。持續時間內可理解野獸並與之口頭溝通，可對野獸使用社交技能。野獸可告知附近地點和怪物資訊。可以儀式施放。",
+    "classes": [
+      "Bard",
+      "Druid",
+      "Ranger",
+      "Warlock"
+    ]
+  },
+  {
+    "name": "塔莎狂笑術",
+    "en_name": "Tasha's Hideous Laughter",
+    "level": 1,
+    "school": "Enchantment",
+    "casting_time": "1 action",
+    "range": "30ft",
+    "duration": "1 minute",
+    "concentration": true,
+    "effect_type": "condition",
+    "save_ability": "WIS",
+    "applies_condition": "Incapacitated",
+    "components": [
+      "V",
+      "S",
+      "M"
+    ],
+    "material_description": "一塊蛋撻和一根羽毛",
+    "description": "需求：V（語言）、S（姿勢）、M（一塊蛋撻和一根羽毛，可用法器替代）。目標須感知豁免，失敗則倒地且失能，不可控地大笑。每回合結束和受傷時重新豁免（受傷觸發有優勢）。升環每環多 1 目標。",
+    "classes": [
+      "Bard",
+      "Warlock",
+      "Wizard"
+    ]
+  },
+  {
+    "name": "巫術箭",
+    "en_name": "Witch Bolt",
+    "level": 1,
+    "school": "Evocation",
+    "casting_time": "1 action",
+    "range": "60ft",
+    "duration": "1 minute",
+    "concentration": true,
+    "effect_type": "damage",
+    "attack_type": "ranged",
+    "damage_dice": "2d12",
+    "damage_type": "Lightning",
+    "upcast_dice": "1d12",
+    "components": [
+      "V",
+      "S",
+      "M"
+    ],
+    "material_description": "一根被閃電擊中的樹枝",
+    "description": "需求：V（語言）、S（姿勢）、M（一根被閃電擊中的樹枝，可用法器替代）。遠程法術攻擊。命中造成 2d12 閃電傷害。之後每回合可用附贈動作自動造成 1d12 閃電傷害。目標離開射程或完全遮蔽則結束。",
+    "classes": [
+      "Sorcerer",
+      "Warlock",
+      "Wizard"
+    ]
+  },
+  {
+    "name": "幻象文字",
+    "en_name": "Illusory Script",
+    "level": 1,
+    "school": "Illusion",
+    "casting_time": "1 minute",
+    "range": "Touch",
+    "duration": "10 days",
+    "effect_type": "utility",
+    "components": [
+      "S",
+      "M"
+    ],
+    "material_description": "價值 10gp 的墨水，施法後消耗",
+    "material_cost": 10,
+    "material_consumed": true,
+    "description": "需求：S（姿勢）、M（價值 10gp 的墨水，施法後消耗，不可用法器替代）。在書寫材料上寫下文字，對指定生物顯示正常內容，其他人看到無法辨識的文字。解除法術則原文和幻象都消失。可以儀式施放。",
+    "classes": [
+      "Bard",
+      "Warlock",
+      "Wizard"
+    ]
+  },
+  {
+    "name": "無形僕從",
+    "en_name": "Unseen Servant",
+    "level": 1,
+    "school": "Conjuration",
+    "casting_time": "1 action",
+    "range": "60ft",
+    "duration": "1 hour",
+    "effect_type": "utility",
+    "components": [
+      "V",
+      "S",
+      "M"
+    ],
+    "material_description": "一段繩子和一塊木頭",
+    "description": "需求：V（語言）、S（姿勢）、M（一段繩子和一塊木頭，可用法器替代）。創造隱形無心智中型力場僕從（AC 10、HP 1、STR 2）。可用附贈動作命令移動 15ft 並執行簡單任務。離開 60ft 法術結束。可以儀式施放。",
+    "classes": [
+      "Bard",
+      "Warlock",
+      "Wizard"
+    ]
+  },
+  {
+    "name": "防護善惡",
+    "en_name": "Protection from Evil and Good",
+    "level": 1,
+    "school": "Abjuration",
+    "casting_time": "1 action",
+    "range": "Touch",
+    "duration": "10 minutes",
+    "concentration": true,
+    "effect_type": "buff",
+    "components": [
+      "V",
+      "S",
+      "M"
+    ],
+    "material_description": "價值 25gp 的聖水，施法後消耗",
+    "material_cost": 25,
+    "material_consumed": true,
+    "description": "需求：V（語言）、S（姿勢）、M（價值 25gp 的聖水，施法後消耗，不可用法器替代）。觸碰目標受異怪/天界/元素/妖精/邪魔/不死防護：這些生物對目標攻擊有劣勢，且目標不能被附身、魅惑或恐懼。",
+    "classes": [
+      "Cleric",
+      "Druid",
+      "Paladin",
+      "Warlock",
+      "Wizard"
+    ]
+  },
+  {
+    "name": "命令術",
+    "en_name": "Command",
+    "level": 1,
+    "school": "Enchantment",
+    "casting_time": "1 action",
+    "range": "60ft",
+    "duration": "Instantaneous",
+    "effect_type": "condition",
+    "save_ability": "WIS",
+    "components": [
+      "V"
+    ],
+    "description": "需求：V（語言）。對目標說出單字命令，須感知豁免。失敗則在下回合服從命令（過來/放下/逃走/匍匐/停步）。升環每環多 1 目標。",
+    "classes": [
+      "Bard",
+      "Cleric",
+      "Paladin"
+    ]
+  },
+  {
+    "name": "易容術",
+    "en_name": "Disguise Self",
+    "level": 1,
+    "school": "Illusion",
+    "casting_time": "1 action",
+    "range": "Self",
+    "duration": "1 hour",
+    "effect_type": "utility",
+    "components": [
+      "V",
+      "S"
+    ],
+    "description": "需求：V（語言）、S（姿勢）。使自己和身上物品看起來不同，可改變身高 30cm、體重等外觀。物理接觸會穿透幻象。識破需研究動作和智力（調查）檢定對抗法術 DC。",
+    "classes": [
+      "Bard",
+      "Sorcerer",
+      "Wizard"
+    ]
+  },
+  {
+    "name": "羽落術",
+    "en_name": "Feather Fall",
+    "level": 1,
+    "school": "Transmutation",
+    "casting_time": "1 reaction",
+    "range": "60ft",
+    "duration": "1 minute",
+    "effect_type": "utility",
+    "components": [
+      "V",
+      "M"
+    ],
+    "material_description": "一根小羽毛或一片絨毛",
+    "description": "需求：V（語言）、M（一根小羽毛或一片絨毛，可用法器替代）。反應：你或 60ft 內可見生物墜落時施放。至多五個墜落生物下降速率降至每輪 60ft，著地時不受墜落傷害。",
+    "classes": [
+      "Bard",
+      "Sorcerer",
+      "Wizard"
+    ]
+  },
+  {
+    "name": "尋獲魔寵",
+    "en_name": "Find Familiar",
+    "level": 1,
+    "school": "Conjuration",
+    "casting_time": "1 hour",
+    "range": "10ft",
+    "duration": "Instantaneous",
+    "effect_type": "utility",
+    "components": [
+      "V",
+      "S",
+      "M"
+    ],
+    "material_description": "價值 10gp 的燃燒薰香，施法後消耗",
+    "material_cost": 10,
+    "material_consumed": true,
+    "description": "需求：V（語言）、S（姿勢）、M（價值 10gp 的燃燒薰香，施法後消耗，不可用法器替代）。獲得一個魔寵（CR 0 野獸形態的精魂），獨立行動但服從命令。可以儀式施放。",
+    "classes": [
+      "Wizard"
+    ]
+  },
+  {
+    "name": "迷霧術",
+    "en_name": "Fog Cloud",
+    "level": 1,
+    "school": "Conjuration",
+    "casting_time": "1 action",
+    "range": "120ft",
+    "duration": "1 hour",
+    "concentration": true,
+    "effect_type": "utility",
+    "aoe_shape": "sphere",
+    "aoe_radius_ft": 20,
+    "components": [
+      "V",
+      "S"
+    ],
+    "description": "需求：V（語言）、S（姿勢）。以射程內一點為中心創造 20ft 半徑球形霧氣，區域為嚴重遮蔽。強風可吹散。升環每環半徑 +20ft。",
+    "classes": [
+      "Druid",
+      "Ranger",
+      "Sorcerer",
+      "Wizard"
+    ]
+  },
+  {
+    "name": "神莓術",
+    "en_name": "Goodberry",
+    "level": 1,
+    "school": "Conjuration",
+    "casting_time": "1 action",
+    "range": "Self",
+    "duration": "24 hours",
+    "effect_type": "healing",
+    "components": [
+      "V",
+      "S",
+      "M"
+    ],
+    "material_description": "一枝槲寄生",
+    "description": "需求：V（語言）、S（姿勢）、M（一枝槲寄生，可用法器替代）。十顆魔法漿果出現在手中。吃一顆（附贈動作）恢復 1 HP 並提供一天營養。未吃完的在法術結束時消失。",
+    "classes": [
+      "Druid",
+      "Ranger"
+    ]
+  },
+  {
+    "name": "油脂術",
+    "en_name": "Grease",
+    "level": 1,
+    "school": "Conjuration",
+    "casting_time": "1 action",
+    "range": "60ft",
+    "duration": "1 minute",
+    "effect_type": "condition",
+    "save_ability": "DEX",
+    "applies_condition": "Prone",
+    "aoe_shape": "cube",
+    "aoe_width_ft": 10,
+    "components": [
+      "V",
+      "S",
+      "M"
+    ],
+    "material_description": "一小塊豬皮或奶油",
+    "description": "需求：V（語言）、S（姿勢）、M（一小塊豬皮或奶油，可用法器替代）。10ft 見方區域覆蓋不可燃油脂，為難行地形。區域內生物須敏捷豁免，失敗則倒地。進入或結束回合在區域內也須豁免。",
+    "classes": [
+      "Sorcerer",
+      "Wizard"
+    ]
+  },
+  {
+    "name": "神恩術",
+    "en_name": "Divine Favor",
+    "level": 1,
+    "school": "Transmutation",
+    "casting_time": "1 bonus action",
+    "range": "Self",
+    "duration": "1 minute",
+    "effect_type": "buff",
+    "components": [
+      "V",
+      "S"
+    ],
+    "description": "需求：V（語言）、S（姿勢）。持續時間內武器攻擊命中時額外造成 1d4 光輝傷害。",
+    "classes": [
+      "Paladin"
+    ]
+  },
+  {
+    "name": "神聖打擊",
+    "en_name": "Divine Smite",
+    "level": 1,
+    "school": "Evocation",
+    "casting_time": "1 bonus action",
+    "range": "Self",
+    "duration": "Instantaneous",
+    "effect_type": "damage",
+    "damage_dice": "2d8",
+    "damage_type": "Radiant",
+    "upcast_dice": "1d8",
+    "components": [
+      "V"
+    ],
+    "description": "需求：V（語言）。附贈動作：以近戰武器或徒手打擊命中後施放。目標受 2d8 光輝傷害。若目標是邪魔或不死，傷害 +1d8。",
+    "classes": [
+      "Paladin"
+    ]
+  },
+  {
+    "name": "信仰之盾",
+    "en_name": "Shield of Faith",
+    "level": 1,
+    "school": "Abjuration",
+    "casting_time": "1 bonus action",
+    "range": "60ft",
+    "duration": "10 minutes",
+    "concentration": true,
+    "effect_type": "buff",
+    "components": [
+      "V",
+      "S",
+      "M"
+    ],
+    "material_description": "一張祈禱卷軸",
+    "description": "需求：V（語言）、S（姿勢）、M（一張祈禱卷軸，可用法器替代）。射程內一個生物持續時間內獲得 +2 AC 加值。",
+    "classes": [
+      "Cleric",
+      "Paladin"
+    ]
+  },
+  {
+    "name": "庇護術",
+    "en_name": "Sanctuary",
+    "level": 1,
+    "school": "Abjuration",
+    "casting_time": "1 bonus action",
+    "range": "30ft",
+    "duration": "1 minute",
+    "effect_type": "buff",
+    "save_ability": "WIS",
+    "components": [
+      "V",
+      "S",
+      "M"
+    ],
+    "material_description": "一片鏡子碎片",
+    "description": "需求：V（語言）、S（姿勢）、M（一片鏡子碎片，可用法器替代）。守護目標。攻擊或以法術指定目標的生物須感知豁免，失敗則必須選擇新目標。被守護者進行攻擊、施法造成傷害時法術結束。",
+    "classes": [
+      "Cleric"
+    ]
+  },
+  {
+    "name": "無聲幻影",
+    "en_name": "Silent Image",
+    "level": 1,
+    "school": "Illusion",
+    "casting_time": "1 action",
+    "range": "60ft",
+    "duration": "10 minutes",
+    "concentration": true,
+    "effect_type": "utility",
+    "components": [
+      "V",
+      "S",
+      "M"
+    ],
+    "material_description": "一點羊毛",
+    "description": "需求：V（語言）、S（姿勢）、M（一點羊毛，可用法器替代）。創造不大於 15ft 立方的視覺幻象。可用魔法動作移動幻象。物理互動揭露幻象。識破需研究動作和智力（調查）檢定。",
+    "classes": [
+      "Bard",
+      "Sorcerer",
+      "Wizard"
+    ]
+  },
+  {
+    "name": "鑑定術",
+    "en_name": "Identify",
+    "level": 1,
+    "school": "Divination",
+    "casting_time": "1 minute",
+    "range": "Touch",
+    "duration": "Instantaneous",
+    "effect_type": "utility",
+    "components": [
+      "V",
+      "S",
+      "M"
+    ],
+    "material_description": "價值 100gp 的珍珠",
+    "material_cost": 100,
+    "description": "需求：V（語言）、S（姿勢）、M（價值 100gp 的珍珠，不可用法器替代）。觸碰物品得知其魔法屬性、使用方法、充能數。觸碰生物得知其身上的持續性法術。可以儀式施放。",
+    "classes": [
+      "Bard",
+      "Wizard"
+    ]
+  },
+  {
+    "name": "虛假生命",
+    "en_name": "False Life",
+    "level": 1,
+    "school": "Necromancy",
+    "casting_time": "1 action",
+    "range": "Self",
+    "duration": "Instantaneous",
+    "effect_type": "buff",
+    "components": [
+      "V",
+      "S",
+      "M"
+    ],
+    "material_description": "一滴酒精",
+    "description": "需求：V（語言）、S（姿勢）、M（一滴酒精，可用法器替代）。獲得 2d4+4 臨時 HP。升環每環臨時 HP +5。",
+    "classes": [
+      "Sorcerer",
+      "Wizard"
+    ]
+  },
+  {
+    "name": "動物友誼",
+    "en_name": "Animal Friendship",
+    "level": 1,
+    "school": "Enchantment",
+    "casting_time": "1 action",
+    "range": "30ft",
+    "duration": "24 hours",
+    "effect_type": "condition",
+    "save_ability": "WIS",
+    "applies_condition": "Charmed",
+    "components": [
+      "V",
+      "S",
+      "M"
+    ],
+    "material_description": "一點食物",
+    "description": "需求：V（語言）、S（姿勢）、M（一點食物，可用法器替代）。一個野獸須感知豁免，失敗則被魅惑 24 小時。你方對其造成傷害則法術結束。升環每環多 1 目標。",
+    "classes": [
+      "Bard",
+      "Druid",
+      "Ranger"
+    ]
+  },
+  {
+    "name": "強迫決鬥",
+    "en_name": "Compelled Duel",
+    "level": 1,
+    "school": "Enchantment",
+    "casting_time": "1 bonus action",
+    "range": "30ft",
+    "duration": "1 minute",
+    "concentration": true,
+    "effect_type": "condition",
+    "save_ability": "WIS",
+    "components": [
+      "V"
+    ],
+    "description": "需求：V（語言）。目標須感知豁免，失敗則對你以外的生物攻擊有劣勢，且不能自願離開你超過 30ft。你攻擊其他生物、對其他敵人施法、盟友傷害目標或離開 30ft 則法術結束。",
+    "classes": [
+      "Paladin"
+    ]
+  },
+  {
+    "name": "警報術",
+    "en_name": "Alarm",
+    "level": 1,
+    "school": "Abjuration",
+    "casting_time": "1 minute",
+    "range": "30ft",
+    "duration": "8 hours",
+    "effect_type": "utility",
+    "components": [
+      "V",
+      "S",
+      "M"
+    ],
+    "material_description": "一個鈴鐺和一根銀線",
+    "description": "需求：V（語言）、S（姿勢）、M（一個鈴鐺和一根銀線，可用法器替代）。對門、窗或至多 20ft 立方區域設警報。可指定不觸發者。聽覺型：60ft 內響鈴 10 秒。心靈型：1 英里內收到提示。可以儀式施放。",
+    "classes": [
+      "Ranger",
+      "Wizard"
+    ]
+  },
+  {
+    "name": "灼熱神擊",
+    "en_name": "Searing Smite",
+    "level": 1,
+    "school": "Evocation",
+    "casting_time": "1 bonus action",
+    "range": "Self",
+    "duration": "1 minute",
+    "effect_type": "damage",
+    "damage_dice": "1d6",
+    "damage_type": "Fire",
+    "upcast_dice": "1d6",
+    "components": [
+      "V"
+    ],
+    "description": "需求：V（語言）。附贈動作：以近戰武器或徒手打擊命中後施放。目標額外受 1d6 火焰傷害。每回合開始受 1d6 火焰傷害並進行體質豁免，成功則法術結束。",
+    "classes": [
+      "Paladin"
+    ]
+  },
+  {
+    "name": "雷鳴神擊",
+    "en_name": "Thunderous Smite",
+    "level": 1,
+    "school": "Evocation",
+    "casting_time": "1 bonus action",
+    "range": "Self",
+    "duration": "Instantaneous",
+    "effect_type": "damage",
+    "damage_dice": "2d6",
+    "damage_type": "Thunder",
+    "upcast_dice": "1d6",
+    "save_ability": "STR",
+    "components": [
+      "V"
+    ],
+    "description": "需求：V（語言）。附贈動作：以近戰武器或徒手打擊命中後施放。目標額外受 2d6 雷鳴傷害，並須力量豁免，失敗被推開 10ft 且倒地。",
+    "classes": [
+      "Paladin"
+    ]
+  },
+  {
+    "name": "跳躍術",
+    "en_name": "Jump",
+    "level": 1,
+    "school": "Transmutation",
+    "casting_time": "1 bonus action",
+    "range": "Touch",
+    "duration": "1 minute",
+    "effect_type": "buff",
+    "components": [
+      "V",
+      "S",
+      "M"
+    ],
+    "material_description": "一條蚱蜢的後腿",
+    "description": "需求：V（語言）、S（姿勢）、M（一條蚱蜢的後腿，可用法器替代）。觸碰目標在持續時間內每回合可花費 10ft 移動力跳躍至多 30ft。升環每環多 1 目標。",
+    "classes": [
+      "Druid",
+      "Ranger",
+      "Sorcerer",
+      "Wizard"
+    ]
+  },
+  {
+    "name": "大步奔行",
+    "en_name": "Longstrider",
+    "level": 1,
+    "school": "Transmutation",
+    "casting_time": "1 action",
+    "range": "Touch",
+    "duration": "1 hour",
+    "effect_type": "buff",
+    "components": [
+      "V",
+      "S",
+      "M"
+    ],
+    "material_description": "一撮泥土",
+    "description": "需求：V（語言）、S（姿勢）、M（一撮泥土，可用法器替代）。觸碰目標速度 +10ft 持續 1 小時。升環每環多 1 目標。",
+    "classes": [
+      "Bard",
+      "Druid",
+      "Ranger",
+      "Wizard"
+    ]
+  },
+  {
+    "name": "英雄氣概",
+    "en_name": "Heroism",
+    "level": 1,
+    "school": "Enchantment",
+    "casting_time": "1 action",
+    "range": "Touch",
+    "duration": "1 minute",
+    "concentration": true,
+    "effect_type": "buff",
+    "components": [
+      "V",
+      "S"
+    ],
+    "description": "需求：V（語言）、S（姿勢）。觸碰目標免疫驚懼狀態，且每回合開始獲得等於你施法屬性調整值的臨時 HP。升環每環多 1 目標。",
+    "classes": [
+      "Bard",
+      "Paladin"
+    ]
+  },
+  {
+    "name": "淨化食水",
+    "en_name": "Purify Food and Drink",
+    "level": 1,
+    "school": "Transmutation",
+    "casting_time": "1 action",
+    "range": "10ft",
+    "duration": "Instantaneous",
+    "effect_type": "utility",
+    "components": [
+      "V",
+      "S"
+    ],
+    "description": "需求：V（語言）、S（姿勢）。移除 5ft 半徑球體內非魔法食物和飲料中的毒素和腐壞。可以儀式施放。",
+    "classes": [
+      "Cleric",
+      "Druid",
+      "Paladin"
+    ]
+  }
+]

@@ -11,15 +11,17 @@
 > 📄 改造計畫：[`docs/todo-character-creation-overhaul.md`](docs/todo-character-creation-overhaul.md)
 > 📄 原始拆分：[`docs/todo-character-system.md`](docs/todo-character-system.md)（模組 3/4 仍有效）
 
-- [ ] 建角 TUI 改造（CC-1~7）— 依 2024 PHB 重寫 8 步流程
-  - Phase CC-1: 背景與種族資料層
-  - Phase CC-2: 職業資料擴充 + 起源專長
-  - Phase CC-3: TUI 步驟 1~3（職業、背景、種族）
-  - Phase CC-4: TUI 步驟 4（屬性值三種生成 + 背景調整）
-  - Phase CC-5: TUI 步驟 5~6（技能、裝備）
-  - Phase CC-6: TUI 步驟 7~8（戲法法術、確認）
-  - Phase CC-7: 角色卡 I/O + 整合
-- [ ] 角色卡 JSON 匯出/讀取 — `~/.tot/characters/<name>.json`
+- [x] 建角 TUI 改造（CC-1~6）— 依 2024 PHB 重寫 8 步流程
+  - ~~Phase CC-1: 背景與種族資料層~~ ✅ `data/origins.py`
+  - ~~Phase CC-2: 職業資料擴充 + 起源專長~~ ✅ `data/classes.py` + `data/feats.py`
+  - ~~Phase CC-3: TUI 步驟 1~3（職業、背景、種族）~~ ✅
+  - ~~Phase CC-4: TUI 步驟 4（屬性值三種生成 + 背景調整）~~ ✅
+  - ~~Phase CC-5: TUI 步驟 5~6（技能、裝備）~~ ✅
+  - ~~Phase CC-6: TUI 步驟 7~8（戲法法術、確認）~~ ✅
+- [ ] Phase CC-7: 角色卡 I/O + 整合
+  - `save_character()` / `load_character()` / `list_saved_characters()`
+  - 存檔路徑：`~/.tot/characters/<name>.json`
+  - 建角完成後自動存檔 + 顯示路徑
 
 ### A-1b: 啟動 TUI
 > 📄 設計文件：[`docs/game-session-design.md`](docs/game-session-design.md) §2

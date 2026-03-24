@@ -44,7 +44,9 @@ from tot.models import (
 
 _SPELL_DB: dict[str, Spell] = {}
 
-_SPELLS_JSON = Path(__file__).resolve().parents[2] / "data" / "spells.json"
+_SPELLS_DIR = Path(__file__).resolve().parents[2] / "data" / "spells"
+# 向後相容：支援舊的單檔路徑（測試可能傳入）
+_SPELLS_JSON_LEGACY = Path(__file__).resolve().parents[2] / "data" / "spells.json"
 
 
 def load_spell_db(path: Path | None = None) -> dict[str, Spell]:
@@ -52,14 +54,25 @@ def load_spell_db(path: Path | None = None) -> dict[str, Spell]:
 
     首次呼叫時載入並快取，後續呼叫直接回傳快取。
     傳入 path 可覆蓋預設路徑（用於測試）。
+    支援目錄（掃描所有 .json）或單一檔案。
     """
     global _SPELL_DB  # noqa: PLW0603
 
     if _SPELL_DB and path is None:
         return _SPELL_DB
 
-    source = path or _SPELLS_JSON
-    raw = json.loads(source.read_text(encoding="utf-8"))
+    source = path or _SPELLS_DIR
+    raw: list[dict] = []
+    if source.is_dir():
+        for f in sorted(source.glob("*.json")):
+            raw.extend(json.loads(f.read_text(encoding="utf-8")))
+    elif source.is_file():
+        raw = json.loads(source.read_text(encoding="utf-8"))
+    else:
+        # 嘗試舊路徑
+        if _SPELLS_JSON_LEGACY.is_file():
+            raw = json.loads(_SPELLS_JSON_LEGACY.read_text(encoding="utf-8"))
+
     db: dict[str, Spell] = {}
     for entry in raw:
         spell = Spell.model_validate(entry)

@@ -6,7 +6,9 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+
+from tot.models.enums import Skill
 
 
 @dataclass(frozen=True)
@@ -20,6 +22,30 @@ class FeatData:
     description: str  # 完整效果中文說明
     has_spell_choice: bool = False  # 如 Magic Initiate 需要選戲法/法術
     repeatable: bool = False  # 是否可重複選取
+    # 技能選位授予：choice_count > 0 時，建角需要讓玩家選技能
+    skill_choice_count: int = 0  # 可選幾項技能（0 = 不授予技能）
+    skill_choice_pool: tuple[Skill, ...] = ()  # 可選池；空 = 所有 18 項技能
+
+
+def get_available_class_skills(
+    class_skill_list: list[Skill],
+    background_skills: list[Skill],
+    feat_skills: list[Skill],
+) -> list[Skill]:
+    """計算職業技能選擇的可用清單。
+
+    Available = ClassList - (BackgroundSkills ∪ FeatSkills)
+
+    Args:
+        class_skill_list: 職業可選技能清單。
+        background_skills: 背景固定授予的技能。
+        feat_skills: 起源專長選位授予的技能。
+
+    Returns:
+        過濾後的可用職業技能清單。
+    """
+    occupied = set(background_skills) | set(feat_skills)
+    return [s for s in class_skill_list if s not in occupied]
 
 
 ORIGIN_FEAT_REGISTRY: dict[str, FeatData] = {
@@ -126,6 +152,7 @@ ORIGIN_FEAT_REGISTRY: dict[str, FeatData] = {
         category="起源",
         description="獲得三項自選技能或工具的熟練。",
         repeatable=True,
+        skill_choice_count=3,  # 3 項自選，pool 為空 = 所有技能
     ),
     "Tavern Brawler": FeatData(
         id="Tavern Brawler",
