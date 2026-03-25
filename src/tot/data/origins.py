@@ -722,19 +722,19 @@ TOOL_DATA: dict[Tool, ToolInfo] = {
     # ── 遊戲組 ──
     Tool.DICE_SET: ToolInfo(
         ability="感知",
-        utilize="辨別某人是否在作弊（DC 10），或贏得遊戲（DC 20）",
+        utilize="感知對手是否作弊（DC 10），或贏得賭局（DC 20）",
     ),
     Tool.DRAGONCHESS_SET: ToolInfo(
         ability="感知",
-        utilize="辨別某人是否在作弊（DC 10），或贏得遊戲（DC 20）",
+        utilize="感知對手是否作弊（DC 10），或贏得賭局（DC 20）",
     ),
     Tool.PLAYING_CARDS: ToolInfo(
         ability="感知",
-        utilize="辨別某人是否在作弊（DC 10），或贏得遊戲（DC 20）",
+        utilize="感知對手是否作弊（DC 10），或贏得賭局（DC 20）",
     ),
     Tool.THREE_DRAGON_ANTE: ToolInfo(
         ability="感知",
-        utilize="辨別某人是否在作弊（DC 10），或贏得遊戲（DC 20）",
+        utilize="感知對手是否作弊（DC 10），或贏得賭局（DC 20）",
     ),
     # ── 樂器 ──
     Tool.BAGPIPES: ToolInfo(
