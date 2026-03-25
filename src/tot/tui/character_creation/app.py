@@ -422,7 +422,7 @@ class CharacterCreationApp(App[Character | None]):
         bg_id = self._data["background"]
         cc = self._data["char_class"]
 
-        # ── Section A：背景固定技能 ──
+        # 背景固定技能（顯示，不可改）
         bg_skill_set: set[Skill] = set()
         if bg_id and bg_id in BACKGROUND_REGISTRY:
             bg = BACKGROUND_REGISTRY[bg_id]
@@ -431,41 +431,50 @@ class CharacterCreationApp(App[Character | None]):
             w.append(Label(f"── 背景技能（{bg.name_zh}，已固定）──", classes="section-label"))
             w.append(Label(f"  {', '.join(bg_labels)}"))
 
-        # ── Section B：起源專長選位（如 Skilled 的 3 項自選）──
-        feat_skill_set: set[Skill] = set()
+        # 合併選位：專長 + 職業 = 一張表
+        # 總選位數 = feat.skill_choice_count + cls.num_skills
         feat = self._get_origin_feat()
-        if feat and feat.skill_choice_count > 0:
-            pool = list(feat.skill_choice_pool) if feat.skill_choice_pool else list(Skill)
-            # 排除背景已佔
-            pool = [s for s in pool if s not in bg_skill_set]
-            n = feat.skill_choice_count
+        feat_count = feat.skill_choice_count if feat and feat.skill_choice_count > 0 else 0
+        cls_count = 0
+        if cc and cc in CLASS_REGISTRY:
+            cls_count = CLASS_REGISTRY[cc].num_skills
+        total_picks = feat_count + cls_count
+
+        if total_picks > 0:
+            # 候選池 = (專長池 ∪ 職業池) - 背景已佔
+            # 專長池為空時 = 全 18 項；職業池 = skill_choices
+            candidate_set: set[Skill] = set()
+            if feat_count > 0:
+                if feat.skill_choice_pool:
+                    candidate_set.update(feat.skill_choice_pool)
+                else:
+                    candidate_set.update(Skill)  # 全 18 項
+            if cc and cc in CLASS_REGISTRY:
+                candidate_set.update(CLASS_REGISTRY[cc].skill_choices)
+            candidate_set -= bg_skill_set
+
+            # 來源標記
+            cls_set = set(CLASS_REGISTRY[cc].skill_choices) if cc and cc in CLASS_REGISTRY else set()
+            sources = []
+            if feat_count > 0:
+                sources.append(f"{feat.name_zh} {feat_count}")
+            if cls_count > 0:
+                cd = CLASS_DISPLAY.get(cc)
+                name = cd.name_zh if cd else cc
+                sources.append(f"{name} {cls_count}")
+
             w.append(Label(
-                f"── 起源專長技能（{feat.name_zh}，選 {n} 項）──",
+                f"── 選擇技能熟練（共 {total_picks} 項：{'＋'.join(sources)}）──",
                 classes="section-label",
             ))
-            feat_selected = self._data.get("feat_skills", [])
-            feat_skill_set = set(feat_selected)
-            opts = []
-            for s in pool:
-                label = f"{SKILL_ZH.get(s, s.value)}（{s.value}）— {ABILITY_ZH.get(_skill_ability(s), '')}"
-                opts.append((label, s, s in feat_selected))
-            w.append(SelectionList(*opts, id="feat-skills-list"))
 
-        # ── Section C：職業技能選位 ──
-        # Available = ClassList - (BackgroundSkills ∪ FeatSkills)
-        if cc and cc in CLASS_REGISTRY:
-            cls = CLASS_REGISTRY[cc]
-            cd = CLASS_DISPLAY.get(cc)
-            num = cls.num_skills
-            name = cd.name_zh if cd else cc
-            w.append(Label(f"── 職業技能（{name}，選 {num} 項）──", classes="section-label"))
-
-            occupied = bg_skill_set | feat_skill_set
-            available = get_available_class_skills(cls.skill_choices, list(bg_skill_set), list(feat_skill_set))
             selected = self._data.get("class_skills", [])
             options = []
-            for s in available:
-                label = f"{SKILL_ZH.get(s, s.value)}（{s.value}）— {ABILITY_ZH.get(_skill_ability(s), '')}"
+            # 職業技能優先排列
+            for s in sorted(candidate_set, key=lambda s: (s not in cls_set, s.value)):
+                ab = _skill_ability(s)
+                marker = "" if s in cls_set else "　☆" if feat_count > 0 else ""
+                label = f"{SKILL_ZH.get(s, s.value)}（{s.value}）— {ABILITY_ZH.get(ab, '')}{marker}"
                 options.append((label, s, s in selected))
             w.append(SelectionList(*options, id="skills-list"))
 
@@ -680,17 +689,16 @@ class CharacterCreationApp(App[Character | None]):
         else:
             lines.append("屬性值：—")
 
-        # 技能（所有來源合併顯示）
-        feat_skills = d.get("feat_skills", [])
+        # 技能（合併顯示）
         cls_skills = d.get("class_skills", [])
-        if feat_skills:
-            sk_str = ", ".join(SKILL_ZH.get(s, s.value) for s in feat_skills)
-            lines.append(f"\n專長技能：{sk_str}")
         if cls_skills:
             sk_str = ", ".join(SKILL_ZH.get(s, s.value) for s in cls_skills)
-            lines.append(f"職業技能：{sk_str}")
+            lines.append(f"\n技能熟練：{sk_str}")
 
-        # 裝備
+        # 裝備（步驟 6 以後才顯示）
+        if self._step < 6:
+            preview.update("\n".join(lines))
+            return
         bg_eq = d.get("bg_equipment", "A")
         cls_eq = d.get("class_equipment", "A")
         bg_id_eq = d["background"]
@@ -1112,7 +1120,6 @@ class CharacterCreationApp(App[Character | None]):
         cc = self._data["char_class"]
         if not cc or cc not in CLASS_REGISTRY:
             return
-        cls = CLASS_REGISTRY[cc]
         bg_id = self._data["background"]
         bg_skills = (
             list(BACKGROUND_REGISTRY[bg_id].skill_proficiencies)
@@ -1120,36 +1127,24 @@ class CharacterCreationApp(App[Character | None]):
             else []
         )
 
-        # 收集專長技能選位
+        # 合併選位：從單一 skills-list 收集
         feat = self._get_origin_feat()
-        feat_skills: list[Skill] = []
-        if feat and feat.skill_choice_count > 0:
-            try:
-                fsl = self.query_one("#feat-skills-list", SelectionList)
-                feat_skills = list(fsl.selected)
-                if len(feat_skills) != feat.skill_choice_count:
-                    raise ValueError(
-                        f"起源專長「{feat.name_zh}」需選 {feat.skill_choice_count} 項技能，"
-                        f"已選 {len(feat_skills)}"
-                    )
-            except ValueError:
-                raise
-            except Exception:
-                pass
-        self._data["feat_skills"] = feat_skills
+        feat_count = feat.skill_choice_count if feat and feat.skill_choice_count > 0 else 0
+        cls_count = CLASS_REGISTRY[cc].num_skills
+        total_picks = feat_count + cls_count
 
-        # 收集職業技能選位
-        # Available = ClassList - (BackgroundSkills ∪ FeatSkills)
-        available = get_available_class_skills(cls.skill_choices, bg_skills, feat_skills)
         try:
             sl = self.query_one("#skills-list", SelectionList)
             selected = list(sl.selected)
-            ok, msg = validate_skill_selection(
-                selected, cc, bg_skills, allowed_skills=available,
-            )
-            if not ok:
-                raise ValueError(msg)
+            if len(selected) != total_picks:
+                raise ValueError(f"需選 {total_picks} 項技能，已選 {len(selected)}")
+            # 確認無重複且不在背景中
+            bg_set = set(bg_skills)
+            for s in selected:
+                if s in bg_set:
+                    raise ValueError(f"技能 {SKILL_ZH.get(s, s.value)} 已由背景提供")
             self._data["class_skills"] = selected
+            self._data["feat_skills"] = []  # 不再分開存，統一在 class_skills
         except ValueError:
             raise
         except Exception:
@@ -1276,19 +1271,25 @@ class CharacterCreationApp(App[Character | None]):
         """Select 變更時即時更新。"""
         sel_id = event.select.id or ""
         if sel_id.startswith("pb-"):
-            # 重新計算剩餘點數
+            # 即時更新 scores 和計算剩餘點數
             total_cost = 0
+            scores: dict[Ability, int] = {}
             for ab in ABILITY_ORDER:
                 try:
                     sel = self.query_one(f"#pb-{ab.value}", Select)
                     val = sel.value
                     if isinstance(val, int):
+                        scores[ab] = val
                         total_cost += POINT_BUY_COSTS.get(val, 0)
+                    else:
+                        scores[ab] = 8
                 except Exception:
-                    pass
+                    scores[ab] = 8
+            self._data["scores"] = scores
             remaining = POINT_BUY_BUDGET - total_cost
             self._update_preview()
-            self.notify(f"剩餘點數：{remaining}/{POINT_BUY_BUDGET}", severity="information")
+            severity = "error" if remaining < 0 else "information"
+            self.notify(f"剩餘點數：{remaining}/{POINT_BUY_BUDGET}", severity=severity)
         elif sel_id in ("adj-plus2", "adj-plus1"):
             # +2/+1 不可選同一屬性
             try:
@@ -1312,10 +1313,7 @@ class CharacterCreationApp(App[Character | None]):
     def on_selection_list_selected_changed(self, event: SelectionList.SelectedChanged) -> None:
         """技能/法術勾選時即時更新預覽。"""
         sl_id = event.selection_list.id or ""
-        if sl_id == "feat-skills-list":
-            self._data["feat_skills"] = list(event.selection_list.selected)
-            self._update_preview()
-        elif sl_id == "skills-list":
+        if sl_id == "skills-list":
             self._data["class_skills"] = list(event.selection_list.selected)
             self._update_preview()
         elif sl_id == "cantrip-list":
@@ -1372,7 +1370,13 @@ class CharacterCreationApp(App[Character | None]):
         elif rs_id == "adjust-mode-radio":
             idx = event.radio_set.pressed_index
             if idx is not None:
-                self._data["bg_adjust_mode"] = ["+1/+1/+1", "+2/+1"][idx]
+                mode = ["+1/+1/+1", "+2/+1"][idx]
+                self._data["bg_adjust_mode"] = mode
+                # 即時更新 bg_adjust
+                bg_id = self._data["background"]
+                if mode == "+1/+1/+1" and bg_id in BACKGROUND_REGISTRY:
+                    bg = BACKGROUND_REGISTRY[bg_id]
+                    self._data["bg_adjust"] = {a: 1 for a in bg.ability_tags}
                 await self._render_step()
 
         elif rs_id == "bg-equip-radio":
