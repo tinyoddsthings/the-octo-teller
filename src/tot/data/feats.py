@@ -25,6 +25,11 @@ class FeatData:
     # 技能選位授予：choice_count > 0 時，建角需要讓玩家選技能
     skill_choice_count: int = 0  # 可選幾項技能（0 = 不授予技能）
     skill_choice_pool: tuple[Skill, ...] = ()  # 可選池；空 = 所有 18 項技能
+    # Magic Initiate 法術選擇
+    spellcasting_ability_choice: bool = False  # 需要選施法屬性（INT/WIS/CHA）
+    spell_class: str = ""  # 專長法術的來源職業（如 "Cleric"）
+    num_feat_cantrips: int = 0  # 專長給的戲法數（Magic Initiate = 2）
+    num_feat_spells: int = 0  # 專長給的 1 環法術數（Magic Initiate = 1）
 
 
 def get_available_class_skills(
@@ -100,6 +105,10 @@ ORIGIN_FEAT_REGISTRY: dict[str, FeatData] = {
             "1 環法術永備，可免費施放 1 次（長休恢復），也可用法術位施放。"
         ),
         has_spell_choice=True,
+        spellcasting_ability_choice=True,
+        spell_class="Cleric",
+        num_feat_cantrips=2,
+        num_feat_spells=1,
     ),
     "Magic Initiate: Druid": FeatData(
         id="Magic Initiate: Druid",
@@ -112,6 +121,10 @@ ORIGIN_FEAT_REGISTRY: dict[str, FeatData] = {
             "1 環法術永備，可免費施放 1 次（長休恢復），也可用法術位施放。"
         ),
         has_spell_choice=True,
+        spellcasting_ability_choice=True,
+        spell_class="Druid",
+        num_feat_cantrips=2,
+        num_feat_spells=1,
     ),
     "Magic Initiate: Wizard": FeatData(
         id="Magic Initiate: Wizard",
@@ -124,6 +137,10 @@ ORIGIN_FEAT_REGISTRY: dict[str, FeatData] = {
             "1 環法術永備，可免費施放 1 次（長休恢復），也可用法術位施放。"
         ),
         has_spell_choice=True,
+        spellcasting_ability_choice=True,
+        spell_class="Wizard",
+        num_feat_cantrips=2,
+        num_feat_spells=1,
     ),
     "Musician": FeatData(
         id="Musician",

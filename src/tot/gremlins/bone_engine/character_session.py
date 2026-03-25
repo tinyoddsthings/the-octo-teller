@@ -96,6 +96,10 @@ class CharacterCreationData:
     bg_tool_choice: Tool | None = None
     # Skilled 專長的工具選位（如果選了工具而非技能）
     feat_tool_choices: list = field(default_factory=list)  # list[Tool]
+    # Magic Initiate 專長法術選擇
+    feat_spellcasting_ability: Ability | None = None  # 施法屬性（INT/WIS/CHA）
+    feat_cantrips: list = field(default_factory=list)  # 專長戲法 en_name 列表
+    feat_spells: list = field(default_factory=list)  # 專長 1 環法術 en_name 列表
     # 內部暫存（各方法的 scores 持久化，切換方法時保留）
     rolled_values: list = field(default_factory=list)
     _scores_point_buy: dict = field(default_factory=dict)
@@ -133,6 +137,10 @@ class CharacterCreationSession:
             self.data.skills = []
             self.data.feat_tool_choices = []
             self.data.bg_tool_choice = None
+            # 重設專長法術選擇（背景專長可能改變）
+            self.data.feat_spellcasting_ability = None
+            self.data.feat_cantrips = []
+            self.data.feat_spells = []
             # 重設背景調整
             self.data.bg_adjust_mode = "+1/+1/+1"
             self.data.bg_adjust = {}
@@ -335,6 +343,10 @@ class CharacterCreationSession:
         if feat_id != self.data.species_feat:
             self.data.skills = []
             self.data.feat_tool_choices = []
+            # 重設專長法術選擇（多藝專長可能改變）
+            self.data.feat_spellcasting_ability = None
+            self.data.feat_cantrips = []
+            self.data.feat_spells = []
         self.data.species_feat = feat_id
 
     def set_bg_tool_choice(self, tool: Tool) -> None:
@@ -359,6 +371,20 @@ class CharacterCreationSession:
     def set_feat_tool_choices(self, tools: list[Tool]) -> None:
         """設定 Skilled 專長選的工具（技能或工具混合選位中的工具部分）。"""
         self.data.feat_tool_choices = list(tools)
+
+    def set_feat_spellcasting_ability(self, ability: Ability) -> None:
+        """設定 Magic Initiate 的施法屬性。"""
+        if ability not in (Ability.INT, Ability.WIS, Ability.CHA):
+            raise ValueError("Magic Initiate 施法屬性只能是 INT/WIS/CHA")
+        self.data.feat_spellcasting_ability = ability
+
+    def set_feat_cantrips(self, cantrips: list[str]) -> None:
+        """設定專長戲法選擇（en_name 列表）。"""
+        self.data.feat_cantrips = list(cantrips)
+
+    def set_feat_spells(self, spells: list[str]) -> None:
+        """設定專長 1 環法術選擇（en_name 列表）。"""
+        self.data.feat_spells = list(spells)
 
     # ── 查詢可選項 ────────────────────────────────────────────────────────────
 
@@ -385,9 +411,13 @@ class CharacterCreationSession:
                 else:
                     candidate_set.update(Skill)  # 全 18 項
 
-        # Human 多才：全 18 項技能
+        # 種族自選技能（Human 多才：全 18 項；Elf 敏銳感官：限定池）
         if has_human_versatility:
-            candidate_set.update(Skill)
+            sp = SPECIES_REGISTRY.get(self.data.species)
+            if sp and sp.skill_choice_pool:
+                candidate_set.update(sp.skill_choice_pool)
+            else:
+                candidate_set.update(Skill)
 
         # 職業池
         cls_set: set[Skill] = set()
@@ -442,6 +472,33 @@ class CharacterCreationSession:
             return []
         spells = list_spells(level=1, char_class=cc)
         return [_spell_to_dict(s) for s in spells]
+
+    def get_available_feat_cantrips(self) -> list[dict]:
+        """取得專長可選戲法列表（從 spell_class 的戲法列表）。"""
+        feat = self._get_spell_feat()
+        if not feat:
+            return []
+        spells = list_spells(level=0, char_class=feat.spell_class)
+        return [_spell_to_dict(s) for s in spells]
+
+    def get_available_feat_spells(self) -> list[dict]:
+        """取得專長可選 1 環法術列表（從 spell_class 的法術列表）。"""
+        feat = self._get_spell_feat()
+        if not feat:
+            return []
+        spells = list_spells(level=1, char_class=feat.spell_class)
+        return [_spell_to_dict(s) for s in spells]
+
+    def has_feat_spell_choices(self) -> bool:
+        """檢查所有起源專長是否有法術選擇。"""
+        return any(f.has_spell_choice for f in self.get_origin_feats())
+
+    def _get_spell_feat(self) -> FeatData | None:
+        """取得有法術選擇的起源專長（第一個 has_spell_choice=True 的）。"""
+        for f in self.get_origin_feats():
+            if f.has_spell_choice and f.spell_class:
+                return f
+        return None
 
     def get_bg_adjust_tags(self) -> list[Ability]:
         """取得背景的三項可調屬性。"""
@@ -668,7 +725,21 @@ class CharacterCreationSession:
             lines.extend(equip_lines)
             lines.append("")
 
-        # 戲法與法術
+        # 專長法術（Magic Initiate）
+        spell_feat = self._get_spell_feat()
+        if spell_feat and (d.feat_cantrips or d.feat_spells):
+            sa = d.feat_spellcasting_ability
+            sa_name = ABILITY_ZH.get(sa, "未選") if sa else "未選"
+            lines.append(f"專長法術（{spell_feat.name_zh}，施法屬性：{sa_name}）：")
+            if d.feat_cantrips:
+                feat_cantrip_names = self._resolve_spell_names(d.feat_cantrips)
+                lines.append(f"  戲法：{', '.join(feat_cantrip_names)}")
+            if d.feat_spells:
+                feat_spell_names = self._resolve_spell_names(d.feat_spells)
+                lines.append(f"  1 環：{', '.join(feat_spell_names)}")
+            lines.append("")
+
+        # 職業戲法與法術
         if d.cantrips or d.spells:
             spell_lines: list[str] = []
             if d.cantrips:
@@ -745,6 +816,20 @@ class CharacterCreationSession:
             )
             if not ok:
                 return False, msg
+
+        # 專長法術（Magic Initiate）
+        spell_feat = self._get_spell_feat()
+        if spell_feat:
+            has_feat_cantrip_db = bool(list_spells(level=0, char_class=spell_feat.spell_class))
+            has_feat_spell_db = bool(list_spells(level=1, char_class=spell_feat.spell_class))
+            if spell_feat.spellcasting_ability_choice and d.feat_spellcasting_ability is None:
+                return False, "請選擇專長施法屬性（INT/WIS/CHA）"
+            need_c = spell_feat.num_feat_cantrips
+            need_s = spell_feat.num_feat_spells
+            if has_feat_cantrip_db and len(d.feat_cantrips) != need_c:
+                return False, f"專長需選 {need_c} 個戲法，已選 {len(d.feat_cantrips)}"
+            if has_feat_spell_db and len(d.feat_spells) != need_s:
+                return False, f"專長需選 {need_s} 個 1 環法術，已選 {len(d.feat_spells)}"
 
         if not d.name:
             return False, "角色名稱不能為空"
@@ -831,6 +916,18 @@ class CharacterCreationSession:
             if t not in all_tools:
                 all_tools.append(t)
         character.tool_proficiencies = all_tools
+
+        # 專長法術（Magic Initiate）加入已知/已備法術
+        if d.feat_cantrips:
+            for c in d.feat_cantrips:
+                if c not in character.spells_known:
+                    character.spells_known.append(c)
+        if d.feat_spells:
+            for s in d.feat_spells:
+                if s not in character.spells_known:
+                    character.spells_known.append(s)
+                if s not in character.spells_prepared:
+                    character.spells_prepared.append(s)
 
         return character
 

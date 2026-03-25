@@ -279,7 +279,8 @@ class SpeciesData:
     traits: tuple[str, ...]  # 特性名稱清單
     traits_description: str  # 特性簡述
     lineage_options: tuple[LineageOption, ...] = ()  # 血統子選項
-    skill_choice_count: int = 0  # Human 多才：自選技能熟練數
+    skill_choice_count: int = 0  # 自選技能熟練數（Human 多才 / Elf 敏銳感官）
+    skill_choice_pool: tuple[Skill, ...] = ()  # 可選池；空 = 全 18 項
     feat_choice_count: int = 0  # Human 多藝：自選起源專長數
 
 
@@ -375,6 +376,8 @@ SPECIES_REGISTRY: dict[str, SpeciesData] = {
             "敏銳感官：洞察/觀察/求生三選一熟練。"
             "冥想：4 小時冥想替代睡眠完成長休。"
         ),
+        skill_choice_count=1,
+        skill_choice_pool=(Skill.INSIGHT, Skill.PERCEPTION, Skill.SURVIVAL),
         lineage_options=(
             LineageOption(
                 "drow",
