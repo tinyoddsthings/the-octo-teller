@@ -242,6 +242,29 @@ class CharacterCreationApp(App[Character | None]):
                     lin_btns.append(RadioButton(lb, value=(lo.id == cur_lin)))
                 w.append(RadioSet(*lin_btns, id="lineage-radio"))
 
+            # 血統法術施法屬性選擇（Tiefling 等）
+            if sd.has_lineage_spellcasting_choice:
+                w.append(Label(
+                    "── 血統法術施法屬性（選擇後永久綁定）──",
+                    classes="section-label",
+                ))
+                cur_sa = self.session.data.species_spellcasting_ability
+                sa_btns = [
+                    RadioButton(
+                        f"{ABILITY_ZH[Ability.INT]}（INT）— 適合法師",
+                        value=(cur_sa == Ability.INT),
+                    ),
+                    RadioButton(
+                        f"{ABILITY_ZH[Ability.WIS]}（WIS）— 適合牧師、德魯伊、遊俠",
+                        value=(cur_sa == Ability.WIS),
+                    ),
+                    RadioButton(
+                        f"{ABILITY_ZH[Ability.CHA]}（CHA）— 適合術士、契術師、吟遊詩人",
+                        value=(cur_sa == Ability.CHA),
+                    ),
+                ]
+                w.append(RadioSet(*sa_btns, id="species-sa-radio"))
+
             # 多藝：選起源專長（Human）
             if sd.feat_choice_count > 0:
                 w.append(Label("── 多藝：選擇起源專長 ──", classes="section-label"))
@@ -828,8 +851,23 @@ class CharacterCreationApp(App[Character | None]):
 
         self.session.set_species(sp_id, lineage_id)
 
-        # 多藝起源專長
+        # 血統法術施法屬性（Tiefling 等）
         sd = SPECIES_REGISTRY[sp_id]
+        if sd.has_lineage_spellcasting_choice:
+            try:
+                sa_rs = self.query_one("#species-sa-radio", RadioSet)
+                sa_idx = sa_rs.pressed_index
+                if sa_idx is not None:
+                    ab_map = [Ability.INT, Ability.WIS, Ability.CHA]
+                    self.session.set_species_spellcasting_ability(ab_map[sa_idx])
+                else:
+                    raise ValueError("請選擇血統法術施法屬性（INT/WIS/CHA）")
+            except ValueError:
+                raise
+            except Exception:
+                raise ValueError("請選擇血統法術施法屬性（INT/WIS/CHA）") from None
+
+        # 多藝起源專長
         if sd.feat_choice_count > 0:
             try:
                 feat_rs = self.query_one("#species-feat-radio", RadioSet)
@@ -1242,6 +1280,13 @@ class CharacterCreationApp(App[Character | None]):
                 if idx is not None and idx < len(sd.lineage_options):
                     self.session.set_species(sp_id, sd.lineage_options[idx].id)
                     self._update_preview()
+
+        elif rs_id == "species-sa-radio":
+            idx = event.radio_set.pressed_index
+            if idx is not None:
+                ab_map = [Ability.INT, Ability.WIS, Ability.CHA]
+                self.session.set_species_spellcasting_ability(ab_map[idx])
+                self._update_preview()
 
         elif rs_id == "species-feat-radio":
             idx = event.radio_set.pressed_index

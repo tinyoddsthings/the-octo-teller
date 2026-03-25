@@ -92,6 +92,8 @@ class CharacterCreationData:
     name: str = ""
     # Human 多藝：選的起源專長 ID（如 "Skilled"）
     species_feat: str = ""
+    # Tiefling 魔裔傳承：施法屬性選擇（選血統時決定，永久）
+    species_spellcasting_ability: Ability | None = None
     # 背景「任選一種」工具的選擇
     bg_tool_choice: Tool | None = None
     # Skilled 專長的工具選位（如果選了工具而非技能）
@@ -160,6 +162,7 @@ class CharacterCreationSession:
         if species_id != self.data.species:
             # 切換種族時清空種族相關選擇
             self.data.species_feat = ""
+            self.data.species_spellcasting_ability = None
             self.data.skills = []
         self.data.species = species_id
         sd = SPECIES_REGISTRY[species_id]
@@ -348,6 +351,20 @@ class CharacterCreationSession:
             self.data.feat_cantrips = []
             self.data.feat_spells = []
         self.data.species_feat = feat_id
+
+    def set_species_spellcasting_ability(self, ability: Ability) -> None:
+        """設定種族血統法術的施法屬性（如 Tiefling 魔裔傳承）。
+
+        選擇傳承時決定，永久綁定。只接受 INT/WIS/CHA。
+        """
+        if ability not in (Ability.INT, Ability.WIS, Ability.CHA):
+            raise ValueError("血統法術施法屬性只能是 INT/WIS/CHA")
+        sp_id = self.data.species
+        if sp_id and sp_id in SPECIES_REGISTRY:
+            sd = SPECIES_REGISTRY[sp_id]
+            if not sd.has_lineage_spellcasting_choice:
+                raise ValueError(f"{sd.name_zh} 不需要選擇血統法術施法屬性")
+        self.data.species_spellcasting_ability = ability
 
     def set_bg_tool_choice(self, tool: Tool) -> None:
         """設定背景「任選一種」工具。
@@ -648,6 +665,11 @@ class CharacterCreationSession:
                 )
                 if lo:
                     lines.append(f"  血統：{lo.name_zh}（{lo.name_en}）— {lo.description}")
+            # Tiefling 等：血統法術施法屬性
+            if sd.has_lineage_spellcasting_choice:
+                sa = d.species_spellcasting_ability
+                sa_name = ABILITY_ZH.get(sa, "未選") if sa else "未選"
+                lines.append(f"  血統法術施法屬性：{sa_name}")
             lines.append("")
 
         # 屬性值

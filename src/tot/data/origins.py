@@ -282,6 +282,8 @@ class SpeciesData:
     skill_choice_count: int = 0  # 自選技能熟練數（Human 多才 / Elf 敏銳感官）
     skill_choice_pool: tuple[Skill, ...] = ()  # 可選池；空 = 全 18 項
     feat_choice_count: int = 0  # Human 多藝：自選起源專長數
+    has_lineage_spellcasting_choice: bool = False  # Tiefling：血統法術施法屬性 INT/WIS/CHA 選擇
+    feat_choice_count: int = 0  # Human 多藝：自選起源專長數
 
 
 SPECIES_REGISTRY: dict[str, SpeciesData] = {
@@ -503,8 +505,11 @@ SPECIES_REGISTRY: dict[str, SpeciesData] = {
         speed="9m",
         traits=("暗視", "魔裔傳承", "異界風采"),
         traits_description=(
-            "18m 暗視。魔裔傳承：依傳承獲得傷害抗性+戲法+3/5 級法術。異界風采：奇術戲法。"
+            "18m 暗視。魔裔傳承：依傳承獲得傷害抗性+戲法+3/5 級法術"
+            "（施法屬性 INT/WIS/CHA 三選一，選擇傳承時決定）。"
+            "異界風采：奇術戲法。"
         ),
+        has_lineage_spellcasting_choice=True,
         lineage_options=(
             LineageOption(
                 "abyssal",
