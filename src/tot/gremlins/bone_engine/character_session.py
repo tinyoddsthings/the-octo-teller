@@ -455,6 +455,18 @@ class CharacterCreationSession:
         total_cost = sum(POINT_BUY_COSTS.get(self.data.scores.get(a, 8), 0) for a in Ability)
         return POINT_BUY_BUDGET - total_cost
 
+    def format_score_line(self, ability: Ability) -> str:
+        """格式化單一屬性的顯示文字（含修正值）。"""
+        val = self.data.scores.get(ability, 10)
+        mod = (val - 10) // 2
+        sign = "+" if mod >= 0 else ""
+        name = ABILITY_ZH.get(ability, ability.value)
+        return f"  {name}（{ability.value}）：{val}（{sign}{mod}）"
+
+    def sync_point_buy_cache(self) -> None:
+        """將當前 scores 同步到點數購買暫存。由 TUI 在改動後呼叫。"""
+        self.data._scores_point_buy = dict(self.data.scores)
+
     def get_computed_scores(self) -> dict[Ability, int]:
         """取得最終屬性值（base + bg_adjust），上限 20。"""
         result: dict[Ability, int] = {}

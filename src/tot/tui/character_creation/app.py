@@ -310,12 +310,8 @@ class CharacterCreationApp(App[Character | None]):
         w.append(Label("── 標準陣列（依職業建議自動分配）──", classes="section-label"))
         # 讓 session 設定 standard 並自動分配
         self.session.set_ability_method("standard")
-        scores = self.session.data.scores
         for ab in ABILITY_ORDER:
-            val = scores[ab]
-            mod = (val - 10) // 2
-            sign = "+" if mod >= 0 else ""
-            w.append(Label(f"  {ABILITY_ZH[ab]}（{ab.value}）：{val}（{sign}{mod}）"))
+            w.append(Label(self.session.format_score_line(ab)))
 
     def _widgets_point_buy(self, w: list) -> None:
         d = self.session.data
@@ -341,12 +337,8 @@ class CharacterCreationApp(App[Character | None]):
                 )
             )
             # session 已分配好 scores
-            scores = self.session.data.scores
             for ab in ABILITY_ORDER:
-                val = scores.get(ab, 10)
-                mod = (val - 10) // 2
-                sign = "+" if mod >= 0 else ""
-                w.append(Label(f"  {ABILITY_ZH[ab]}（{ab.value}）：{val}（{sign}{mod}）"))
+                w.append(Label(self.session.format_score_line(ab)))
             w.append(Button("重新擲骰", id="reroll-btn", variant="warning"))
 
     # ── Step 5: 技能 ──────────────────────────────────────────────────────────
@@ -963,7 +955,7 @@ class CharacterCreationApp(App[Character | None]):
                 except Exception:
                     pass
             # 同步暫存以便切換方法後恢復
-            self.session.data._scores_point_buy = dict(self.session.data.scores)
+            self.session.sync_point_buy_cache()
             remaining = self.session.get_point_buy_remaining()
             self._update_preview()
             severity = "error" if remaining < 0 else "information"
