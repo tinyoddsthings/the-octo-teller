@@ -644,9 +644,10 @@ class CharacterCreationSession:
                 name = TOOL_ZH.get(t, t.value)
                 info = TOOL_DATA.get(t)
                 desc = f"（{info.ability}）{info.utilize}" if info else ""
+                craft = f"　製作：{info.craft}" if info and info.craft else ""
                 parts.append(f"{name}（{tool_sources[t]}）")
                 if desc:
-                    parts[-1] += f" — {desc}"
+                    parts[-1] += f" — {desc}{craft}"
             lines.append("工具熟練：")
             for p in parts:
                 lines.append(f"  {p}")

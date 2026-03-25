@@ -215,7 +215,8 @@ class CharacterCreationApp(App[Character | None]):
                 for t in available_tools:
                     info = TOOL_DATA.get(t)
                     desc = f"（{info.ability}）{info.utilize}" if info else ""
-                    label = f"{TOOL_ZH.get(t, t.value)} — {desc}"
+                    craft = f"｜製作：{info.craft}" if info and info.craft else ""
+                    label = f"{TOOL_ZH.get(t, t.value)} — {desc}{craft}"
                     tool_btns.append(RadioButton(label, value=(t == cur_tool)))
                 w.append(RadioSet(*tool_btns, id="bg-tool-radio"))
 
