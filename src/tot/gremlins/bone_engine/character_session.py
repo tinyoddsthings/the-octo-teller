@@ -7,6 +7,7 @@ TUI 和未來的 LLM Narrator 都呼叫同一套 API。
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from enum import StrEnum
 
 from tot.data.classes import (
     CLASS_DISPLAY,
@@ -37,6 +38,27 @@ from tot.gremlins.bone_engine.dice import roll_ability_scores
 from tot.gremlins.bone_engine.spells import list_spells, load_spell_db
 from tot.models.creature import AbilityScores, Character
 from tot.models.enums import TOOL_CATEGORY_MAP, Ability, Skill, Tool
+
+# ── 建角步驟類型 ──────────────────────────────────────────────────────────────
+
+
+class StepType(StrEnum):
+    CLASS = "class"
+    BACKGROUND = "background"
+    SPECIES = "species"
+    ABILITY_SCORES = "ability_scores"
+    SKILLS = "skills"
+    DIVINE_ORDER = "divine_order"
+    PRIMAL_ORDER = "primal_order"
+    FIGHTING_STYLE = "fighting_style"
+    WEAPON_MASTERY = "weapon_mastery"
+    EXPERTISE = "expertise"
+    LANGUAGE = "language"
+    INVOCATIONS = "invocations"
+    SPELLS = "spells"
+    EQUIPMENT = "equipment"
+    CONFIRM = "confirm"
+
 
 # ── 常數 ──────────────────────────────────────────────────────────────────────
 
@@ -109,6 +131,9 @@ class CharacterCreationData:
     feat_spells: list = field(default_factory=list)  # 專長 1 環法術 en_name 列表
     # 魔能祈喚（Warlock）
     invocations: list = field(default_factory=list)  # 選的祈喚 ID 列表
+    # 契約之書（Pact of the Tome）
+    tome_cantrips: list = field(default_factory=list)  # 契約之書 3 戲法
+    tome_rituals: list = field(default_factory=list)  # 契約之書 2 儀式法術
     # 內部暫存（各方法的 scores 持久化，切換方法時保留）
     rolled_values: list = field(default_factory=list)
     _scores_point_buy: dict = field(default_factory=dict)
@@ -123,6 +148,69 @@ class CharacterCreationSession:
 
     def __init__(self) -> None:
         self.data = CharacterCreationData()
+
+    # ── 動態步驟 ──────────────────────────────────────────────────────────────
+
+    def get_steps(self) -> list[StepType]:
+        """依當前職業動態計算步驟列表。"""
+        steps = [
+            StepType.CLASS,
+            StepType.BACKGROUND,
+            StepType.SPECIES,
+            StepType.ABILITY_SCORES,
+            StepType.SKILLS,
+        ]
+        cc = self.data.char_class
+
+        # 職業特有步驟
+        if cc == "Cleric":
+            steps.append(StepType.DIVINE_ORDER)
+        elif cc == "Druid":
+            steps.append(StepType.PRIMAL_ORDER)
+        elif cc == "Fighter":
+            steps.append(StepType.FIGHTING_STYLE)
+        elif cc == "Rogue":
+            steps.extend([StepType.EXPERTISE, StepType.LANGUAGE])
+        elif cc == "Warlock":
+            steps.append(StepType.INVOCATIONS)
+
+        # 武器精通
+        if cc in ("Barbarian", "Fighter", "Paladin", "Ranger", "Rogue"):
+            steps.append(StepType.WEAPON_MASTERY)
+
+        # 法術（檢查是否有施法能力或專長法術）
+        cd = CLASS_DISPLAY.get(cc)
+        has_spells = cd and (cd.num_cantrips > 0 or cd.num_prepared_spells > 0)
+        has_feat_spells = self.has_feat_spell_choices()
+        has_invocation_spells = (
+            self.has_pact_of_the_tome() if hasattr(self, "has_pact_of_the_tome") else False
+        )
+        if has_spells or has_feat_spells or has_invocation_spells:
+            steps.append(StepType.SPELLS)
+
+        steps.extend([StepType.EQUIPMENT, StepType.CONFIRM])
+        return steps
+
+    def get_step_title(self, step: StepType) -> str:
+        """取得步驟的中文標題。"""
+        titles = {
+            StepType.CLASS: "選擇職業",
+            StepType.BACKGROUND: "選擇背景",
+            StepType.SPECIES: "選擇種族",
+            StepType.ABILITY_SCORES: "設定屬性值",
+            StepType.SKILLS: "選擇技能",
+            StepType.DIVINE_ORDER: "神聖秩序",
+            StepType.PRIMAL_ORDER: "原初秩序",
+            StepType.FIGHTING_STYLE: "戰鬥風格",
+            StepType.WEAPON_MASTERY: "武器精通",
+            StepType.EXPERTISE: "專精",
+            StepType.LANGUAGE: "額外語言",
+            StepType.INVOCATIONS: "魔能祈喚",
+            StepType.SPELLS: "戲法與法術",
+            StepType.EQUIPMENT: "選擇裝備",
+            StepType.CONFIRM: "角色名稱＋確認",
+        }
+        return titles.get(step, str(step))
 
     # ── 設定選擇 ──────────────────────────────────────────────────────────────
 

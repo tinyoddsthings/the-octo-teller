@@ -1,6 +1,6 @@
-"""T.O.T. 角色建造 TUI — 8 步驟 Wizard 介面（2024 PHB 流程）。
+"""T.O.T. 角色建造 TUI — 動態步驟 Wizard 介面（2024 PHB 流程）。
 
-步驟：職業 → 背景 → 種族 → 屬性值 → 技能 → 裝備 → 戲法法術 → 名稱＋確認
+步驟由 StepType + session.get_steps() 動態決定，依職業自動插入/跳過。
 """
 
 from __future__ import annotations
@@ -39,24 +39,12 @@ from tot.gremlins.bone_engine.character import (
 from tot.gremlins.bone_engine.character_session import (
     CharacterCreationData,
     CharacterCreationSession,
+    StepType,
 )
 from tot.models.creature import Character
 from tot.models.enums import Ability, Skill
 
 # ── 常數 ──────────────────────────────────────────────────────────────────────
-
-TOTAL_STEPS = 8
-
-STEP_TITLES = {
-    1: "選擇職業",
-    2: "選擇背景",
-    3: "選擇種族",
-    4: "設定屬性值",
-    5: "選擇技能",
-    6: "選擇裝備",
-    7: "戲法與法術",
-    8: "角色名稱＋確認",
-}
 
 ABILITY_ORDER: list[Ability] = [
     Ability.STR,
@@ -123,10 +111,21 @@ class CharacterCreationApp(App[Character | None]):
 
     def __init__(self) -> None:
         super().__init__()
-        self._step: int = 1
+        self._step_index: int = 0
         self.session = CharacterCreationSession()
         # 多選上限追蹤：{widget_id: [value_order]}
         self._selection_order: dict[str, list] = {}
+
+    # ── Step helpers ───────────────────────────────────────────────────────
+
+    @property
+    def _current_step(self) -> StepType:
+        steps = self.session.get_steps()
+        return steps[self._step_index]
+
+    @property
+    def _total_steps(self) -> int:
+        return len(self.session.get_steps())
 
     # ── Compose ───────────────────────────────────────────────────────────────
 
@@ -145,9 +144,11 @@ class CharacterCreationApp(App[Character | None]):
     # ── Title ─────────────────────────────────────────────────────────────────
 
     def _update_title(self) -> None:
-        s = self._step
-        label = STEP_TITLES.get(s, "確認建角")
-        self.title = f"T.O.T. 角色建造  ─  步驟 {s}/{TOTAL_STEPS}：{label}"
+        step = self._current_step
+        idx = self._step_index + 1
+        total = self._total_steps
+        title = self.session.get_step_title(step)
+        self.title = f"T.O.T. 角色建造  ─  步驟 {idx}/{total}：{title}"
 
     # ── Step rendering ────────────────────────────────────────────────────────
 
@@ -156,32 +157,46 @@ class CharacterCreationApp(App[Character | None]):
         left = self.query_one("#left-panel", Vertical)
         await left.remove_children()
 
-        step = self._step
+        step = self._current_step
+        idx = self._step_index + 1
+        total = self._total_steps
+        title = self.session.get_step_title(step)
         widgets: list = []
-        label = STEP_TITLES.get(step, "")
-        widgets.append(Label(f"步驟 {step}/{TOTAL_STEPS}：{label}", id="step-title"))
+        widgets.append(Label(f"步驟 {idx}/{total}：{title}", id="step-title"))
 
         render_fn = {
-            1: self._widgets_class,
-            2: self._widgets_background,
-            3: self._widgets_species,
-            4: self._widgets_ability_scores,
-            5: self._widgets_skills,
-            6: self._widgets_equipment,
-            7: self._widgets_spells,
-            8: self._widgets_confirm,
+            StepType.CLASS: self._widgets_class,
+            StepType.BACKGROUND: self._widgets_background,
+            StepType.SPECIES: self._widgets_species,
+            StepType.ABILITY_SCORES: self._widgets_ability_scores,
+            StepType.SKILLS: self._widgets_skills,
+            StepType.INVOCATIONS: self._widgets_invocations,
+            StepType.SPELLS: self._widgets_spells,
+            StepType.EQUIPMENT: self._widgets_equipment,
+            StepType.CONFIRM: self._widgets_confirm,
+            # 未實作的步驟用 placeholder
+            StepType.DIVINE_ORDER: self._widgets_placeholder,
+            StepType.PRIMAL_ORDER: self._widgets_placeholder,
+            StepType.FIGHTING_STYLE: self._widgets_placeholder,
+            StepType.WEAPON_MASTERY: self._widgets_placeholder,
+            StepType.EXPERTISE: self._widgets_placeholder,
+            StepType.LANGUAGE: self._widgets_placeholder,
         }.get(step)
 
         if render_fn:
             render_fn(widgets)
 
         # 最後一步用確認按鈕，其餘用下一步按鈕
-        if step == TOTAL_STEPS:
+        if step == StepType.CONFIRM:
             widgets.append(Button("確認建角", id="confirm-btn", variant="success"))
         else:
             widgets.append(Button("確認 →  (Ctrl+N)", id="next-btn", variant="primary"))
 
         await left.mount(*widgets)
+
+    def _widgets_placeholder(self, w: list) -> None:
+        """未實作步驟的佔位。"""
+        w.append(Label("此步驟尚未實作，請按 Ctrl+N 跳過。"))
 
     # ── Step 1: 職業 ──────────────────────────────────────────────────────────
 
@@ -443,7 +458,42 @@ class CharacterCreationApp(App[Character | None]):
             ]
             w.append(RadioSet(*btns, id="cls-equip-radio"))
 
-    # ── Step 7: 戲法與法術 ────────────────────────────────────────────────────
+    # ── Step: 魔能祈喚（Warlock 獨立步驟）──────────────────────────────────────
+
+    def _widgets_invocations(self, w: list) -> None:
+        d = self.session.data
+        cc = d.char_class
+        cd = CLASS_DISPLAY.get(cc)
+        if not cd or cd.num_invocations == 0:
+            w.append(Label("此職業沒有魔能祈喚。"))
+            return
+
+        num_inv = cd.num_invocations
+        available_inv = self.session.get_available_invocations()
+        w.append(
+            Label(
+                f"── 魔能祈喚（選 {num_inv} 項）──",
+                classes="section-label",
+            )
+        )
+        if available_inv:
+            sel = d.invocations
+            opts = []
+            for inv in available_inv:
+                opts.append(
+                    (
+                        f"{inv.name_zh}（{inv.name_en}）",
+                        inv.id,
+                        inv.id in sel,
+                    )
+                )
+            w.append(SelectionList(*opts, id="invocation-list"))
+            # 顯示各祈喚的完整描述
+            for inv in available_inv:
+                marker = "▶ " if inv.id in sel else "  "
+                w.append(Static(f"{marker}{inv.name_zh}：{inv.description}"))
+
+    # ── Step: 戲法與法術 ─────────────────────────────────────────────────────
 
     def _widgets_spells(self, w: list) -> None:
         d = self.session.data
@@ -455,38 +505,10 @@ class CharacterCreationApp(App[Character | None]):
         cd = CLASS_DISPLAY.get(cc)
         has_class_spells = cd and (cd.num_cantrips > 0 or cd.num_prepared_spells > 0)
         has_feat_spells = self.session.has_feat_spell_choices()
-        has_invocations = cd and cd.num_invocations > 0
 
-        if not has_class_spells and not has_feat_spells and not has_invocations:
-            w.append(Label(f"{cd.name_zh if cd else cc} 在 1 級沒有施法能力，跳過此步。"))
+        if not has_class_spells and not has_feat_spells:
+            w.append(Label(f"{cd.name_zh if cd else cc} 在 1 級沒有施法能力。"))
             return
-
-        # ── 魔能祈喚（Warlock）──────────────────────────────────
-        if has_invocations:
-            num_inv = cd.num_invocations
-            available_inv = self.session.get_available_invocations()
-            w.append(
-                Label(
-                    f"── 魔能祈喚（選 {num_inv} 項）──",
-                    classes="section-label",
-                )
-            )
-            if available_inv:
-                sel = d.invocations
-                opts = []
-                for inv in available_inv:
-                    opts.append(
-                        (
-                            f"{inv.name_zh}（{inv.name_en}）",
-                            inv.id,
-                            inv.id in sel,
-                        )
-                    )
-                w.append(SelectionList(*opts, id="invocation-list"))
-                # 顯示各祈喚的完整描述
-                for inv in available_inv:
-                    marker = "▶ " if inv.id in sel else "  "
-                    w.append(Static(f"{marker}{inv.name_zh}：{inv.description}"))
 
         # ── 種族/血統已有的戲法（不可重複選）──
         granted = self.session.get_species_granted_cantrips()
@@ -656,7 +678,7 @@ class CharacterCreationApp(App[Character | None]):
             # 用 Static 顯示長文字，自動換行
             w.append(Static(f"    {sd.get('description', '')}"))
 
-    # ── Step 8: 名稱＋確認 ────────────────────────────────────────────────────
+    # ── Step: 名稱＋確認 ──────────────────────────────────────────────────────
 
     def _widgets_confirm(self, w: list) -> None:
         d = self.session.data
@@ -832,24 +854,23 @@ class CharacterCreationApp(App[Character | None]):
 
     # ── Data collection ───────────────────────────────────────────────────────
 
-    def _collect_step_data(self, step: int) -> None:
+    def _collect_step_data(self) -> None:
         """讀取當步 widget → session。驗證失敗 raise ValueError。"""
-        if step == 1:
-            self._collect_class()
-        elif step == 2:
-            self._collect_background()
-        elif step == 3:
-            self._collect_species()
-        elif step == 4:
-            self._collect_ability_scores()
-        elif step == 5:
-            self._collect_skills()
-        elif step == 6:
-            self._collect_equipment()
-        elif step == 7:
-            self._collect_spells()
-        elif step == 8:
-            self._collect_confirm()
+        step = self._current_step
+        collectors = {
+            StepType.CLASS: self._collect_class,
+            StepType.BACKGROUND: self._collect_background,
+            StepType.SPECIES: self._collect_species,
+            StepType.ABILITY_SCORES: self._collect_ability_scores,
+            StepType.SKILLS: self._collect_skills,
+            StepType.INVOCATIONS: self._collect_invocations,
+            StepType.SPELLS: self._collect_spells,
+            StepType.EQUIPMENT: self._collect_equipment,
+            StepType.CONFIRM: self._collect_confirm,
+        }
+        collector = collectors.get(step)
+        if collector:
+            collector()
 
     def _collect_class(self) -> None:
         rs = self.query_one("#class-radio", RadioSet)
@@ -1045,20 +1066,20 @@ class CharacterCreationApp(App[Character | None]):
 
         self.session.set_equipment(bg_eq, cls_eq)
 
+    def _collect_invocations(self) -> None:
+        """收集魔能祈喚選擇（Warlock 獨立步驟）。"""
+        try:
+            sl = self.query_one("#invocation-list", SelectionList)
+            self.session.set_invocations(list(sl.selected))
+        except ValueError:
+            raise
+        except Exception:
+            pass
+
     def _collect_spells(self) -> None:
         d = self.session.data
         cc = d.char_class
         cd = CLASS_DISPLAY.get(cc) if cc else None
-
-        # ── 魔能祈喚（Warlock）──
-        if cd and cd.num_invocations > 0:
-            try:
-                sl = self.query_one("#invocation-list", SelectionList)
-                self.session.set_invocations(list(sl.selected))
-            except ValueError:
-                raise
-            except Exception:
-                pass
 
         # ── 專長法術（Magic Initiate）──
         if self.session.has_feat_spell_choices():
@@ -1131,12 +1152,11 @@ class CharacterCreationApp(App[Character | None]):
     # ── Actions ───────────────────────────────────────────────────────────────
 
     async def action_next_step(self) -> None:
-        step = self._step
-        if step == TOTAL_STEPS:
+        if self._current_step == StepType.CONFIRM:
             self._finish()
             return
         try:
-            self._collect_step_data(step)
+            self._collect_step_data()
         except ValueError as e:
             self.notify(str(e), severity="error")
             # 擲骰模式首次進入需重新渲染
@@ -1145,34 +1165,14 @@ class CharacterCreationApp(App[Character | None]):
                 self._update_preview()
             return
 
-        # 非施法職業且無專長法術且無祈喚時跳過步驟 7
-        if self._step == 6:
-            cc = self.session.data.char_class
-            cd = CLASS_DISPLAY.get(cc)
-            no_class_spells = cd and cd.num_cantrips == 0 and cd.num_prepared_spells == 0
-            no_feat_spells = not self.session.has_feat_spell_choices()
-            no_invocations = not cd or cd.num_invocations == 0
-            if no_class_spells and no_feat_spells and no_invocations:
-                self._step = 7  # 會被 += 1 變成 8
-
-        self._step += 1
+        self._step_index += 1
         await self._render_step()
         self._update_preview()
         self._update_title()
 
     async def action_prev_step(self) -> None:
-        if self._step > 1:
-            # 非施法職業且無專長法術且無祈喚時從步驟 8 退回跳過 7
-            if self._step == 8:
-                cc = self.session.data.char_class
-                cd = CLASS_DISPLAY.get(cc)
-                no_class_spells = cd and cd.num_cantrips == 0 and cd.num_prepared_spells == 0
-                no_feat_spells = not self.session.has_feat_spell_choices()
-                no_invocations = not cd or cd.num_invocations == 0
-                if no_class_spells and no_feat_spells and no_invocations:
-                    self._step = 7  # 會被 -= 1 變成 6
-
-            self._step -= 1
+        if self._step_index > 0:
+            self._step_index -= 1
             await self._render_step()
             self._update_preview()
             self._update_title()
@@ -1406,7 +1406,7 @@ class CharacterCreationApp(App[Character | None]):
 
     def _finish(self) -> None:
         try:
-            self._collect_step_data(TOTAL_STEPS)
+            self._collect_step_data()
             ok, msg = self.session.validate()
             if not ok:
                 self.notify(msg, severity="error")
