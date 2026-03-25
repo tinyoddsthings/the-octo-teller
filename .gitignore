@@ -42,4 +42,5 @@ mcp_*.log
 *.db
 *.sqlite3
 
-docs/*
+docs/2024/
+docs/2024_translate/

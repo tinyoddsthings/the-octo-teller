@@ -1,4 +1,7 @@
-"""T.O.T. 角色建造 TUI — 6 步驟 Wizard 介面。"""
+"""T.O.T. 角色建造 TUI — 8 步驟 Wizard 介面（2024 PHB 流程）。
+
+步驟：職業 → 背景 → 種族 → 屬性值 → 技能 → 裝備 → 戲法法術 → 名稱＋確認
+"""
 
 from __future__ import annotations
 
@@ -13,68 +16,49 @@ from textual.widgets import (
     Label,
     RadioButton,
     RadioSet,
+    Select,
     SelectionList,
     Static,
 )
 
-from tot.gremlins.bone_engine.character import CLASS_REGISTRY, CharacterBuilder
-from tot.models.creature import AbilityScores, Character
+from tot.data.classes import CLASS_DISPLAY
+from tot.data.origins import (
+    ABILITY_ZH,
+    BACKGROUND_REGISTRY,
+    SKILL_ZH,
+    SPECIES_REGISTRY,
+)
+from tot.gremlins.bone_engine.character import (
+    CLASS_REGISTRY,
+    POINT_BUY_BUDGET,
+    POINT_BUY_COSTS,
+)
+from tot.gremlins.bone_engine.character_session import CharacterCreationSession
+from tot.models.creature import Character
 from tot.models.enums import Ability, Skill
 
-# ── 資料常數 ──────────────────────────────────────────────────────────────────
+# ── 常數 ──────────────────────────────────────────────────────────────────────
 
-PHB_BACKGROUNDS = [
-    "Acolyte",
-    "Artisan",
-    "Charlatan",
-    "Criminal",
-    "Entertainer",
-    "Farmer",
-    "Guard",
-    "Guide",
-    "Hermit",
-    "Merchant",
-    "Noble",
-    "Sage",
-    "Sailor",
-    "Scribe",
-    "Soldier",
-    "Wayfarer",
-]
-
-PHB_SPECIES = [
-    "Aasimar",
-    "Dragonborn",
-    "Dwarf",
-    "Elf",
-    "Gnome",
-    "Goliath",
-    "Half-Orc",
-    "Halfling",
-    "Human",
-    "Tiefling",
-]
-
-ARMOR_TYPES = ["none", "light", "medium", "heavy"]
+TOTAL_STEPS = 8
 
 STEP_TITLES = {
-    1: "角色名稱",
+    1: "選擇職業",
     2: "選擇背景",
     3: "選擇種族",
-    4: "選擇職業",
-    5: "設定屬性值",
-    6: "選擇技能",
-    7: "確認建角",
+    4: "設定屬性值",
+    5: "選擇技能",
+    6: "選擇裝備",
+    7: "戲法與法術",
+    8: "角色名稱＋確認",
 }
 
-# (Ability 列舉成員, 顯示標籤) 配對清單
-ABILITY_ROWS: list[tuple[Ability, str]] = [
-    (Ability.STR, "STR 力量"),
-    (Ability.DEX, "DEX 敏捷"),
-    (Ability.CON, "CON 體質"),
-    (Ability.INT, "INT 智力"),
-    (Ability.WIS, "WIS 感知"),
-    (Ability.CHA, "CHA 魅力"),
+ABILITY_ORDER: list[Ability] = [
+    Ability.STR,
+    Ability.DEX,
+    Ability.CON,
+    Ability.INT,
+    Ability.WIS,
+    Ability.CHA,
 ]
 
 
@@ -82,18 +66,14 @@ ABILITY_ROWS: list[tuple[Ability, str]] = [
 
 
 class CharacterCreationApp(App[Character | None]):
-    """T.O.T. 角色建造 Wizard。走完 6 步後以 exit(result=Character) 回傳角色。"""
+    """T.O.T. 角色建造 Wizard（2024 PHB 流程）。"""
 
     TITLE = "T.O.T. 角色建造"
 
     CSS = """
-    Screen {
-        layout: vertical;
-    }
+    Screen { layout: vertical; }
 
-    #main-area {
-        height: 1fr;
-    }
+    #main-area { height: 1fr; }
 
     #left-panel {
         width: 2fr;
@@ -101,7 +81,6 @@ class CharacterCreationApp(App[Character | None]):
         padding: 1 2;
         overflow-y: auto;
     }
-
     #preview-panel {
         width: 3fr;
         border: solid $primary;
@@ -115,30 +94,20 @@ class CharacterCreationApp(App[Character | None]):
         margin-bottom: 1;
     }
 
-    .ability-label {
-        width: 14;
-        height: 1;
+    .section-label {
+        color: $text-muted;
         margin-top: 1;
+        text-style: italic;
     }
 
-    .ability-input {
-        width: 8;
-        height: 3;
-    }
+    .ability-row { height: 3; }
+    .ability-label { width: 16; height: 3; padding-top: 1; }
 
-    #next-btn, #confirm-btn {
-        margin-top: 1;
-        width: 100%;
-    }
+    #next-btn, #confirm-btn { margin-top: 1; width: 100%; }
 
-    RadioSet {
-        height: auto;
-    }
-
-    SelectionList {
-        height: auto;
-        max-height: 20;
-    }
+    RadioSet { height: auto; }
+    SelectionList { height: auto; max-height: 20; }
+    Select { width: 20; }
     """
 
     BINDINGS = [
@@ -149,17 +118,7 @@ class CharacterCreationApp(App[Character | None]):
     def __init__(self) -> None:
         super().__init__()
         self._step: int = 1
-        # 儲存所有已填入的資料（不依賴 builder 的步驟鎖）
-        self._data: dict = {
-            "name": "",
-            "background": "",
-            "species": "",
-            "char_class": "",
-            "scores": {a: 10 for a in Ability},
-            "armor_type": "none",
-            "subclass": "",
-            "skills": [],
-        }
+        self.session = CharacterCreationSession()
 
     # ── Compose ───────────────────────────────────────────────────────────────
 
@@ -178,332 +137,887 @@ class CharacterCreationApp(App[Character | None]):
     # ── Title ─────────────────────────────────────────────────────────────────
 
     def _update_title(self) -> None:
-        step = self._step
-        if step <= 6:
-            self.title = f"T.O.T. 角色建造  ─  步驟 {step}/6：{STEP_TITLES[step]}"
-        else:
-            self.title = "T.O.T. 角色建造  ─  確認建角"
+        s = self._step
+        label = STEP_TITLES.get(s, "確認建角")
+        self.title = f"T.O.T. 角色建造  ─  步驟 {s}/{TOTAL_STEPS}：{label}"
 
     # ── Step rendering ────────────────────────────────────────────────────────
 
     async def _render_step(self) -> None:
-        """清除左側面板，重建當步的 widgets。"""
+        """清除左側面板，重建當步 widgets。"""
         left = self.query_one("#left-panel", Vertical)
         await left.remove_children()
 
         step = self._step
         widgets: list = []
+        label = STEP_TITLES.get(step, "")
+        widgets.append(Label(f"步驟 {step}/{TOTAL_STEPS}：{label}", id="step-title"))
 
-        # 步驟標題
-        step_label = f"步驟 {step}/6：{STEP_TITLES[step]}" if step <= 6 else "步驟 7：確認建角"
-        widgets.append(Label(step_label, id="step-title"))
+        render_fn = {
+            1: self._widgets_class,
+            2: self._widgets_background,
+            3: self._widgets_species,
+            4: self._widgets_ability_scores,
+            5: self._widgets_skills,
+            6: self._widgets_equipment,
+            7: self._widgets_spells,
+            8: self._widgets_confirm,
+        }.get(step)
 
-        if step == 1:
-            widgets.append(
-                Input(
-                    value=self._data["name"],
-                    placeholder="輸入角色名稱...",
-                    id="name-input",
-                )
-            )
+        if render_fn:
+            render_fn(widgets)
 
-        elif step == 2:
-            bg = self._data["background"]
-            btns = [RadioButton(b, value=(b == bg)) for b in PHB_BACKGROUNDS]
-            widgets.append(RadioSet(*btns, id="bg-radio"))
+        # 最後一步用確認按鈕，其餘用下一步按鈕
+        if step == TOTAL_STEPS:
+            widgets.append(Button("確認建角", id="confirm-btn", variant="success"))
+        else:
+            widgets.append(Button("確認 →  (Ctrl+N)", id="next-btn", variant="primary"))
 
-        elif step == 3:
-            sp = self._data["species"]
-            btns = [RadioButton(s, value=(s == sp)) for s in PHB_SPECIES]
-            widgets.append(RadioSet(*btns, id="species-radio"))
-
-        elif step == 4:
-            classes = list(CLASS_REGISTRY.keys())
-            cc = self._data["char_class"]
-            btns = [RadioButton(c, value=(c == cc)) for c in classes]
-            widgets.append(RadioSet(*btns, id="class-radio"))
-
-        elif step == 5:
-            widgets.append(Label("── 屬性值 ──"))
-            for ability, label_text in ABILITY_ROWS:
-                widgets.append(Label(label_text, classes="ability-label"))
-                widgets.append(
-                    Input(
-                        value=str(self._data["scores"].get(ability, 10)),
-                        id=f"score-{ability.value}",
-                        classes="ability-input",
-                    )
-                )
-            widgets.append(Label("── 護甲類型（可選）──"))
-            armor_btns = [
-                RadioButton(a, value=(a == self._data["armor_type"])) for a in ARMOR_TYPES
-            ]
-            widgets.append(RadioSet(*armor_btns, id="armor-radio"))
-            widgets.append(Label("子職業（可選，可留空）"))
-            widgets.append(
-                Input(
-                    value=self._data["subclass"],
-                    placeholder="子職業名稱...",
-                    id="subclass-input",
-                )
-            )
-
-        elif step == 6:
-            char_class = self._data["char_class"]
-            if char_class and char_class in CLASS_REGISTRY:
-                cls_data = CLASS_REGISTRY[char_class]
-                available = list(cls_data.skill_choices)
-                num = cls_data.num_skills
-            else:
-                available = list(Skill)
-                num = 2
-            widgets.append(Label(f"請選擇 {num} 個技能（{char_class}）"))
-            selected = self._data["skills"]
-            options = [(s.value, s, s in selected) for s in available]
-            widgets.append(SelectionList(*options, id="skills-list"))
-
-        elif step == 7:
-            try:
-                char = self._build_character()
-                summary = self._format_summary(char)
-                widgets.append(Static(summary))
-                widgets.append(Button("確認建角 ✓", id="confirm-btn", variant="success"))
-            except ValueError as e:
-                widgets.append(Static(f"[red]錯誤：{e}[/red]"))
-            await left.mount(*widgets)
-            return  # 步驟 7 不需要 next-btn
-
-        widgets.append(Button("確認 →  (Ctrl+N)", id="next-btn", variant="primary"))
         await left.mount(*widgets)
+
+    # ── Step 1: 職業 ──────────────────────────────────────────────────────────
+
+    def _widgets_class(self, w: list) -> None:
+        cc = self.session.data.char_class
+        btns = []
+        for cid, cd in CLASS_DISPLAY.items():
+            label = f"{cd.name_zh}（{cd.name_en}）— {cd.description[:20]}…"
+            btns.append(RadioButton(label, value=(cid == cc)))
+        w.append(RadioSet(*btns, id="class-radio"))
+
+    # ── Step 2: 背景 ──────────────────────────────────────────────────────────
+
+    def _widgets_background(self, w: list) -> None:
+        bg = self.session.data.background
+        btns = []
+        for bid, bd in BACKGROUND_REGISTRY.items():
+            label = f"{bd.name_zh}（{bd.name_en}）"
+            btns.append(RadioButton(label, value=(bid == bg)))
+        w.append(RadioSet(*btns, id="bg-radio"))
+
+    # ── Step 3: 種族 ──────────────────────────────────────────────────────────
+
+    def _widgets_species(self, w: list) -> None:
+        sp = self.session.data.species
+        btns = []
+        for sid, sd in SPECIES_REGISTRY.items():
+            label = f"{sd.name_zh}（{sd.name_en}）— {sd.description}"
+            btns.append(RadioButton(label, value=(sid == sp)))
+        w.append(RadioSet(*btns, id="species-radio"))
+
+        # 若已選種族且有血統子選項，顯示
+        if sp and sp in SPECIES_REGISTRY:
+            sd = SPECIES_REGISTRY[sp]
+            if sd.lineage_options:
+                w.append(Label("── 選擇血統/先祖 ──", classes="section-label"))
+                cur_lin = self.session.data.lineage
+                lin_btns = []
+                for lo in sd.lineage_options:
+                    lb = f"{lo.name_zh}（{lo.name_en}）— {lo.description}"
+                    lin_btns.append(RadioButton(lb, value=(lo.id == cur_lin)))
+                w.append(RadioSet(*lin_btns, id="lineage-radio"))
+
+    # ── Step 4: 屬性值 ────────────────────────────────────────────────────────
+
+    def _widgets_ability_scores(self, w: list) -> None:
+        d = self.session.data
+        method = d.score_method
+
+        # 方法選擇
+        w.append(Label("── 屬性值生成方式 ──", classes="section-label"))
+        method_btns = [
+            RadioButton("標準陣列（15, 14, 13, 12, 10, 8）", value=(method == "standard")),
+            RadioButton("點數購買（27 點預算，8~15）", value=(method == "point_buy")),
+            RadioButton("擲骰（4d6 取高 3，共 6 組）", value=(method == "roll")),
+        ]
+        w.append(RadioSet(*method_btns, id="method-radio"))
+
+        if method == "standard":
+            self._widgets_standard_array(w)
+        elif method == "point_buy":
+            self._widgets_point_buy(w)
+        elif method == "roll":
+            self._widgets_roll(w)
+
+        # 背景屬性調整
+        bg_id = d.background
+        if bg_id and bg_id in BACKGROUND_REGISTRY:
+            bg = BACKGROUND_REGISTRY[bg_id]
+            tags = [ABILITY_ZH[a] for a in bg.ability_tags]
+            w.append(
+                Label(
+                    f"── 背景屬性調整（{bg.name_zh}：{'/'.join(tags)}）──", classes="section-label"
+                )
+            )
+            adj_mode = d.bg_adjust_mode
+            adj_btns = [
+                RadioButton("三項各 +1（預設）", value=(adj_mode == "+1/+1/+1")),
+                RadioButton("一項 +2，一項 +1", value=(adj_mode == "+2/+1")),
+            ]
+            w.append(RadioSet(*adj_btns, id="adjust-mode-radio"))
+
+            if adj_mode == "+2/+1":
+                w.append(Label("  +2 給："))
+                opts_2 = [(ABILITY_ZH[a], a) for a in bg.ability_tags]
+                cur_adj = d.bg_adjust
+                plus2_ab = next((a for a, v in cur_adj.items() if v == 2), None)
+                plus2_sel = Select(opts_2, allow_blank=True, id="adj-plus2")
+                if plus2_ab is not None:
+                    plus2_sel.value = plus2_ab
+                w.append(plus2_sel)
+                w.append(Label("  +1 給："))
+                plus1_ab = next((a for a, v in cur_adj.items() if v == 1), None)
+                plus1_sel = Select(opts_2, allow_blank=True, id="adj-plus1")
+                if plus1_ab is not None:
+                    plus1_sel.value = plus1_ab
+                w.append(plus1_sel)
+
+    def _widgets_standard_array(self, w: list) -> None:
+        w.append(Label("── 標準陣列（依職業建議自動分配）──", classes="section-label"))
+        # 讓 session 設定 standard 並自動分配
+        self.session.set_ability_method("standard")
+        scores = self.session.data.scores
+        for ab in ABILITY_ORDER:
+            val = scores[ab]
+            mod = (val - 10) // 2
+            sign = "+" if mod >= 0 else ""
+            w.append(Label(f"  {ABILITY_ZH[ab]}（{ab.value}）：{val}（{sign}{mod}）"))
+
+    def _widgets_point_buy(self, w: list) -> None:
+        d = self.session.data
+        remaining = self.session.get_point_buy_remaining()
+        w.append(
+            Label(
+                f"── 點數購買（剩餘：{remaining}/{POINT_BUY_BUDGET} 點）──", classes="section-label"
+            )
+        )
+        cost_str = "  花費：" + ", ".join(f"{v}={c}點" for v, c in POINT_BUY_COSTS.items())
+        w.append(Label(cost_str))
+
+        pb_opts = [(str(v), v) for v in range(8, 16)]
+        for ab in ABILITY_ORDER:
+            cur = d.scores.get(ab, 8)
+            w.append(Label(f"  {ab.value} {ABILITY_ZH[ab]}", classes="ability-label"))
+            w.append(Select(pb_opts, value=cur, id=f"pb-{ab.value}"))
+
+    def _widgets_roll(self, w: list) -> None:
+        rolled = self.session.data.rolled_values
+        if not rolled:
+            w.append(Label("  按「確認→下一步」後自動擲骰並分配"))
+        else:
+            w.append(
+                Label(
+                    f"── 擲骰結果：{sorted(rolled, reverse=True)}（依職業最優分配）──",
+                    classes="section-label",
+                )
+            )
+            # session 已分配好 scores
+            scores = self.session.data.scores
+            for ab in ABILITY_ORDER:
+                val = scores.get(ab, 10)
+                mod = (val - 10) // 2
+                sign = "+" if mod >= 0 else ""
+                w.append(Label(f"  {ABILITY_ZH[ab]}（{ab.value}）：{val}（{sign}{mod}）"))
+            w.append(Button("重新擲骰", id="reroll-btn", variant="warning"))
+
+    # ── Step 5: 技能 ──────────────────────────────────────────────────────────
+
+    def _widgets_skills(self, w: list) -> None:
+        d = self.session.data
+        bg_id = d.background
+        cc = d.char_class
+
+        # 背景固定技能（顯示，不可改）
+        if bg_id and bg_id in BACKGROUND_REGISTRY:
+            bg = BACKGROUND_REGISTRY[bg_id]
+            bg_labels = [f"{SKILL_ZH[s]}（{s.value}）" for s in bg.skill_proficiencies]
+            w.append(Label(f"── 背景技能（{bg.name_zh}，已固定）──", classes="section-label"))
+            w.append(Label(f"  {', '.join(bg_labels)}"))
+
+        # 從 session 取可選技能和選位數
+        available = self.session.get_available_skills()
+        total_picks = self.session.get_total_skill_picks()
+        feat = self.session.get_origin_feat()
+        feat_count = feat.skill_choice_count if feat and feat.skill_choice_count > 0 else 0
+
+        if total_picks > 0:
+            # 來源標記
+            cls_count = 0
+            cls_set: set[Skill] = set()
+            if cc and cc in CLASS_REGISTRY:
+                cls_count = CLASS_REGISTRY[cc].num_skills
+                cls_set = set(CLASS_REGISTRY[cc].skill_choices)
+
+            sources = []
+            if feat_count > 0:
+                sources.append(f"{feat.name_zh} {feat_count}")
+            if cls_count > 0:
+                cd = CLASS_DISPLAY.get(cc)
+                name = cd.name_zh if cd else cc
+                sources.append(f"{name} {cls_count}")
+
+            w.append(
+                Label(
+                    f"── 選擇技能熟練（共 {total_picks} 項：{'＋'.join(sources)}）──",
+                    classes="section-label",
+                )
+            )
+
+            selected = d.skills
+            options = []
+            for s in available:
+                ab = _skill_ability(s)
+                marker = "" if s in cls_set else "　☆" if feat_count > 0 else ""
+                label = f"{SKILL_ZH.get(s, s.value)}（{s.value}）— {ABILITY_ZH.get(ab, '')}{marker}"
+                options.append((label, s, s in selected))
+            w.append(SelectionList(*options, id="skills-list"))
+
+    # ── Step 6: 裝備 ──────────────────────────────────────────────────────────
+
+    def _widgets_equipment(self, w: list) -> None:
+        d = self.session.data
+        bg_id = d.background
+        cc = d.char_class
+
+        if bg_id and bg_id in BACKGROUND_REGISTRY:
+            bg = BACKGROUND_REGISTRY[bg_id]
+            w.append(Label(f"── 背景裝備（{bg.name_zh}）──", classes="section-label"))
+            w.append(Label(f"  A：{bg.equipment_a}"))
+            w.append(Label(f"  B：{bg.equipment_b}"))
+            cur_bg = d.bg_equipment or "A"
+            btns = [
+                RadioButton("選 A", value=(cur_bg == "A")),
+                RadioButton("選 B", value=(cur_bg == "B")),
+            ]
+            w.append(RadioSet(*btns, id="bg-equip-radio"))
+
+        if cc and cc in CLASS_DISPLAY:
+            cd = CLASS_DISPLAY[cc]
+            w.append(Label(f"── 職業裝備（{cd.name_zh}）──", classes="section-label"))
+            w.append(Label(f"  A：{cd.equipment_a}"))
+            w.append(Label(f"  B：{cd.equipment_b}"))
+            cur_cls = d.class_equipment or "A"
+            btns = [
+                RadioButton("選 A", value=(cur_cls == "A")),
+                RadioButton("選 B", value=(cur_cls == "B")),
+            ]
+            w.append(RadioSet(*btns, id="cls-equip-radio"))
+
+    # ── Step 7: 戲法與法術 ────────────────────────────────────────────────────
+
+    def _widgets_spells(self, w: list) -> None:
+        d = self.session.data
+        cc = d.char_class
+        if not cc:
+            w.append(Label("請先選擇職業"))
+            return
+
+        cd = CLASS_DISPLAY.get(cc)
+        if not cd or (cd.num_cantrips == 0 and cd.num_prepared_spells == 0):
+            w.append(Label(f"{cd.name_zh if cd else cc} 在 1 級沒有施法能力，跳過此步。"))
+            return
+
+        # 戲法
+        if cd.num_cantrips > 0:
+            cantrips = self.session.get_available_cantrips()
+            w.append(
+                Label(
+                    f"── 戲法（選 {cd.num_cantrips} 個）──",
+                    classes="section-label",
+                )
+            )
+            if cantrips:
+                sel = d.cantrips
+                opts = []
+                for s in cantrips:
+                    tag = s["damage_type_zh"] if s["damage_type_zh"] else s["effect_type_zh"]
+                    opts.append(
+                        (
+                            f"{s['name']}（{s['en_name']}）— {tag}",
+                            s["en_name"],
+                            s["en_name"] in sel,
+                        )
+                    )
+                w.append(SelectionList(*opts, id="cantrip-list"))
+            else:
+                w.append(Label("  （法術資料庫尚無此職業的戲法）"))
+
+        # 1 環法術
+        if cd.num_prepared_spells > 0:
+            spells_1 = self.session.get_available_spells()
+            w.append(
+                Label(
+                    f"── 1 環法術（選 {cd.num_prepared_spells} 個）──",
+                    classes="section-label",
+                )
+            )
+            if spells_1:
+                sel = d.spells
+                opts = []
+                for s in spells_1:
+                    tag = s["damage_type_zh"] if s["damage_type_zh"] else s["effect_type_zh"]
+                    opts.append(
+                        (
+                            f"{s['name']}（{s['en_name']}）— {tag}",
+                            s["en_name"],
+                            s["en_name"] in sel,
+                        )
+                    )
+                w.append(SelectionList(*opts, id="spell-list"))
+            else:
+                w.append(Label("  （法術資料庫尚無此職業的 1 環法術）"))
+
+    # ── Step 8: 名稱＋確認 ────────────────────────────────────────────────────
+
+    def _widgets_confirm(self, w: list) -> None:
+        d = self.session.data
+        w.append(Label("── 角色名稱 ──", classes="section-label"))
+        w.append(
+            Input(
+                value=d.name,
+                placeholder="輸入角色名稱...",
+                id="name-input",
+            )
+        )
+
+        # 完整角色卡預覽
+        w.append(Label("── 角色卡預覽 ──", classes="section-label"))
+        try:
+            ok, msg = self.session.validate()
+            if ok:
+                char = self.session.build_character()
+                summary = self._format_confirm_summary(char)
+                w.append(Static(summary))
+            else:
+                w.append(Static(f"[yellow]{msg}[/yellow]"))
+        except Exception as e:
+            w.append(Static(f"[red]建角錯誤：{e}[/red]"))
+
+    def _format_confirm_summary(self, char: Character) -> str:
+        """格式化確認頁的角色卡摘要（含計算後數值）。"""
+        d = self.session.data
+        cc = d.char_class
+        bg_id = d.background
+        sp_id = d.species
+
+        cd = CLASS_DISPLAY.get(cc)
+        bg = BACKGROUND_REGISTRY.get(bg_id) if bg_id else None
+        sd = SPECIES_REGISTRY.get(sp_id) if sp_id else None
+
+        lines = [
+            f"角色名稱：{char.name}",
+            f"職業：{cd.name_zh if cd else cc}　等級：{char.level}",
+            f"背景：{bg.name_zh if bg else bg_id}　種族：{sd.name_zh if sd else sp_id}",
+        ]
+
+        # 血統
+        lin = d.lineage
+        if lin and sd and sd.lineage_options:
+            lo = next((opt for opt in sd.lineage_options if opt.id == lin), None)
+            if lo:
+                lines.append(f"血統：{lo.name_zh}（{lo.name_en}）")
+
+        lines += ["", "── 屬性值 ──"]
+        bg_adj = d.bg_adjust
+        for ab in ABILITY_ORDER:
+            val = char.ability_scores.score(ab)
+            mod = char.ability_scores.modifier(ab)
+            sign = "+" if mod >= 0 else ""
+            adj = bg_adj.get(ab, 0)
+            adj_note = f" (背景+{adj})" if adj > 0 else ""
+            lines.append(f"  {ab.value} {ABILITY_ZH[ab]:<4}  {val:>2}  ({sign}{mod}){adj_note}")
+
+        lines += [
+            "",
+            f"HP：{char.hp_current}　AC：{char.ac}　速度：{sd.speed if sd else '9m'}",
+            f"被動感知：{char.passive_perception}　先攻："
+            f"{'+' if char.ability_scores.modifier(Ability.DEX) >= 0 else ''}"
+            f"{char.ability_scores.modifier(Ability.DEX)}",
+            "熟練加值：+2",
+        ]
+
+        # 豁免
+        if cc in CLASS_REGISTRY:
+            saves = CLASS_REGISTRY[cc].saving_throws
+            save_str = ", ".join(f"{ABILITY_ZH[a]}（{a.value}）" for a in saves)
+            lines.append(f"豁免熟練：{save_str}")
+
+        # 護甲/武器訓練
+        if cd:
+            lines.append(f"護甲訓練：{', '.join(cd.armor_training) or '無'}")
+            lines.append(f"武器訓練：{', '.join(cd.weapon_training)}")
+
+        # 背景起源專長
+        if bg:
+            feat = self.session.get_origin_feat()
+            lines += ["", "── 起源專長 ──"]
+            lines.append(f"  {bg.feat_zh}（{bg.feat}）")
+            if feat:
+                lines.append(f"  {feat.description}")
+
+        # 技能
+        lines += ["", "── 技能熟練 ──"]
+        if bg:
+            for s in bg.skill_proficiencies:
+                bonus = char.skill_bonus(s)
+                sign = "+" if bonus >= 0 else ""
+                lines.append(f"  {SKILL_ZH.get(s, s.value):<8}（{s.value}）{sign}{bonus}  [背景]")
+        for s in d.skills:
+            bonus = char.skill_bonus(s)
+            sign = "+" if bonus >= 0 else ""
+            lines.append(f"  {SKILL_ZH.get(s, s.value):<8}（{s.value}）{sign}{bonus}  [職業]")
+
+        # 工具熟練
+        if bg:
+            lines.append(f"\n工具熟練：{bg.tool_proficiency}")
+
+        # 裝備
+        lines += ["", "── 起始裝備 ──"]
+        if bg:
+            eq_text = bg.equipment_a if d.bg_equipment == "A" else bg.equipment_b
+            lines.append(f"  背景：{eq_text}")
+        if cd:
+            eq_text = cd.equipment_a if d.class_equipment == "A" else cd.equipment_b
+            lines.append(f"  職業：{eq_text}")
+
+        # 種族特性
+        if sd:
+            lines += ["", "── 種族特性 ──"]
+            lines.append(f"  {', '.join(sd.traits)}")
+            lines.append(f"  {sd.traits_description}")
+
+        # 戲法與法術
+        if d.cantrips or d.spells:
+            lines += ["", "── 法術 ──"]
+            if d.cantrips:
+                lines.append(f"  戲法：{', '.join(d.cantrips)}")
+            if d.spells:
+                lines.append(f"  1 環法術：{', '.join(d.spells)}")
+            if cc in CLASS_REGISTRY and CLASS_REGISTRY[cc].spellcasting_ability:
+                sa = CLASS_REGISTRY[cc].spellcasting_ability
+                lines.append(f"  施法屬性：{ABILITY_ZH.get(sa, '')}（{sa.value}）")
+
+        # 1 級職業特性
+        if cd and cd.features_1st:
+            lines += ["", "── 1 級職業特性 ──"]
+            for feat_name in cd.features_1st:
+                lines.append(f"  • {feat_name}")
+
+        return "\n".join(lines)
 
     # ── Preview panel ─────────────────────────────────────────────────────────
 
     def _update_preview(self) -> None:
-        """更新右側預覽面板。"""
-        d = self._data
+        """更新右側預覽面板：委託 session.get_summary()。"""
         preview = self.query_one("#preview-panel", Static)
-
-        lines = [
-            "角色預覽",
-            "─" * 28,
-            f"名稱  : {d['name'] or '—'}",
-            f"背景  : {d['background'] or '—'}",
-            f"種族  : {d['species'] or '—'}",
-            f"職業  : {d['char_class'] or '—'}",
-        ]
-
-        scores = d["scores"]
-        if any(v != 10 for v in scores.values()):
-            parts = []
-            for ab, _ in ABILITY_ROWS:
-                val = scores.get(ab, 10)
-                mod = (val - 10) // 2
-                sign = "+" if mod >= 0 else ""
-                parts.append(f"{ab.value}:{val}({sign}{mod})")
-            lines.append("屬性  : " + "  ".join(parts[:3]))
-            lines.append("        " + "  ".join(parts[3:]))
+        summary = self.session.get_summary()
+        header = "角色預覽\n" + "─" * 36 + "\n"
+        if summary:
+            preview.update(header + summary)
         else:
-            lines.append("屬性  : —")
+            preview.update(header + "（尚無選擇）")
 
-        if d["skills"]:
-            lines.append(f"技能  : {', '.join(s.value for s in d['skills'])}")
-        else:
-            lines.append("技能  : —")
-
-        # 計算 HP/AC（只有必填欄位都有值時才嘗試）
-        if d["name"] and d["char_class"] and d["skills"]:
-            try:
-                char = self._build_character()
-                lines += [
-                    "",
-                    "─" * 28,
-                    f"HP    : {char.hp_current}    AC : {char.ac}",
-                    f"被動感知 : {char.passive_perception}",
-                ]
-            except Exception:
-                pass
-
-        preview.update("\n".join(lines))
-
-    # ── Build helper ──────────────────────────────────────────────────────────
-
-    def _build_character(self) -> Character:
-        """從 _data 呼叫 CharacterBuilder 建出完整角色。"""
-        d = self._data
-        builder = CharacterBuilder()
-        builder.set_name(d["name"] or "角色")
-        builder.set_background(d["background"] or "Unknown")
-        builder.set_species(d["species"] or "Unknown")
-        builder.set_class(d["char_class"])
-
-        s = d["scores"]
-        ability_scores = AbilityScores(
-            STR=s.get(Ability.STR, 10),
-            DEX=s.get(Ability.DEX, 10),
-            CON=s.get(Ability.CON, 10),
-            INT=s.get(Ability.INT, 10),
-            WIS=s.get(Ability.WIS, 10),
-            CHA=s.get(Ability.CHA, 10),
-        )
-        builder.set_ability_scores(ability_scores)
-
-        # 技能：若選擇數不符則以職業前 N 項補足（供預覽用）
-        char_class = d["char_class"]
-        skills = list(d["skills"])
-        if char_class in CLASS_REGISTRY:
-            num = CLASS_REGISTRY[char_class].num_skills
-            if len(skills) != num:
-                available = list(CLASS_REGISTRY[char_class].skill_choices)
-                skills = available[:num]
-        builder.set_skills(skills)
-
-        if d["armor_type"] and d["armor_type"] != "none":
-            builder.set_armor(d["armor_type"])
-        if d["subclass"]:
-            builder.set_subclass(d["subclass"])
-
-        return builder.build()
-
-    def _format_summary(self, char: Character) -> str:
-        """格式化步驟 7 的完整角色卡文字。"""
-        lines = [
-            f"角色名稱：{char.name}",
-            f"職業：{char.char_class}　背景：{char.background}　種族：{char.species}",
-            "",
-            "── 屬性值 ──",
-        ]
-        for ab, label in ABILITY_ROWS:
-            val = char.ability_scores.score(ab)
-            mod = char.ability_scores.modifier(ab)
-            sign = "+" if mod >= 0 else ""
-            lines.append(f"  {label:<14} {val:>2}  ({sign}{mod})")
-
-        lines += [
-            "",
-            f"HP     : {char.hp_current}",
-            f"AC     : {char.ac}",
-            f"被動感知 : {char.passive_perception}",
-            "",
-            "── 技能熟練 ──",
-        ]
-        for skill in char.skill_proficiencies:
-            bonus = char.skill_bonus(skill)
-            sign = "+" if bonus >= 0 else ""
-            lines.append(f"  {skill.value:<22} {sign}{bonus}")
-
-        return "\n".join(lines)
-
-    # ── Step data collection ──────────────────────────────────────────────────
+    # ── Data collection ───────────────────────────────────────────────────────
 
     def _collect_step_data(self, step: int) -> None:
-        """讀取當步 widget 的值存入 _data。驗證失敗則 raise ValueError。"""
+        """讀取當步 widget → session。驗證失敗 raise ValueError。"""
         if step == 1:
-            val = self.query_one("#name-input", Input).value.strip()
-            if not val:
-                raise ValueError("角色名稱不能為空")
-            self._data["name"] = val
-
+            self._collect_class()
         elif step == 2:
-            rs = self.query_one("#bg-radio", RadioSet)
-            idx = rs.pressed_index
-            if idx is None:
-                raise ValueError("請選擇背景")
-            self._data["background"] = PHB_BACKGROUNDS[idx]
-
+            self._collect_background()
         elif step == 3:
-            rs = self.query_one("#species-radio", RadioSet)
-            idx = rs.pressed_index
-            if idx is None:
-                raise ValueError("請選擇種族")
-            self._data["species"] = PHB_SPECIES[idx]
-
+            self._collect_species()
         elif step == 4:
-            rs = self.query_one("#class-radio", RadioSet)
-            idx = rs.pressed_index
-            if idx is None:
-                raise ValueError("請選擇職業")
-            self._data["char_class"] = list(CLASS_REGISTRY.keys())[idx]
-
+            self._collect_ability_scores()
         elif step == 5:
-            scores: dict[Ability, int] = {}
-            for ability, label_text in ABILITY_ROWS:
-                widget = self.query_one(f"#score-{ability.value}", Input)
-                raw = widget.value.strip()
-                try:
-                    val = int(raw)
-                except ValueError as exc:
-                    raise ValueError(f"{label_text} 必須是整數") from exc
-                if not (1 <= val <= 30):
-                    raise ValueError(f"{label_text} 必須在 1–30 之間，收到 {val}")
-                scores[ability] = val
-            self._data["scores"] = scores
-
-            # 護甲（可選）
-            try:
-                armor_rs = self.query_one("#armor-radio", RadioSet)
-                idx = armor_rs.pressed_index
-                if idx is not None:
-                    self._data["armor_type"] = ARMOR_TYPES[idx]
-            except Exception:
-                pass
-
-            # 子職業（可選）
-            try:
-                sub_inp = self.query_one("#subclass-input", Input)
-                self._data["subclass"] = sub_inp.value.strip()
-            except Exception:
-                pass
-
+            self._collect_skills()
         elif step == 6:
+            self._collect_equipment()
+        elif step == 7:
+            self._collect_spells()
+        elif step == 8:
+            self._collect_confirm()
+
+    def _collect_class(self) -> None:
+        rs = self.query_one("#class-radio", RadioSet)
+        idx = rs.pressed_index
+        if idx is None:
+            raise ValueError("請選擇職業")
+        keys = list(CLASS_DISPLAY.keys())
+        self.session.set_class(keys[idx])
+
+    def _collect_background(self) -> None:
+        rs = self.query_one("#bg-radio", RadioSet)
+        idx = rs.pressed_index
+        if idx is None:
+            raise ValueError("請選擇背景")
+        keys = list(BACKGROUND_REGISTRY.keys())
+        self.session.set_background(keys[idx])
+
+    def _collect_species(self) -> None:
+        rs = self.query_one("#species-radio", RadioSet)
+        idx = rs.pressed_index
+        if idx is None:
+            raise ValueError("請選擇種族")
+        keys = list(SPECIES_REGISTRY.keys())
+        sp_id = keys[idx]
+
+        # 血統子選項
+        sd = SPECIES_REGISTRY[sp_id]
+        lineage_id = ""
+        if sd.lineage_options:
+            try:
+                lin_rs = self.query_one("#lineage-radio", RadioSet)
+                lin_idx = lin_rs.pressed_index
+                if lin_idx is not None:
+                    lineage_id = sd.lineage_options[lin_idx].id
+            except Exception:
+                pass
+
+        self.session.set_species(sp_id, lineage_id)
+
+    def _collect_ability_scores(self) -> None:
+        # 方法
+        try:
+            mrs = self.query_one("#method-radio", RadioSet)
+            idx = mrs.pressed_index
+            if idx is not None:
+                method = ["standard", "point_buy", "roll"][idx]
+                self.session.set_ability_method(method)
+        except Exception:
+            pass
+
+        method = self.session.data.score_method
+
+        if method == "point_buy":
+            self._collect_point_buy()
+        elif method == "roll":
+            self._collect_roll()
+        # standard 已在 set_ability_method 中自動分配
+
+        # 背景調整
+        self._collect_bg_adjust()
+
+    def _collect_point_buy(self) -> None:
+        for ab in ABILITY_ORDER:
+            try:
+                sel = self.query_one(f"#pb-{ab.value}", Select)
+                val = sel.value
+                if val is not None and val != Select.BLANK:
+                    self.session.set_point_buy_score(ab, int(val))
+            except Exception:
+                pass
+
+        # 驗證購點預算
+        remaining = self.session.get_point_buy_remaining()
+        if remaining < 0:
+            raise ValueError(f"購點超支 {-remaining} 點")
+        if remaining > 0:
+            raise ValueError(f"還有 {remaining} 點未使用")
+
+    def _collect_roll(self) -> None:
+        rolled = self.session.data.rolled_values
+        if not rolled:
+            # 首次進入擲骰模式，自動擲骰
+            self.session.reroll_abilities()
+            raise ValueError("已擲骰並自動分配，請確認結果")
+
+    def _collect_bg_adjust(self) -> None:
+        d = self.session.data
+        if not d.background or d.background not in BACKGROUND_REGISTRY:
+            return
+
+        # 調整模式
+        try:
+            adj_rs = self.query_one("#adjust-mode-radio", RadioSet)
+            idx = adj_rs.pressed_index
+            if idx is not None:
+                mode = ["+1/+1/+1", "+2/+1"][idx]
+                self.session.set_bg_adjust_mode(mode)
+        except Exception:
+            pass
+
+        if d.bg_adjust_mode == "+2/+1":
+            try:
+                sel2 = self.query_one("#adj-plus2", Select)
+                if isinstance(sel2.value, Ability):
+                    self.session.set_bg_adjust_plus2(sel2.value)
+            except Exception:
+                pass
+            try:
+                sel1 = self.query_one("#adj-plus1", Select)
+                if isinstance(sel1.value, Ability):
+                    self.session.set_bg_adjust_plus1(sel1.value)
+            except Exception:
+                pass
+
+    def _collect_skills(self) -> None:
+        try:
             sl = self.query_one("#skills-list", SelectionList)
-            selected = list(sl.selected)
-            char_class = self._data["char_class"]
-            if char_class in CLASS_REGISTRY:
-                num = CLASS_REGISTRY[char_class].num_skills
-                if len(selected) != num:
-                    raise ValueError(f"請選擇 {num} 個技能（目前選了 {len(selected)} 個）")
-            self._data["skills"] = selected
+            self.session.set_skills(list(sl.selected))
+        except ValueError:
+            raise
+        except Exception:
+            pass
+
+    def _collect_equipment(self) -> None:
+        d = self.session.data
+        bg_eq = d.bg_equipment or "A"
+        cls_eq = d.class_equipment or "A"
+
+        try:
+            bg_rs = self.query_one("#bg-equip-radio", RadioSet)
+            idx = bg_rs.pressed_index
+            if idx is not None:
+                bg_eq = "A" if idx == 0 else "B"
+        except Exception:
+            pass
+        try:
+            cls_rs = self.query_one("#cls-equip-radio", RadioSet)
+            idx = cls_rs.pressed_index
+            if idx is not None:
+                cls_eq = "A" if idx == 0 else "B"
+        except Exception:
+            pass
+
+        self.session.set_equipment(bg_eq, cls_eq)
+
+    def _collect_spells(self) -> None:
+        d = self.session.data
+        cc = d.char_class
+        cd = CLASS_DISPLAY.get(cc) if cc else None
+        if not cd:
+            return
+
+        cantrips_sel: list[str] = []
+        spells_sel: list[str] = []
+
+        if cd.num_cantrips > 0:
+            try:
+                sl = self.query_one("#cantrip-list", SelectionList)
+                cantrips_sel = list(sl.selected)
+            except Exception:
+                pass
+
+        if cd.num_prepared_spells > 0:
+            try:
+                sl = self.query_one("#spell-list", SelectionList)
+                spells_sel = list(sl.selected)
+            except Exception:
+                pass
+
+        self.session.set_cantrips(cantrips_sel)
+        self.session.set_spells(spells_sel)
+
+    def _collect_confirm(self) -> None:
+        try:
+            name_input = self.query_one("#name-input", Input)
+            self.session.set_name(name_input.value)
+        except ValueError:
+            raise
+        except Exception as exc:
+            raise ValueError("角色名稱不能為空") from exc
 
     # ── Actions ───────────────────────────────────────────────────────────────
 
     async def action_next_step(self) -> None:
-        """驗證 → 儲存 → 前往下一步。"""
         step = self._step
-        if step == 7:
+        if step == TOTAL_STEPS:
             self._finish()
             return
         try:
             self._collect_step_data(step)
         except ValueError as e:
             self.notify(str(e), severity="error")
+            # 擲骰模式首次進入需重新渲染
+            if "已擲骰" in str(e):
+                await self._render_step()
+                self._update_preview()
             return
+
+        # 非施法職業跳過步驟 7
+        if self._step == 6:
+            cc = self.session.data.char_class
+            cd = CLASS_DISPLAY.get(cc)
+            if cd and cd.num_cantrips == 0 and cd.num_prepared_spells == 0:
+                self._step = 7  # 會被 += 1 變成 8
+
         self._step += 1
         await self._render_step()
         self._update_preview()
         self._update_title()
 
     async def action_prev_step(self) -> None:
-        """退回上一步。"""
         if self._step > 1:
+            # 非施法職業從步驟 8 退回跳過 7
+            if self._step == 8:
+                cc = self.session.data.char_class
+                cd = CLASS_DISPLAY.get(cc)
+                if cd and cd.num_cantrips == 0 and cd.num_prepared_spells == 0:
+                    self._step = 7  # 會被 -= 1 變成 6
+
             self._step -= 1
             await self._render_step()
             self._update_preview()
             self._update_title()
 
     async def on_button_pressed(self, event: Button.Pressed) -> None:
-        """按鈕點擊 → 委派 action。"""
         if event.button.id in ("next-btn", "confirm-btn"):
             await self.action_next_step()
+        elif event.button.id == "reroll-btn":
+            self.session.reroll_abilities()
+            await self._render_step()
+            self._update_preview()
+
+    async def on_select_changed(self, event: Select.Changed) -> None:
+        """Select 變更時即時更新。"""
+        sel_id = event.select.id or ""
+        if sel_id.startswith("pb-"):
+            # 即時更新 scores
+            for ab in ABILITY_ORDER:
+                try:
+                    sel = self.query_one(f"#pb-{ab.value}", Select)
+                    val = sel.value
+                    if isinstance(val, int):
+                        self.session.set_point_buy_score(ab, val)
+                except Exception:
+                    pass
+            remaining = self.session.get_point_buy_remaining()
+            self._update_preview()
+            severity = "error" if remaining < 0 else "information"
+            self.notify(f"剩餘點數：{remaining}/{POINT_BUY_BUDGET}", severity=severity)
+        elif sel_id in ("adj-plus2", "adj-plus1"):
+            # +2/+1 不可選同一屬性
+            try:
+                sel2 = self.query_one("#adj-plus2", Select)
+                sel1 = self.query_one("#adj-plus1", Select)
+                if (
+                    isinstance(sel2.value, Ability)
+                    and isinstance(sel1.value, Ability)
+                    and sel2.value == sel1.value
+                ):
+                    self.notify("+2 和 +1 不能選同一屬性！", severity="error")
+                else:
+                    if isinstance(sel2.value, Ability):
+                        self.session.set_bg_adjust_plus2(sel2.value)
+                    if isinstance(sel1.value, Ability):
+                        import contextlib
+
+                        with contextlib.suppress(ValueError):
+                            self.session.set_bg_adjust_plus1(sel1.value)
+                    self._update_preview()
+            except Exception:
+                pass
+
+    def on_selection_list_selected_changed(self, event: SelectionList.SelectedChanged) -> None:
+        """技能/法術勾選時即時更新預覽。"""
+        sl_id = event.selection_list.id or ""
+        if sl_id == "skills-list":
+            # 即時更新 session（不驗證數量，等 collect 時驗證）
+            self.session.data.skills = list(event.selection_list.selected)
+            self._update_preview()
+        elif sl_id == "cantrip-list":
+            self.session.data.cantrips = list(event.selection_list.selected)
+            self._update_preview()
+        elif sl_id == "spell-list":
+            self.session.data.spells = list(event.selection_list.selected)
+            self._update_preview()
 
     async def on_input_submitted(self, event: Input.Submitted) -> None:
-        """Input 按下 Enter → 自動前往下一步（僅名稱欄位適用）。"""
         if event.input.id == "name-input":
             await self.action_next_step()
 
+    async def on_radio_set_changed(self, event: RadioSet.Changed) -> None:
+        """RadioSet 變更時即時更新預覽。"""
+        rs_id = event.radio_set.id or ""
+
+        if rs_id == "class-radio":
+            idx = event.radio_set.pressed_index
+            if idx is not None:
+                keys = list(CLASS_DISPLAY.keys())
+                self.session.set_class(keys[idx])
+                self._update_preview()
+
+        elif rs_id == "bg-radio":
+            idx = event.radio_set.pressed_index
+            if idx is not None:
+                keys = list(BACKGROUND_REGISTRY.keys())
+                self.session.set_background(keys[idx])
+                self._update_preview()
+
+        elif rs_id == "species-radio":
+            idx = event.radio_set.pressed_index
+            if idx is not None:
+                keys = list(SPECIES_REGISTRY.keys())
+                new_sp = keys[idx]
+                old_sp = self.session.data.species
+                self.session.set_species(new_sp)
+                self._update_preview()
+                # 切換種族時重新渲染（顯示或隱藏血統選項）
+                if new_sp != old_sp:
+                    await self._render_step()
+
+        elif rs_id == "lineage-radio":
+            sp_id = self.session.data.species
+            if sp_id in SPECIES_REGISTRY:
+                sd = SPECIES_REGISTRY[sp_id]
+                idx = event.radio_set.pressed_index
+                if idx is not None and idx < len(sd.lineage_options):
+                    self.session.set_species(sp_id, sd.lineage_options[idx].id)
+                    self._update_preview()
+
+        elif rs_id == "adjust-mode-radio":
+            idx = event.radio_set.pressed_index
+            if idx is not None:
+                mode = ["+1/+1/+1", "+2/+1"][idx]
+                self.session.set_bg_adjust_mode(mode)
+                await self._render_step()
+
+        elif rs_id == "bg-equip-radio":
+            idx = event.radio_set.pressed_index
+            if idx is not None:
+                bg_eq = "A" if idx == 0 else "B"
+                cls_eq = self.session.data.class_equipment or "A"
+                self.session.set_equipment(bg_eq, cls_eq)
+                self._update_preview()
+
+        elif rs_id == "cls-equip-radio":
+            idx = event.radio_set.pressed_index
+            if idx is not None:
+                bg_eq = self.session.data.bg_equipment or "A"
+                cls_eq = "A" if idx == 0 else "B"
+                self.session.set_equipment(bg_eq, cls_eq)
+                self._update_preview()
+
+        elif rs_id == "method-radio":
+            idx = event.radio_set.pressed_index
+            if idx is not None:
+                method = ["standard", "point_buy", "roll"][idx]
+                self.session.set_ability_method(method)
+                await self._render_step()
+
     def _finish(self) -> None:
-        """呼叫 builder 建出角色並退出 app，回傳 Character。"""
         try:
-            char = self._build_character()
+            self._collect_step_data(TOTAL_STEPS)
+            ok, msg = self.session.validate()
+            if not ok:
+                self.notify(msg, severity="error")
+                return
+            char = self.session.build_character()
+            from tot.tui.character_io import save_character
+
+            saved_path = save_character(char)
+            self.notify(f"角色卡已儲存：{saved_path}", severity="information")
             self.exit(result=char)
         except ValueError as e:
             self.notify(str(e), severity="error")
+
+
+# ── 工具函式 ──────────────────────────────────────────────────────────────────
+
+
+def _skill_ability(skill: Skill) -> Ability:
+    """取得技能對應的屬性。"""
+    from tot.models.enums import SKILL_ABILITY_MAP
+
+    return SKILL_ABILITY_MAP.get(skill, Ability.STR)

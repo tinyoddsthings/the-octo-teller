@@ -1,0 +1,692 @@
+[
+  {
+    "name": "火焰箭",
+    "en_name": "Fire Bolt",
+    "level": 0,
+    "school": "Evocation",
+    "casting_time": "1 action",
+    "range": "120ft",
+    "duration": "Instantaneous",
+    "effect_type": "damage",
+    "attack_type": "ranged",
+    "damage_dice": "1d10",
+    "damage_type": "Fire",
+    "components": [
+      "V",
+      "S"
+    ],
+    "description": "需求：V（語言）、S（姿勢）。遠程法術攻擊。命中時造成 1d10 火焰傷害。",
+    "classes": [
+      "Wizard",
+      "Sorcerer"
+    ]
+  },
+  {
+    "name": "魔能轟擊",
+    "en_name": "Eldritch Blast",
+    "level": 0,
+    "school": "Evocation",
+    "casting_time": "1 action",
+    "range": "120ft",
+    "duration": "Instantaneous",
+    "effect_type": "damage",
+    "attack_type": "ranged",
+    "damage_dice": "1d10",
+    "damage_type": "Force",
+    "components": [
+      "V",
+      "S"
+    ],
+    "description": "需求：V（語言）、S（姿勢）。遠程法術攻擊。命中時造成 1d10 力場傷害。",
+    "classes": [
+      "Warlock"
+    ]
+  },
+  {
+    "name": "神聖火焰",
+    "en_name": "Sacred Flame",
+    "level": 0,
+    "school": "Evocation",
+    "casting_time": "1 action",
+    "range": "60ft",
+    "duration": "Instantaneous",
+    "effect_type": "damage",
+    "save_ability": "DEX",
+    "damage_dice": "1d8",
+    "damage_type": "Radiant",
+    "components": [
+      "V",
+      "S"
+    ],
+    "description": "需求：V（語言）、S（姿勢）。目標須進行敏捷豁免，失敗時受到 1d8 光輝傷害。無視掩護。",
+    "classes": [
+      "Cleric"
+    ]
+  },
+  {
+    "name": "冷凍之觸",
+    "en_name": "Chill Touch",
+    "level": 0,
+    "school": "Necromancy",
+    "casting_time": "1 action",
+    "range": "Touch",
+    "duration": "Instantaneous",
+    "effect_type": "damage",
+    "attack_type": "melee",
+    "damage_dice": "1d10",
+    "damage_type": "Necrotic",
+    "components": [
+      "V",
+      "S"
+    ],
+    "description": "需求：V（語言）、S（姿勢）。近戰法術攻擊。命中時造成 1d10 黯蝕傷害，目標無法恢復生命值。",
+    "classes": [
+      "Wizard",
+      "Sorcerer",
+      "Warlock"
+    ]
+  },
+  {
+    "name": "寒冰射線",
+    "en_name": "Ray of Frost",
+    "level": 0,
+    "school": "Evocation",
+    "casting_time": "1 action",
+    "range": "60ft",
+    "duration": "Instantaneous",
+    "effect_type": "damage",
+    "attack_type": "ranged",
+    "damage_dice": "1d8",
+    "damage_type": "Cold",
+    "components": [
+      "V",
+      "S"
+    ],
+    "description": "需求：V（語言）、S（姿勢）。遠程法術攻擊。命中時造成 1d8 寒冷傷害，目標速度降低 10ft。",
+    "classes": [
+      "Wizard",
+      "Sorcerer"
+    ]
+  },
+  {
+    "name": "毒霧術",
+    "en_name": "Poison Spray",
+    "level": 0,
+    "school": "Conjuration",
+    "casting_time": "1 action",
+    "range": "30ft",
+    "duration": "Instantaneous",
+    "effect_type": "damage",
+    "save_ability": "CON",
+    "damage_dice": "1d12",
+    "damage_type": "Poison",
+    "components": [
+      "V",
+      "S"
+    ],
+    "description": "需求：V（語言）、S（姿勢）。目標須進行體質豁免，失敗時受到 1d12 毒素傷害。",
+    "classes": [
+      "Wizard",
+      "Sorcerer",
+      "Druid"
+    ]
+  },
+  {
+    "name": "電擊之觸",
+    "en_name": "Shocking Grasp",
+    "level": 0,
+    "school": "Evocation",
+    "casting_time": "1 action",
+    "range": "Touch",
+    "duration": "Instantaneous",
+    "effect_type": "damage",
+    "attack_type": "melee",
+    "damage_dice": "1d8",
+    "damage_type": "Lightning",
+    "components": [
+      "V",
+      "S"
+    ],
+    "description": "需求：V（語言）、S（姿勢）。近戰法術攻擊。命中時造成 1d8 閃電傷害，目標無法進行機會攻擊。",
+    "classes": [
+      "Wizard",
+      "Sorcerer"
+    ]
+  },
+  {
+    "name": "亡者喪鐘",
+    "en_name": "Toll the Dead",
+    "level": 0,
+    "school": "Necromancy",
+    "casting_time": "1 action",
+    "range": "60ft",
+    "duration": "Instantaneous",
+    "effect_type": "damage",
+    "save_ability": "WIS",
+    "damage_dice": "1d8",
+    "damage_type": "Necrotic",
+    "components": [
+      "V",
+      "S"
+    ],
+    "description": "需求：V（語言）、S（姿勢）。目標須進行感知豁免，失敗時受到 1d8 黯蝕傷害（已受傷則 1d12）。",
+    "classes": [
+      "Cleric",
+      "Wizard"
+    ]
+  },
+  {
+    "name": "心靈碎片",
+    "en_name": "Mind Sliver",
+    "level": 0,
+    "school": "Enchantment",
+    "casting_time": "1 action",
+    "range": "60ft",
+    "duration": "Instantaneous",
+    "effect_type": "damage",
+    "save_ability": "INT",
+    "damage_dice": "1d6",
+    "damage_type": "Psychic",
+    "components": [
+      "V"
+    ],
+    "description": "需求：V（語言）。目標須進行智力豁免。失敗時受到 1d6 心靈傷害，且下次豁免 -1d4。",
+    "classes": [
+      "Wizard",
+      "Sorcerer"
+    ]
+  },
+  {
+    "name": "惡毒嘲諷",
+    "en_name": "Vicious Mockery",
+    "level": 0,
+    "school": "Enchantment",
+    "casting_time": "1 action",
+    "range": "60ft",
+    "duration": "Instantaneous",
+    "effect_type": "damage",
+    "save_ability": "WIS",
+    "damage_dice": "1d6",
+    "damage_type": "Psychic",
+    "components": [
+      "V"
+    ],
+    "description": "需求：V（語言）。目標須進行感知豁免，失敗時受到 1d6 心靈傷害，且下次攻擊劣勢。",
+    "classes": [
+      "Bard"
+    ]
+  },
+  {
+    "name": "酸液飛濺",
+    "en_name": "Acid Splash",
+    "level": 0,
+    "school": "Evocation",
+    "casting_time": "1 action",
+    "range": "60ft",
+    "duration": "Instantaneous",
+    "effect_type": "damage",
+    "save_ability": "DEX",
+    "damage_dice": "1d6",
+    "damage_type": "Acid",
+    "components": [
+      "V",
+      "S"
+    ],
+    "description": "需求：V（語言）、S（姿勢）。5ft 半徑球體內每個生物須進行敏捷豁免，失敗時受到 1d6 酸液傷害。",
+    "classes": [
+      "Wizard",
+      "Sorcerer"
+    ]
+  },
+  {
+    "name": "劍刃護身",
+    "en_name": "Blade Ward",
+    "level": 0,
+    "school": "Abjuration",
+    "casting_time": "1 bonus action",
+    "range": "Self",
+    "duration": "1 round",
+    "concentration": true,
+    "effect_type": "buff",
+    "components": [
+      "V",
+      "S"
+    ],
+    "description": "需求：V（語言）、S（姿勢）。持續期間對鈍擊、穿刺和揮砍傷害具有抗性。",
+    "classes": [
+      "Wizard",
+      "Sorcerer",
+      "Bard",
+      "Warlock"
+    ]
+  },
+  {
+    "name": "舞光術",
+    "en_name": "Dancing Lights",
+    "level": 0,
+    "school": "Illusion",
+    "casting_time": "1 action",
+    "range": "120ft",
+    "duration": "1 minute",
+    "concentration": true,
+    "effect_type": "utility",
+    "components": [
+      "V",
+      "S",
+      "M"
+    ],
+    "material_description": "一點磷光物質",
+    "description": "需求：V（語言）、S（姿勢）、M（一點磷光物質）。創造至多四個火把大小的光點，每個光點在 10ft 半徑散發微光。可用附贈動作移動光點至多 60ft。",
+    "classes": [
+      "Bard",
+      "Sorcerer",
+      "Wizard"
+    ]
+  },
+  {
+    "name": "德魯伊工藝",
+    "en_name": "Druidcraft",
+    "level": 0,
+    "school": "Transmutation",
+    "casting_time": "1 action",
+    "range": "30ft",
+    "duration": "Instantaneous",
+    "effect_type": "utility",
+    "components": [
+      "V",
+      "S"
+    ],
+    "description": "需求：V（語言）、S（姿勢）。創造微小自然效果：預測天氣、使花朵綻放、創造感官效果、點燃或熄滅小火。",
+    "classes": [
+      "Druid"
+    ]
+  },
+  {
+    "name": "元素操控",
+    "en_name": "Elementalism",
+    "level": 0,
+    "school": "Transmutation",
+    "casting_time": "1 action",
+    "range": "30ft",
+    "duration": "Instantaneous",
+    "effect_type": "utility",
+    "components": [
+      "V",
+      "S"
+    ],
+    "description": "需求：V（語言）、S（姿勢）。操控元素創造效果：召喚微風、覆蓋塵土、創造餘燼薄煙、噴灑薄霧或塑造元素形狀。",
+    "classes": [
+      "Druid",
+      "Sorcerer",
+      "Wizard"
+    ]
+  },
+  {
+    "name": "友善術",
+    "en_name": "Friends",
+    "level": 0,
+    "school": "Enchantment",
+    "casting_time": "1 action",
+    "range": "10ft",
+    "duration": "1 minute",
+    "concentration": true,
+    "effect_type": "condition",
+    "save_ability": "WIS",
+    "components": [
+      "S",
+      "M"
+    ],
+    "material_description": "一些化妝品",
+    "description": "需求：S（姿勢）、M（一些化妝品）。目標須進行感知豁免，失敗時獲得魅惑狀態。法術結束時目標知道被魅惑。",
+    "classes": [
+      "Bard",
+      "Sorcerer",
+      "Warlock",
+      "Wizard"
+    ]
+  },
+  {
+    "name": "指引術",
+    "en_name": "Guidance",
+    "level": 0,
+    "school": "Divination",
+    "casting_time": "1 action",
+    "range": "Touch",
+    "duration": "1 minute",
+    "concentration": true,
+    "effect_type": "buff",
+    "components": [
+      "V",
+      "S"
+    ],
+    "description": "需求：V（語言）、S（姿勢）。觸碰一個自願生物並選擇一項技能，持續期間該技能的屬性檢定加 1d4。",
+    "classes": [
+      "Cleric",
+      "Druid"
+    ]
+  },
+  {
+    "name": "光亮術",
+    "en_name": "Light",
+    "level": 0,
+    "school": "Evocation",
+    "casting_time": "1 action",
+    "range": "Touch",
+    "duration": "1 hour",
+    "effect_type": "utility",
+    "components": [
+      "V",
+      "M"
+    ],
+    "material_description": "一隻螢火蟲或磷光苔蘚",
+    "description": "需求：V（語言）、M（一隻螢火蟲或磷光苔蘚）。觸碰一件大型或更小的物體，使其發出 20ft 半徑明亮光照和額外 20ft 微光。",
+    "classes": [
+      "Bard",
+      "Cleric",
+      "Sorcerer",
+      "Wizard"
+    ]
+  },
+  {
+    "name": "修復術",
+    "en_name": "Mending",
+    "level": 0,
+    "school": "Transmutation",
+    "casting_time": "1 minute",
+    "range": "Touch",
+    "duration": "Instantaneous",
+    "effect_type": "utility",
+    "components": [
+      "V",
+      "S",
+      "M"
+    ],
+    "material_description": "兩塊磁石",
+    "description": "需求：V（語言）、S（姿勢）、M（兩塊磁石）。修復觸碰物體上一處不超過 1ft 的斷裂或撕裂，不留痕跡。可修復魔法物品但無法恢復魔力。",
+    "classes": [
+      "Bard",
+      "Cleric",
+      "Druid",
+      "Sorcerer",
+      "Wizard"
+    ]
+  },
+  {
+    "name": "訊息術",
+    "en_name": "Message",
+    "level": 0,
+    "school": "Transmutation",
+    "casting_time": "1 action",
+    "range": "120ft",
+    "duration": "1 round",
+    "effect_type": "utility",
+    "components": [
+      "S",
+      "M"
+    ],
+    "material_description": "一段銅線",
+    "description": "需求：S（姿勢）、M（一段銅線）。向射程內一個生物低聲傳送訊息，只有目標能聽到，目標可以低語回覆。",
+    "classes": [
+      "Bard",
+      "Druid",
+      "Sorcerer",
+      "Wizard"
+    ]
+  },
+  {
+    "name": "弱效幻象",
+    "en_name": "Minor Illusion",
+    "level": 0,
+    "school": "Illusion",
+    "casting_time": "1 action",
+    "range": "30ft",
+    "duration": "1 minute",
+    "effect_type": "utility",
+    "components": [
+      "S",
+      "M"
+    ],
+    "material_description": "一小撮羊毛",
+    "description": "需求：S（姿勢）、M（一小撮羊毛）。創造一個聲音或物體影像。生物可用智力（調查）檢定識破幻象。",
+    "classes": [
+      "Bard",
+      "Sorcerer",
+      "Warlock",
+      "Wizard"
+    ]
+  },
+  {
+    "name": "奇術",
+    "en_name": "Prestidigitation",
+    "level": 0,
+    "school": "Transmutation",
+    "casting_time": "1 action",
+    "range": "10ft",
+    "duration": "1 hour",
+    "effect_type": "utility",
+    "components": [
+      "V",
+      "S"
+    ],
+    "description": "需求：V（語言）、S（姿勢）。創造微小魔法效果：感官效果、點燃或熄滅小火、清潔或弄髒物體、冷卻加溫調味、魔法記號、微小創造。最多三個同時生效。",
+    "classes": [
+      "Bard",
+      "Sorcerer",
+      "Warlock",
+      "Wizard"
+    ]
+  },
+  {
+    "name": "產焰術",
+    "en_name": "Produce Flame",
+    "level": 0,
+    "school": "Conjuration",
+    "casting_time": "1 bonus action",
+    "range": "Self",
+    "duration": "10 minutes",
+    "effect_type": "damage",
+    "attack_type": "ranged",
+    "damage_dice": "1d8",
+    "damage_type": "Fire",
+    "components": [
+      "V",
+      "S"
+    ],
+    "description": "需求：V（語言）、S（姿勢）。手中出現火焰，在 20ft 半徑散發明亮光線。可用魔法動作將火焰投向 60ft 內目標，進行遠程法術攻擊，命中時造成 1d8 火焰傷害。",
+    "classes": [
+      "Druid"
+    ]
+  },
+  {
+    "name": "橡棍術",
+    "en_name": "Shillelagh",
+    "level": 0,
+    "school": "Transmutation",
+    "casting_time": "1 bonus action",
+    "range": "Self",
+    "duration": "1 minute",
+    "effect_type": "buff",
+    "components": [
+      "V",
+      "S",
+      "M"
+    ],
+    "material_description": "槲寄生",
+    "description": "需求：V（語言）、S（姿勢）、M（槲寄生）。手持棍棒或長棍被注入自然之力，可用施法屬性代替力量進行攻擊和傷害擲骰，傷害骰變為 d8，可選擇造成力場傷害。",
+    "classes": [
+      "Druid"
+    ]
+  },
+  {
+    "name": "術法爆裂",
+    "en_name": "Sorcerous Burst",
+    "level": 0,
+    "school": "Evocation",
+    "casting_time": "1 action",
+    "range": "120ft",
+    "duration": "Instantaneous",
+    "effect_type": "damage",
+    "attack_type": "ranged",
+    "damage_dice": "1d8",
+    "damage_type": "Fire",
+    "components": [
+      "V",
+      "S"
+    ],
+    "description": "需求：V（語言）、S（姿勢）。遠程法術攻擊，命中時造成 1d8 傷害（傷害類型自選：強酸、寒冷、火焰、閃電、毒素、心靈或雷鳴）。擲出 8 可再擲一顆 d8，最多額外骰數等於施法屬性修正值。",
+    "classes": [
+      "Sorcerer"
+    ]
+  },
+  {
+    "name": "慈悲之手",
+    "en_name": "Spare the Dying",
+    "level": 0,
+    "school": "Necromancy",
+    "casting_time": "1 action",
+    "range": "15ft",
+    "duration": "Instantaneous",
+    "effect_type": "healing",
+    "components": [
+      "V",
+      "S"
+    ],
+    "description": "需求：V（語言）、S（姿勢）。射程內一個生命值為 0 且尚未死亡的生物穩定下來。",
+    "classes": [
+      "Cleric",
+      "Druid"
+    ]
+  },
+  {
+    "name": "星光微火",
+    "en_name": "Starry Wisp",
+    "level": 0,
+    "school": "Evocation",
+    "casting_time": "1 action",
+    "range": "60ft",
+    "duration": "Instantaneous",
+    "effect_type": "damage",
+    "attack_type": "ranged",
+    "damage_dice": "1d8",
+    "damage_type": "Radiant",
+    "components": [
+      "V",
+      "S"
+    ],
+    "description": "需求：V（語言）、S（姿勢）。遠程法術攻擊，命中時造成 1d8 光輝傷害，目標在 10ft 半徑散發微光且無法從隱形中獲益。",
+    "classes": [
+      "Bard",
+      "Druid"
+    ]
+  },
+  {
+    "name": "奇術（牧師）",
+    "en_name": "Thaumaturgy",
+    "level": 0,
+    "school": "Transmutation",
+    "casting_time": "1 action",
+    "range": "30ft",
+    "duration": "1 minute",
+    "effect_type": "utility",
+    "components": [
+      "V"
+    ],
+    "description": "需求：V（語言）。展現小奇蹟：變色之眼、洪亮之聲（威嚇優勢）、火焰嬉戲、無形之手開關門窗、幻影之聲、顫動。最多三個同時生效。",
+    "classes": [
+      "Cleric"
+    ]
+  },
+  {
+    "name": "荊棘鞭",
+    "en_name": "Thorn Whip",
+    "level": 0,
+    "school": "Transmutation",
+    "casting_time": "1 action",
+    "range": "30ft",
+    "duration": "Instantaneous",
+    "effect_type": "damage",
+    "attack_type": "melee",
+    "damage_dice": "1d6",
+    "damage_type": "Piercing",
+    "components": [
+      "V",
+      "S",
+      "M"
+    ],
+    "material_description": "一根多刺植物的莖",
+    "description": "需求：V（語言）、S（姿勢）、M（一根多刺植物的莖）。近戰法術攻擊，命中時造成 1d6 穿刺傷害，若目標為大型或更小可將其拉近 10ft。",
+    "classes": [
+      "Druid"
+    ]
+  },
+  {
+    "name": "雷鳴擊",
+    "en_name": "Thunderclap",
+    "level": 0,
+    "school": "Evocation",
+    "casting_time": "1 action",
+    "range": "Self (5ft emanation)",
+    "duration": "Instantaneous",
+    "effect_type": "damage",
+    "save_ability": "CON",
+    "damage_dice": "1d6",
+    "damage_type": "Thunder",
+    "components": [
+      "S"
+    ],
+    "description": "需求：S（姿勢）。5ft 散發範圍內每個生物須進行體質豁免，失敗時受到 1d6 雷鳴傷害。雷鳴聲可在 100ft 外聽到。",
+    "classes": [
+      "Bard",
+      "Druid",
+      "Sorcerer",
+      "Warlock",
+      "Wizard"
+    ]
+  },
+  {
+    "name": "精準打擊",
+    "en_name": "True Strike",
+    "level": 0,
+    "school": "Divination",
+    "casting_time": "1 action",
+    "range": "Self",
+    "duration": "Instantaneous",
+    "effect_type": "damage",
+    "attack_type": "melee",
+    "damage_type": "Radiant",
+    "components": [
+      "S",
+      "M"
+    ],
+    "material_description": "你熟練的武器，價值 1cp 以上",
+    "description": "需求：S（姿勢）、M（你熟練的武器，價值 1cp 以上）。用施法所用武器進行一次攻擊，使用施法屬性進行攻擊和傷害擲骰。傷害可選擇光輝或武器正常類型。",
+    "classes": [
+      "Bard",
+      "Sorcerer",
+      "Warlock",
+      "Wizard"
+    ]
+  },
+  {
+    "name": "光輝之語",
+    "en_name": "Word of Radiance",
+    "level": 0,
+    "school": "Evocation",
+    "casting_time": "1 action",
+    "range": "Self (5ft emanation)",
+    "duration": "Instantaneous",
+    "effect_type": "damage",
+    "save_ability": "CON",
+    "damage_dice": "1d6",
+    "damage_type": "Radiant",
+    "components": [
+      "V",
+      "M"
+    ],
+    "material_description": "一枚日出徽記",
+    "description": "需求：V（語言）、M（一枚日出徽記）。5ft 散發範圍內你選擇的每個生物須進行體質豁免，失敗時受到 1d6 光輝傷害。",
+    "classes": [
+      "Cleric"
+    ]
+  }
+]
