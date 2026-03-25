@@ -8,7 +8,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from tot.data.classes import CLASS_DISPLAY, STANDARD_ARRAY_SUGGESTION
+from tot.data.classes import (
+    CLASS_DISPLAY,
+    INVOCATION_REGISTRY,
+    STANDARD_ARRAY_SUGGESTION,
+    InvocationData,
+)
 from tot.data.feats import ORIGIN_FEAT_REGISTRY, FeatData
 from tot.data.origins import (
     ABILITY_ZH,
@@ -102,6 +107,8 @@ class CharacterCreationData:
     feat_spellcasting_ability: Ability | None = None  # 施法屬性（INT/WIS/CHA）
     feat_cantrips: list = field(default_factory=list)  # 專長戲法 en_name 列表
     feat_spells: list = field(default_factory=list)  # 專長 1 環法術 en_name 列表
+    # 魔能祈喚（Warlock）
+    invocations: list = field(default_factory=list)  # 選的祈喚 ID 列表
     # 內部暫存（各方法的 scores 持久化，切換方法時保留）
     rolled_values: list = field(default_factory=list)
     _scores_point_buy: dict = field(default_factory=dict)
@@ -129,6 +136,7 @@ class CharacterCreationSession:
             self.data.rolled_values = []
             self.data.cantrips = []
             self.data.spells = []
+            self.data.invocations = []
         self.data.char_class = class_id
 
     def set_background(self, bg_id: str) -> None:
@@ -402,6 +410,27 @@ class CharacterCreationSession:
     def set_feat_spells(self, spells: list[str]) -> None:
         """設定專長 1 環法術選擇（en_name 列表）。"""
         self.data.feat_spells = list(spells)
+
+    def set_invocations(self, invocation_ids: list[str]) -> None:
+        """設定魔能祈喚選擇（Warlock）。驗證數量和合法性。"""
+        expected = self.get_num_invocations()
+        if len(invocation_ids) != expected:
+            raise ValueError(f"需選 {expected} 項祈喚，收到 {len(invocation_ids)}")
+        available_ids = {inv.id for inv in self.get_available_invocations()}
+        for inv_id in invocation_ids:
+            if inv_id not in available_ids:
+                raise ValueError(f"祈喚 {inv_id!r} 不在可選範圍內")
+        self.data.invocations = list(invocation_ids)
+
+    def get_available_invocations(self) -> list[InvocationData]:
+        """取得當前等級（1 級）可選的魔能祈喚列表。"""
+        return [inv for inv in INVOCATION_REGISTRY.values() if inv.min_level <= 1]
+
+    def get_num_invocations(self) -> int:
+        """取得職業的祈喚選位數。"""
+        cc = self.data.char_class
+        cd = CLASS_DISPLAY.get(cc)
+        return cd.num_invocations if cd else 0
 
     # ── 查詢可選項 ────────────────────────────────────────────────────────────
 
@@ -801,6 +830,18 @@ class CharacterCreationSession:
                 lines.extend(spell_lines)
                 lines.append("")
 
+        # 魔能祈喚（Warlock）
+        if d.invocations:
+            lines.append("魔能祈喚：")
+            for inv_id in d.invocations:
+                inv = INVOCATION_REGISTRY.get(inv_id)
+                if inv:
+                    lines.append(f"  {inv.name_zh}（{inv.name_en}）")
+                    lines.append(f"    {inv.description}")
+                else:
+                    lines.append(f"  {inv_id}")
+            lines.append("")
+
         return "\n".join(lines)
 
     # ── 建構 ──────────────────────────────────────────────────────────────────
@@ -878,6 +919,11 @@ class CharacterCreationSession:
                 return False, f"專長需選 {need_c} 個戲法，已選 {len(d.feat_cantrips)}"
             if has_feat_spell_db and len(d.feat_spells) != need_s:
                 return False, f"專長需選 {need_s} 個 1 環法術，已選 {len(d.feat_spells)}"
+
+        # 魔能祈喚（Warlock）
+        num_inv = self.get_num_invocations()
+        if num_inv > 0 and len(d.invocations) != num_inv:
+            return False, f"需選 {num_inv} 項魔能祈喚，已選 {len(d.invocations)}"
 
         if not d.name:
             return False, "角色名稱不能為空"

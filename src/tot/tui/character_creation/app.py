@@ -21,7 +21,7 @@ from textual.widgets import (
     Static,
 )
 
-from tot.data.classes import CLASS_DISPLAY
+from tot.data.classes import CLASS_DISPLAY, INVOCATION_REGISTRY
 from tot.data.feats import ORIGIN_FEAT_REGISTRY
 from tot.data.origins import (
     ABILITY_ZH,
@@ -244,10 +244,12 @@ class CharacterCreationApp(App[Character | None]):
 
             # 血統法術施法屬性選擇（Tiefling 等）
             if sd.has_lineage_spellcasting_choice:
-                w.append(Label(
-                    "── 血統法術施法屬性（選擇後永久綁定）──",
-                    classes="section-label",
-                ))
+                w.append(
+                    Label(
+                        "── 血統法術施法屬性（選擇後永久綁定）──",
+                        classes="section-label",
+                    )
+                )
                 cur_sa = self.session.data.species_spellcasting_ability
                 sa_btns = [
                     RadioButton(
@@ -453,24 +455,55 @@ class CharacterCreationApp(App[Character | None]):
         cd = CLASS_DISPLAY.get(cc)
         has_class_spells = cd and (cd.num_cantrips > 0 or cd.num_prepared_spells > 0)
         has_feat_spells = self.session.has_feat_spell_choices()
+        has_invocations = cd and cd.num_invocations > 0
 
-        if not has_class_spells and not has_feat_spells:
+        if not has_class_spells and not has_feat_spells and not has_invocations:
             w.append(Label(f"{cd.name_zh if cd else cc} 在 1 級沒有施法能力，跳過此步。"))
             return
+
+        # ── 魔能祈喚（Warlock）──────────────────────────────────
+        if has_invocations:
+            num_inv = cd.num_invocations
+            available_inv = self.session.get_available_invocations()
+            w.append(
+                Label(
+                    f"── 魔能祈喚（選 {num_inv} 項）──",
+                    classes="section-label",
+                )
+            )
+            if available_inv:
+                sel = d.invocations
+                opts = []
+                for inv in available_inv:
+                    opts.append(
+                        (
+                            f"{inv.name_zh}（{inv.name_en}）",
+                            inv.id,
+                            inv.id in sel,
+                        )
+                    )
+                w.append(SelectionList(*opts, id="invocation-list"))
+                # 顯示各祈喚的完整描述
+                for inv in available_inv:
+                    marker = "▶ " if inv.id in sel else "  "
+                    w.append(Static(f"{marker}{inv.name_zh}：{inv.description}"))
 
         # ── 種族/血統已有的戲法（不可重複選）──
         granted = self.session.get_species_granted_cantrips()
         if granted:
             from tot.gremlins.bone_engine.spells import load_spell_db
+
             db = load_spell_db()
             names = []
             for en in granted:
                 sp = db.get(en) or next((s for s in db.values() if s.en_name == en), None)
                 names.append(sp.name if sp else en)
-            w.append(Label(
-                f"── 種族戲法（已有，不可重複選）：{', '.join(names)} ──",
-                classes="section-label",
-            ))
+            w.append(
+                Label(
+                    f"── 種族戲法（已有，不可重複選）：{', '.join(names)} ──",
+                    classes="section-label",
+                )
+            )
 
         # ── 專長法術（Magic Initiate）──────────────────────────────
         if has_feat_spells:
@@ -768,6 +801,15 @@ class CharacterCreationApp(App[Character | None]):
                 sa = CLASS_REGISTRY[cc].spellcasting_ability
                 lines.append(f"  施法屬性：{ABILITY_ZH.get(sa, '')}（{sa.value}）")
 
+        # 魔能祈喚（Warlock）
+        if d.invocations:
+            lines += ["", "── 魔能祈喚 ──"]
+            for inv_id in d.invocations:
+                inv = INVOCATION_REGISTRY.get(inv_id)
+                if inv:
+                    lines.append(f"  • {inv.name_zh}（{inv.name_en}）")
+                    lines.append(f"    {inv.description}")
+
         # 1 級職業特性
         if cd and cd.features_1st:
             lines += ["", "── 1 級職業特性 ──"]
@@ -1008,6 +1050,16 @@ class CharacterCreationApp(App[Character | None]):
         cc = d.char_class
         cd = CLASS_DISPLAY.get(cc) if cc else None
 
+        # ── 魔能祈喚（Warlock）──
+        if cd and cd.num_invocations > 0:
+            try:
+                sl = self.query_one("#invocation-list", SelectionList)
+                self.session.set_invocations(list(sl.selected))
+            except ValueError:
+                raise
+            except Exception:
+                pass
+
         # ── 專長法術（Magic Initiate）──
         if self.session.has_feat_spell_choices():
             spell_feat = self.session._get_spell_feat()
@@ -1093,13 +1145,14 @@ class CharacterCreationApp(App[Character | None]):
                 self._update_preview()
             return
 
-        # 非施法職業且無專長法術時跳過步驟 7
+        # 非施法職業且無專長法術且無祈喚時跳過步驟 7
         if self._step == 6:
             cc = self.session.data.char_class
             cd = CLASS_DISPLAY.get(cc)
             no_class_spells = cd and cd.num_cantrips == 0 and cd.num_prepared_spells == 0
             no_feat_spells = not self.session.has_feat_spell_choices()
-            if no_class_spells and no_feat_spells:
+            no_invocations = not cd or cd.num_invocations == 0
+            if no_class_spells and no_feat_spells and no_invocations:
                 self._step = 7  # 會被 += 1 變成 8
 
         self._step += 1
@@ -1109,13 +1162,14 @@ class CharacterCreationApp(App[Character | None]):
 
     async def action_prev_step(self) -> None:
         if self._step > 1:
-            # 非施法職業且無專長法術時從步驟 8 退回跳過 7
+            # 非施法職業且無專長法術且無祈喚時從步驟 8 退回跳過 7
             if self._step == 8:
                 cc = self.session.data.char_class
                 cd = CLASS_DISPLAY.get(cc)
                 no_class_spells = cd and cd.num_cantrips == 0 and cd.num_prepared_spells == 0
                 no_feat_spells = not self.session.has_feat_spell_choices()
-                if no_class_spells and no_feat_spells:
+                no_invocations = not cd or cd.num_invocations == 0
+                if no_class_spells and no_feat_spells and no_invocations:
                     self._step = 7  # 會被 -= 1 變成 6
 
             self._step -= 1
@@ -1177,7 +1231,9 @@ class CharacterCreationApp(App[Character | None]):
         """取得 SelectionList 的選取上限。"""
         cc = self.session.data.char_class
         cd = CLASS_DISPLAY.get(cc) if cc else None
-        if sl_id == "skills-list":
+        if sl_id == "invocation-list":
+            return self.session.get_num_invocations()
+        elif sl_id == "skills-list":
             return self.session.get_total_skill_picks()
         elif sl_id == "cantrip-list":
             return cd.num_cantrips if cd else 0
@@ -1219,7 +1275,13 @@ class CharacterCreationApp(App[Character | None]):
         sl_id = sl.id or ""
         limit = self._get_selection_limit(sl_id)
 
-        if sl_id == "skills-list":
+        if sl_id == "invocation-list":
+            selected = self._enforce_selection_limit(sl, sl_id, limit)
+            self.session.data.invocations = selected
+            self._update_preview()
+            # 重新渲染以更新祈喚描述的 ▶ 標記
+            await self._render_step()
+        elif sl_id == "skills-list":
             selected = self._enforce_selection_limit(sl, sl_id, limit)
             self.session.data.skills = selected
             self._update_preview()
