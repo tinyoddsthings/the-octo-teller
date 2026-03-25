@@ -88,8 +88,10 @@ class CharacterCreationData:
     cantrips: list = field(default_factory=list)  # en_name 列表
     spells: list = field(default_factory=list)  # en_name 列表
     name: str = ""
-    # 內部暫存
+    # 內部暫存（各方法的 scores 持久化，切換方法時保留）
     rolled_values: list = field(default_factory=list)
+    _scores_point_buy: dict = field(default_factory=dict)
+    _scores_roll: dict = field(default_factory=dict)
 
 
 # ── 狀態機 ────────────────────────────────────────────────────────────────────
@@ -151,23 +153,40 @@ class CharacterCreationSession:
     def set_ability_method(self, method: str) -> None:
         """設定屬性值生成方式。"standard" / "point_buy" / "roll"。
 
+        切換方法時保存當前 scores 到對應暫存，恢復時載回。
         standard：自動帶入 STANDARD_ARRAY_SUGGESTION[class]。
+        point_buy：首次預設標準陣列配法，之後恢復上次設定。
         roll：若尚無 rolled_values，自動擲骰並按職業優先度分配。
-        point_buy：重設為全 8。
         """
         if method not in ("standard", "point_buy", "roll"):
             raise ValueError(f"不支援的屬性生成方式: {method!r}")
+
+        # 保存當前方法的 scores
+        old_method = self.data.score_method
+        if old_method == "point_buy":
+            self.data._scores_point_buy = dict(self.data.scores)
+        elif old_method == "roll":
+            self.data._scores_roll = dict(self.data.scores)
+
         self.data.score_method = method
 
         if method == "standard":
             self._apply_standard_array()
         elif method == "point_buy":
-            self.data.scores = {a: 8 for a in Ability}
+            if self.data._scores_point_buy:
+                # 恢復上次的點數購買設定
+                self.data.scores = dict(self.data._scores_point_buy)
+            else:
+                # 首次：預設標準陣列配法
+                self._apply_standard_array()
+                self.data._scores_point_buy = dict(self.data.scores)
         elif method == "roll":
-            if not self.data.rolled_values:
+            if self.data._scores_roll:
+                # 恢復上次的擲骰分配
+                self.data.scores = dict(self.data._scores_roll)
+            elif not self.data.rolled_values:
                 self.reroll_abilities()
             else:
-                # 已有擲骰結果，重新分配
                 self._auto_assign_rolls(self.data.rolled_values)
 
     def set_point_buy_score(self, ability: Ability, value: int) -> None:

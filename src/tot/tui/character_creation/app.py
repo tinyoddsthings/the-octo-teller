@@ -33,7 +33,10 @@ from tot.gremlins.bone_engine.character import (
     POINT_BUY_BUDGET,
     POINT_BUY_COSTS,
 )
-from tot.gremlins.bone_engine.character_session import CharacterCreationSession
+from tot.gremlins.bone_engine.character_session import (
+    CharacterCreationData,
+    CharacterCreationSession,
+)
 from tot.models.creature import Character
 from tot.models.enums import Ability, Skill
 
@@ -119,6 +122,8 @@ class CharacterCreationApp(App[Character | None]):
         super().__init__()
         self._step: int = 1
         self.session = CharacterCreationSession()
+        # 多選上限追蹤：{widget_id: [value_order]}
+        self._selection_order: dict[str, list] = {}
 
     # ── Compose ───────────────────────────────────────────────────────────────
 
@@ -285,12 +290,7 @@ class CharacterCreationApp(App[Character | None]):
 
     def _widgets_point_buy(self, w: list) -> None:
         d = self.session.data
-        remaining = self.session.get_point_buy_remaining()
-        w.append(
-            Label(
-                f"── 點數購買（剩餘：{remaining}/{POINT_BUY_BUDGET} 點）──", classes="section-label"
-            )
-        )
+        w.append(Label("── 點數購買（8~15，改動時右下角顯示剩餘）──", classes="section-label"))
         cost_str = "  花費：" + ", ".join(f"{v}={c}點" for v, c in POINT_BUY_COSTS.items())
         w.append(Label(cost_str))
 
@@ -341,24 +341,18 @@ class CharacterCreationApp(App[Character | None]):
         feat_count = feat.skill_choice_count if feat and feat.skill_choice_count > 0 else 0
 
         if total_picks > 0:
-            # 來源標記
-            cls_count = 0
-            cls_set: set[Skill] = set()
-            if cc and cc in CLASS_REGISTRY:
-                cls_count = CLASS_REGISTRY[cc].num_skills
-                cls_set = set(CLASS_REGISTRY[cc].skill_choices)
-
+            # 來源說明
             sources = []
             if feat_count > 0:
-                sources.append(f"{feat.name_zh} {feat_count}")
-            if cls_count > 0:
+                sources.append(feat.name_zh)
+            if cc and cc in CLASS_REGISTRY:
                 cd = CLASS_DISPLAY.get(cc)
-                name = cd.name_zh if cd else cc
-                sources.append(f"{name} {cls_count}")
+                sources.append(cd.name_zh if cd else cc)
+            source_text = "與".join(sources)
 
             w.append(
                 Label(
-                    f"── 選擇技能熟練（共 {total_picks} 項：{'＋'.join(sources)}）──",
+                    f"── 依{source_text}，選擇 {total_picks} 項技能熟練 ──",
                     classes="section-label",
                 )
             )
@@ -367,8 +361,7 @@ class CharacterCreationApp(App[Character | None]):
             options = []
             for s in available:
                 ab = _skill_ability(s)
-                marker = "" if s in cls_set else "　☆" if feat_count > 0 else ""
-                label = f"{SKILL_ZH.get(s, s.value)}（{s.value}）— {ABILITY_ZH.get(ab, '')}{marker}"
+                label = f"{SKILL_ZH.get(s, s.value)}（{s.value}）— {ABILITY_ZH.get(ab, '')}"
                 options.append((label, s, s in selected))
             w.append(SelectionList(*options, id="skills-list"))
 
@@ -466,6 +459,29 @@ class CharacterCreationApp(App[Character | None]):
                 w.append(SelectionList(*opts, id="spell-list"))
             else:
                 w.append(Label("  （法術資料庫尚無此職業的 1 環法術）"))
+
+        # 已選法術詳情預覽
+        self._render_spell_details(w, d)
+
+    def _render_spell_details(self, w: list, d: CharacterCreationData) -> None:
+        """渲染已選法術的詳細資訊。"""
+        all_cantrips = {s["en_name"]: s for s in self.session.get_available_cantrips()}
+        all_spells = {s["en_name"]: s for s in self.session.get_available_spells()}
+        selected = list(d.cantrips) + list(d.spells)
+        if not selected:
+            return
+        w.append(Label("── 已選法術詳情 ──", classes="section-label"))
+        for en in selected:
+            sd = all_cantrips.get(en) or all_spells.get(en)
+            if not sd:
+                continue
+            dt = sd.get("damage_type_zh", "")
+            et = sd.get("effect_type_zh", "")
+            tag = dt if dt else et
+            lv = "戲法" if sd["level"] == 0 else f"{sd['level']} 環"
+            w.append(Label(f"  ◆ {sd['name']}（{lv}・{sd['school']}・{tag}）"))
+            # 用 Static 顯示長文字，自動換行
+            w.append(Static(f"    {sd.get('description', '')}"))
 
     # ── Step 8: 名稱＋確認 ────────────────────────────────────────────────────
 
@@ -882,6 +898,8 @@ class CharacterCreationApp(App[Character | None]):
                         self.session.set_point_buy_score(ab, val)
                 except Exception:
                     pass
+            # 同步暫存以便切換方法後恢復
+            self.session.data._scores_point_buy = dict(self.session.data.scores)
             remaining = self.session.get_point_buy_remaining()
             self._update_preview()
             severity = "error" if remaining < 0 else "information"
@@ -909,19 +927,61 @@ class CharacterCreationApp(App[Character | None]):
             except Exception:
                 pass
 
-    def on_selection_list_selected_changed(self, event: SelectionList.SelectedChanged) -> None:
-        """技能/法術勾選時即時更新預覽。"""
-        sl_id = event.selection_list.id or ""
+    def _get_selection_limit(self, sl_id: str) -> int:
+        """取得 SelectionList 的選取上限。"""
+        cc = self.session.data.char_class
+        cd = CLASS_DISPLAY.get(cc) if cc else None
         if sl_id == "skills-list":
-            # 即時更新 session（不驗證數量，等 collect 時驗證）
-            self.session.data.skills = list(event.selection_list.selected)
-            self._update_preview()
+            return self.session.get_total_skill_picks()
         elif sl_id == "cantrip-list":
-            self.session.data.cantrips = list(event.selection_list.selected)
-            self._update_preview()
+            return cd.num_cantrips if cd else 0
         elif sl_id == "spell-list":
-            self.session.data.spells = list(event.selection_list.selected)
+            return cd.num_prepared_spells if cd else 0
+        return 999
+
+    def _enforce_selection_limit(
+        self, sl: SelectionList, sl_id: str, limit: int
+    ) -> list:
+        """強制多選上限。超過時取消最早選的。回傳最終 selected list。"""
+        selected = list(sl.selected)
+        order = self._selection_order.setdefault(sl_id, [])
+        # 更新順序：新增的加到尾部
+        current_set = set(selected)
+        # 移除已取消的
+        order = [v for v in order if v in current_set]
+        # 新增的（在 selected 中但不在 order 中）
+        for v in selected:
+            if v not in order:
+                order.append(v)
+        self._selection_order[sl_id] = order
+
+        # 超過上限：取消最早的
+        while len(order) > limit:
+            oldest = order.pop(0)
+            sl.deselect(oldest)
+        return list(sl.selected)
+
+    async def on_selection_list_selected_changed(
+        self, event: SelectionList.SelectedChanged
+    ) -> None:
+        """技能/法術勾選時即時更新預覽，超過上限自動取消最早的。"""
+        sl = event.selection_list
+        sl_id = sl.id or ""
+        limit = self._get_selection_limit(sl_id)
+
+        if sl_id == "skills-list":
+            selected = self._enforce_selection_limit(sl, sl_id, limit)
+            self.session.data.skills = selected
             self._update_preview()
+        elif sl_id in ("cantrip-list", "spell-list"):
+            selected = self._enforce_selection_limit(sl, sl_id, limit)
+            if sl_id == "cantrip-list":
+                self.session.data.cantrips = selected
+            else:
+                self.session.data.spells = selected
+            self._update_preview()
+            # 重新渲染以更新法術詳情區塊
+            await self._render_step()
 
     async def on_input_submitted(self, event: Input.Submitted) -> None:
         if event.input.id == "name-input":
@@ -972,6 +1032,7 @@ class CharacterCreationApp(App[Character | None]):
                 mode = ["+1/+1/+1", "+2/+1"][idx]
                 self.session.set_bg_adjust_mode(mode)
                 await self._render_step()
+                self._update_preview()
 
         elif rs_id == "bg-equip-radio":
             idx = event.radio_set.pressed_index
@@ -995,6 +1056,7 @@ class CharacterCreationApp(App[Character | None]):
                 method = ["standard", "point_buy", "roll"][idx]
                 self.session.set_ability_method(method)
                 await self._render_step()
+                self._update_preview()
 
     def _finish(self) -> None:
         try:
