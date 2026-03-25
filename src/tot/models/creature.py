@@ -14,6 +14,7 @@ from tot.models.enums import (
     DamageType,
     Size,
     Skill,
+    Tool,
     WeaponMastery,
     WeaponProperty,
 )
@@ -158,6 +159,7 @@ class Character(Combatant):
 
     skill_proficiencies: list[Skill] = Field(default_factory=list)
     skill_expertise: list[Skill] = Field(default_factory=list)
+    tool_proficiencies: list[Tool] = Field(default_factory=list)
     saving_throw_proficiencies: list[Ability] = Field(default_factory=list)
 
     spell_slots: SpellSlots = Field(default_factory=SpellSlots)

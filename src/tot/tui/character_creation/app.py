@@ -22,11 +22,13 @@ from textual.widgets import (
 )
 
 from tot.data.classes import CLASS_DISPLAY
+from tot.data.feats import ORIGIN_FEAT_REGISTRY
 from tot.data.origins import (
     ABILITY_ZH,
     BACKGROUND_REGISTRY,
     SKILL_ZH,
     SPECIES_REGISTRY,
+    TOOL_ZH,
 )
 from tot.gremlins.bone_engine.character import (
     CLASS_REGISTRY,
@@ -200,6 +202,20 @@ class CharacterCreationApp(App[Character | None]):
             btns.append(RadioButton(label, value=(bid == bg)))
         w.append(RadioSet(*btns, id="bg-radio"))
 
+        # 若背景有「任選一種」工具，顯示工具選擇
+        bg_id = self.session.data.background
+        if bg_id and bg_id in BACKGROUND_REGISTRY:
+            bg_data = BACKGROUND_REGISTRY[bg_id]
+            if bg_data.tool_proficiency_category:
+                w.append(Label(f"── {bg_data.tool_proficiency_label} ──", classes="section-label"))
+                available_tools = self.session.get_available_bg_tools()
+                cur_tool = self.session.data.bg_tool_choice
+                tool_btns = []
+                for t in available_tools:
+                    label = f"{TOOL_ZH.get(t, t.value)}（{t.value}）"
+                    tool_btns.append(RadioButton(label, value=(t == cur_tool)))
+                w.append(RadioSet(*tool_btns, id="bg-tool-radio"))
+
     # ── Step 3: 種族 ──────────────────────────────────────────────────────────
 
     def _widgets_species(self, w: list) -> None:
@@ -221,6 +237,16 @@ class CharacterCreationApp(App[Character | None]):
                     lb = f"{lo.name_zh}（{lo.name_en}）— {lo.description}"
                     lin_btns.append(RadioButton(lb, value=(lo.id == cur_lin)))
                 w.append(RadioSet(*lin_btns, id="lineage-radio"))
+
+            # 多藝：選起源專長（Human）
+            if sd.feat_choice_count > 0:
+                w.append(Label("── 多藝：選擇起源專長 ──", classes="section-label"))
+                cur_feat = self.session.data.species_feat
+                feat_btns = []
+                for fid, fd in ORIGIN_FEAT_REGISTRY.items():
+                    label = f"{fd.name_zh}（{fd.name_en}）— {fd.description[:50]}"
+                    feat_btns.append(RadioButton(label, value=(fid == cur_feat)))
+                w.append(RadioSet(*feat_btns, id="species-feat-radio"))
 
     # ── Step 4: 屬性值 ────────────────────────────────────────────────────────
 
@@ -668,7 +694,25 @@ class CharacterCreationApp(App[Character | None]):
         if idx is None:
             raise ValueError("請選擇背景")
         keys = list(BACKGROUND_REGISTRY.keys())
-        self.session.set_background(keys[idx])
+        bg_id = keys[idx]
+        self.session.set_background(bg_id)
+
+        # 背景「任選一種」工具
+        bg_data = BACKGROUND_REGISTRY[bg_id]
+        if bg_data.tool_proficiency_category:
+            try:
+                tool_rs = self.query_one("#bg-tool-radio", RadioSet)
+                tool_idx = tool_rs.pressed_index
+                if tool_idx is not None:
+                    available = self.session.get_available_bg_tools()
+                    if tool_idx < len(available):
+                        self.session.set_bg_tool_choice(available[tool_idx])
+                else:
+                    raise ValueError(f"請選擇{bg_data.tool_proficiency_label}")
+            except ValueError:
+                raise
+            except Exception:
+                raise ValueError(f"請選擇{bg_data.tool_proficiency_label}") from None
 
     def _collect_species(self) -> None:
         rs = self.query_one("#species-radio", RadioSet)
@@ -691,6 +735,23 @@ class CharacterCreationApp(App[Character | None]):
                 pass
 
         self.session.set_species(sp_id, lineage_id)
+
+        # 多藝起源專長
+        sd = SPECIES_REGISTRY[sp_id]
+        if sd.feat_choice_count > 0:
+            try:
+                feat_rs = self.query_one("#species-feat-radio", RadioSet)
+                feat_idx = feat_rs.pressed_index
+                if feat_idx is not None:
+                    feat_keys = list(ORIGIN_FEAT_REGISTRY.keys())
+                    if feat_idx < len(feat_keys):
+                        self.session.set_species_feat(feat_keys[feat_idx])
+                else:
+                    raise ValueError("請選擇起源專長（多藝）")
+            except ValueError:
+                raise
+            except Exception:
+                raise ValueError("請選擇起源專長（多藝）") from None
 
     def _collect_ability_scores(self) -> None:
         # 方法
@@ -939,9 +1000,7 @@ class CharacterCreationApp(App[Character | None]):
             return cd.num_prepared_spells if cd else 0
         return 999
 
-    def _enforce_selection_limit(
-        self, sl: SelectionList, sl_id: str, limit: int
-    ) -> list:
+    def _enforce_selection_limit(self, sl: SelectionList, sl_id: str, limit: int) -> list:
         """強制多選上限。超過時取消最早選的。回傳最終 selected list。"""
         selected = list(sl.selected)
         order = self._selection_order.setdefault(sl_id, [])
@@ -1002,7 +1061,18 @@ class CharacterCreationApp(App[Character | None]):
             idx = event.radio_set.pressed_index
             if idx is not None:
                 keys = list(BACKGROUND_REGISTRY.keys())
+                old_bg = self.session.data.background
                 self.session.set_background(keys[idx])
+                self._update_preview()
+                # 背景切換時重新渲染（顯示/隱藏工具選擇）
+                if keys[idx] != old_bg:
+                    await self._render_step()
+
+        elif rs_id == "bg-tool-radio":
+            available = self.session.get_available_bg_tools()
+            idx = event.radio_set.pressed_index
+            if idx is not None and idx < len(available):
+                self.session.set_bg_tool_choice(available[idx])
                 self._update_preview()
 
         elif rs_id == "species-radio":
@@ -1024,6 +1094,14 @@ class CharacterCreationApp(App[Character | None]):
                 idx = event.radio_set.pressed_index
                 if idx is not None and idx < len(sd.lineage_options):
                     self.session.set_species(sp_id, sd.lineage_options[idx].id)
+                    self._update_preview()
+
+        elif rs_id == "species-feat-radio":
+            idx = event.radio_set.pressed_index
+            if idx is not None:
+                keys = list(ORIGIN_FEAT_REGISTRY.keys())
+                if idx < len(keys):
+                    self.session.set_species_feat(keys[idx])
                     self._update_preview()
 
         elif rs_id == "adjust-mode-radio":

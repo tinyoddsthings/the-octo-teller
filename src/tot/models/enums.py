@@ -329,3 +329,104 @@ class EncounterType(StrEnum):
     SURPRISE = "surprise"  # 玩家偷襲成功 → 擴大佈陣區 + 敵人劣勢先攻
     NORMAL = "normal"  # 正常遭遇 → 標準佈陣區
     AMBUSH = "ambush"  # 敵人伏擊 → 跳過佈陣，玩家劣勢先攻
+
+
+class ToolCategory(StrEnum):
+    """工具類別。"""
+
+    ARTISAN = "artisan"
+    GAMING = "gaming"
+    MUSICAL = "musical"
+    OTHER = "other"
+
+
+class Tool(StrEnum):
+    """D&D 2024 工具熟練。"""
+
+    # 工匠工具（17 種）
+    ALCHEMIST_SUPPLIES = "Alchemist's Supplies"
+    BREWER_SUPPLIES = "Brewer's Supplies"
+    CALLIGRAPHER_SUPPLIES = "Calligrapher's Supplies"
+    CARPENTER_TOOLS = "Carpenter's Tools"
+    CARTOGRAPHER_TOOLS = "Cartographer's Tools"
+    COBBLER_TOOLS = "Cobbler's Tools"
+    COOK_UTENSILS = "Cook's Utensils"
+    GLASSBLOWER_TOOLS = "Glassblower's Tools"
+    JEWELER_TOOLS = "Jeweler's Tools"
+    LEATHERWORKER_TOOLS = "Leatherworker's Tools"
+    MASON_TOOLS = "Mason's Tools"
+    PAINTER_SUPPLIES = "Painter's Supplies"
+    POTTER_TOOLS = "Potter's Tools"
+    SMITH_TOOLS = "Smith's Tools"
+    TINKER_TOOLS = "Tinker's Tools"
+    WEAVER_TOOLS = "Weaver's Tools"
+    WOODCARVER_TOOLS = "Woodcarver's Tools"
+    # 遊戲組（4 種）
+    DICE_SET = "Dice Set"
+    DRAGONCHESS_SET = "Dragonchess Set"
+    PLAYING_CARDS = "Playing Cards"
+    THREE_DRAGON_ANTE = "Three-Dragon Ante Set"
+    # 樂器（10 種）
+    BAGPIPES = "Bagpipes"
+    DRUM = "Drum"
+    DULCIMER = "Dulcimer"
+    FLUTE = "Flute"
+    HORN = "Horn"
+    LUTE = "Lute"
+    LYRE = "Lyre"
+    PAN_FLUTE = "Pan Flute"
+    SHAWM = "Shawm"
+    VIOL = "Viol"
+    # 其他（6 種）
+    DISGUISE_KIT = "Disguise Kit"
+    FORGERY_KIT = "Forgery Kit"
+    HERBALISM_KIT = "Herbalism Kit"
+    NAVIGATOR_TOOLS = "Navigator's Tools"
+    POISONER_KIT = "Poisoner's Kit"
+    THIEVES_TOOLS = "Thieves' Tools"
+
+
+# 工具類別對應表
+TOOL_CATEGORY_MAP: dict[Tool, ToolCategory] = {
+    # 工匠工具
+    Tool.ALCHEMIST_SUPPLIES: ToolCategory.ARTISAN,
+    Tool.BREWER_SUPPLIES: ToolCategory.ARTISAN,
+    Tool.CALLIGRAPHER_SUPPLIES: ToolCategory.ARTISAN,
+    Tool.CARPENTER_TOOLS: ToolCategory.ARTISAN,
+    Tool.CARTOGRAPHER_TOOLS: ToolCategory.ARTISAN,
+    Tool.COBBLER_TOOLS: ToolCategory.ARTISAN,
+    Tool.COOK_UTENSILS: ToolCategory.ARTISAN,
+    Tool.GLASSBLOWER_TOOLS: ToolCategory.ARTISAN,
+    Tool.JEWELER_TOOLS: ToolCategory.ARTISAN,
+    Tool.LEATHERWORKER_TOOLS: ToolCategory.ARTISAN,
+    Tool.MASON_TOOLS: ToolCategory.ARTISAN,
+    Tool.PAINTER_SUPPLIES: ToolCategory.ARTISAN,
+    Tool.POTTER_TOOLS: ToolCategory.ARTISAN,
+    Tool.SMITH_TOOLS: ToolCategory.ARTISAN,
+    Tool.TINKER_TOOLS: ToolCategory.ARTISAN,
+    Tool.WEAVER_TOOLS: ToolCategory.ARTISAN,
+    Tool.WOODCARVER_TOOLS: ToolCategory.ARTISAN,
+    # 遊戲組
+    Tool.DICE_SET: ToolCategory.GAMING,
+    Tool.DRAGONCHESS_SET: ToolCategory.GAMING,
+    Tool.PLAYING_CARDS: ToolCategory.GAMING,
+    Tool.THREE_DRAGON_ANTE: ToolCategory.GAMING,
+    # 樂器
+    Tool.BAGPIPES: ToolCategory.MUSICAL,
+    Tool.DRUM: ToolCategory.MUSICAL,
+    Tool.DULCIMER: ToolCategory.MUSICAL,
+    Tool.FLUTE: ToolCategory.MUSICAL,
+    Tool.HORN: ToolCategory.MUSICAL,
+    Tool.LUTE: ToolCategory.MUSICAL,
+    Tool.LYRE: ToolCategory.MUSICAL,
+    Tool.PAN_FLUTE: ToolCategory.MUSICAL,
+    Tool.SHAWM: ToolCategory.MUSICAL,
+    Tool.VIOL: ToolCategory.MUSICAL,
+    # 其他
+    Tool.DISGUISE_KIT: ToolCategory.OTHER,
+    Tool.FORGERY_KIT: ToolCategory.OTHER,
+    Tool.HERBALISM_KIT: ToolCategory.OTHER,
+    Tool.NAVIGATOR_TOOLS: ToolCategory.OTHER,
+    Tool.POISONER_KIT: ToolCategory.OTHER,
+    Tool.THIEVES_TOOLS: ToolCategory.OTHER,
+}

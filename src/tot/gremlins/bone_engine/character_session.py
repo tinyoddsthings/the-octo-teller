@@ -15,6 +15,7 @@ from tot.data.origins import (
     BACKGROUND_REGISTRY,
     SKILL_ZH,
     SPECIES_REGISTRY,
+    TOOL_ZH,
 )
 from tot.gremlins.bone_engine.character import (
     CLASS_REGISTRY,
@@ -29,7 +30,7 @@ from tot.gremlins.bone_engine.character import (
 from tot.gremlins.bone_engine.dice import roll_ability_scores
 from tot.gremlins.bone_engine.spells import list_spells
 from tot.models.creature import AbilityScores, Character
-from tot.models.enums import Ability, Skill
+from tot.models.enums import TOOL_CATEGORY_MAP, Ability, Skill, Tool
 
 # ── 常數 ──────────────────────────────────────────────────────────────────────
 
@@ -88,6 +89,12 @@ class CharacterCreationData:
     cantrips: list = field(default_factory=list)  # en_name 列表
     spells: list = field(default_factory=list)  # en_name 列表
     name: str = ""
+    # Human 多藝：選的起源專長 ID（如 "Skilled"）
+    species_feat: str = ""
+    # 背景「任選一種」工具的選擇
+    bg_tool_choice: Tool | None = None
+    # Skilled 專長的工具選位（如果選了工具而非技能）
+    feat_tool_choices: list = field(default_factory=list)  # list[Tool]
     # 內部暫存（各方法的 scores 持久化，切換方法時保留）
     rolled_values: list = field(default_factory=list)
     _scores_point_buy: dict = field(default_factory=dict)
@@ -123,6 +130,8 @@ class CharacterCreationSession:
             raise ValueError(f"未知背景: {bg_id!r}")
         if bg_id != self.data.background:
             self.data.skills = []
+            self.data.feat_tool_choices = []
+            self.data.bg_tool_choice = None
             # 重設背景調整
             self.data.bg_adjust_mode = "+1/+1/+1"
             self.data.bg_adjust = {}
@@ -133,9 +142,16 @@ class CharacterCreationSession:
             self.data.bg_adjust = {a: 1 for a in bg.ability_tags}
 
     def set_species(self, species_id: str, lineage_id: str = "") -> None:
-        """設定種族。若有血統選項但未指定，自動選第一個。"""
+        """設定種族。若有血統選項但未指定，自動選第一個。
+
+        若種族有 feat_choice_count > 0（如 Human 多藝），species_feat 預設為空（等 TUI 設定）。
+        """
         if species_id not in SPECIES_REGISTRY:
             raise ValueError(f"未知種族: {species_id!r}")
+        if species_id != self.data.species:
+            # 切換種族時清空種族相關選擇
+            self.data.species_feat = ""
+            self.data.skills = []
         self.data.species = species_id
         sd = SPECIES_REGISTRY[species_id]
         if sd.lineage_options:
@@ -308,27 +324,69 @@ class CharacterCreationSession:
             raise ValueError("角色名稱不能為空")
         self.data.name = stripped
 
+    def set_species_feat(self, feat_id: str) -> None:
+        """設定 Human 多藝選的起源專長。
+
+        驗證 feat_id 在 ORIGIN_FEAT_REGISTRY 中。切換時清空技能與工具選位。
+        """
+        if feat_id not in ORIGIN_FEAT_REGISTRY:
+            raise ValueError(f"未知起源專長: {feat_id!r}")
+        if feat_id != self.data.species_feat:
+            self.data.skills = []
+            self.data.feat_tool_choices = []
+        self.data.species_feat = feat_id
+
+    def set_bg_tool_choice(self, tool: Tool) -> None:
+        """設定背景「任選一種」工具。
+
+        驗證 tool 在對應的 ToolCategory 中。
+        """
+        bg_id = self.data.background
+        if not bg_id or bg_id not in BACKGROUND_REGISTRY:
+            raise ValueError("請先選擇背景")
+        bg = BACKGROUND_REGISTRY[bg_id]
+        if bg.tool_proficiency_category is None:
+            raise ValueError(f"背景 {bg.name_zh} 的工具熟練是固定的，無需選擇")
+        expected_cat = bg.tool_proficiency_category
+        actual_cat = TOOL_CATEGORY_MAP.get(tool)
+        if actual_cat != expected_cat:
+            raise ValueError(
+                f"工具 {TOOL_ZH.get(tool, tool.value)} 不屬於類別 {expected_cat.value}"
+            )
+        self.data.bg_tool_choice = tool
+
+    def set_feat_tool_choices(self, tools: list[Tool]) -> None:
+        """設定 Skilled 專長選的工具（技能或工具混合選位中的工具部分）。"""
+        self.data.feat_tool_choices = list(tools)
+
     # ── 查詢可選項 ────────────────────────────────────────────────────────────
 
     def get_available_skills(self) -> list[Skill]:
-        """取得可選技能清單：(FeatPool ∪ ClassList) - BackgroundSkills。
+        """取得可選技能清單。
+
+        (AllFeatPools ∪ ClassList ∪ AllSkills if Human多才) - BackgroundSkills。
 
         職業技能優先排列。
         """
         cc = self.data.char_class
         bg_skill_set = set(self._get_bg_skills())
 
-        feat = self.get_origin_feat()
-        feat_count = feat.skill_choice_count if feat and feat.skill_choice_count > 0 else 0
+        origin_feats = self.get_origin_feats()
+        has_human_versatility = self._has_species_skill_choice()
 
         candidate_set: set[Skill] = set()
 
-        # 專長池
-        if feat_count > 0:
-            if feat.skill_choice_pool:
-                candidate_set.update(feat.skill_choice_pool)
-            else:
-                candidate_set.update(Skill)  # 全 18 項
+        # 所有起源專長的技能池
+        for feat in origin_feats:
+            if feat.skill_choice_count > 0:
+                if feat.skill_choice_pool:
+                    candidate_set.update(feat.skill_choice_pool)
+                else:
+                    candidate_set.update(Skill)  # 全 18 項
+
+        # Human 多才：全 18 項技能
+        if has_human_versatility:
+            candidate_set.update(Skill)
 
         # 職業池
         cls_set: set[Skill] = set()
@@ -343,14 +401,30 @@ class CharacterCreationSession:
         return sorted(candidate_set, key=lambda s: (s not in cls_set, s.value))
 
     def get_total_skill_picks(self) -> int:
-        """取得總技能選位數 = feat_count + cls_count。"""
-        feat = self.get_origin_feat()
-        feat_count = feat.skill_choice_count if feat and feat.skill_choice_count > 0 else 0
+        """取得總技能選位數。
+
+        = sum(feat.skill_choice_count) + cls_count + species.skill_choice_count。
+
+        注意：Skilled 的 skill_choice_count 包含了「技能或工具」的混合選位，
+        實際技能選位 = skill_choice_count - len(feat_tool_choices)。
+        """
+        origin_feats = self.get_origin_feats()
+        feat_count = sum(f.skill_choice_count for f in origin_feats if f.skill_choice_count > 0)
+        # 扣除已分配給工具的選位
+        feat_count -= len(self.data.feat_tool_choices)
+
+        # Human 多才
+        species_count = 0
+        sp_id = self.data.species
+        if sp_id and sp_id in SPECIES_REGISTRY:
+            species_count = SPECIES_REGISTRY[sp_id].skill_choice_count
+
         cls_count = 0
         cc = self.data.char_class
         if cc and cc in CLASS_REGISTRY:
             cls_count = CLASS_REGISTRY[cc].num_skills
-        return feat_count + cls_count
+
+        return feat_count + cls_count + species_count
 
     def get_available_cantrips(self) -> list[dict]:
         """取得可選戲法列表（dict 含 name, en_name, damage_type, effect_type 等）。"""
@@ -390,17 +464,57 @@ class CharacterCreationSession:
         return result
 
     def get_origin_feat(self) -> FeatData | None:
-        """取得當前背景的起源專長資料。"""
+        """取得當前背景的起源專長資料（向後相容）。"""
         bg_id = self.data.background
         if bg_id and bg_id in BACKGROUND_REGISTRY:
             feat_id = BACKGROUND_REGISTRY[bg_id].feat
             return ORIGIN_FEAT_REGISTRY.get(feat_id)
         return None
 
+    def get_origin_feats(self) -> list[FeatData]:
+        """取得所有起源專長：背景專長 + Human 多藝選的專長。"""
+        feats: list[FeatData] = []
+        # 背景專長
+        bg_id = self.data.background
+        if bg_id and bg_id in BACKGROUND_REGISTRY:
+            feat_id = BACKGROUND_REGISTRY[bg_id].feat
+            feat = ORIGIN_FEAT_REGISTRY.get(feat_id)
+            if feat:
+                feats.append(feat)
+        # Human 多藝
+        if self.data.species_feat:
+            species_feat = ORIGIN_FEAT_REGISTRY.get(self.data.species_feat)
+            if species_feat:
+                feats.append(species_feat)
+        return feats
+
     def has_feat_skill_choices(self) -> bool:
         """當前起源專長是否有技能選位。"""
-        feat = self.get_origin_feat()
-        return feat is not None and feat.skill_choice_count > 0
+        return any(f.skill_choice_count > 0 for f in self.get_origin_feats())
+
+    def get_tools_from_background(self) -> list[Tool]:
+        """取得背景提供的工具熟練清單（固定 + 任選一種的選擇）。"""
+        bg_id = self.data.background
+        if not bg_id or bg_id not in BACKGROUND_REGISTRY:
+            return []
+        bg = BACKGROUND_REGISTRY[bg_id]
+        tools: list[Tool] = []
+        if bg.tool_proficiency_enum is not None:
+            tools.append(bg.tool_proficiency_enum)
+        if bg.tool_proficiency_category is not None and self.data.bg_tool_choice is not None:
+            tools.append(self.data.bg_tool_choice)
+        return tools
+
+    def get_available_bg_tools(self) -> list[Tool]:
+        """回傳背景「任選一種」的可選工具清單（依 ToolCategory 過濾）。"""
+        bg_id = self.data.background
+        if not bg_id or bg_id not in BACKGROUND_REGISTRY:
+            return []
+        bg = BACKGROUND_REGISTRY[bg_id]
+        if bg.tool_proficiency_category is None:
+            return []
+        cat = bg.tool_proficiency_category
+        return [t for t, c in TOOL_CATEGORY_MAP.items() if c == cat]
 
     # ── 摘要 ──────────────────────────────────────────────────────────────────
 
@@ -483,10 +597,37 @@ class CharacterCreationSession:
                 )
             lines.append("")
 
+        # Human 多藝選的起源專長
+        if d.species_feat:
+            sp_feat = ORIGIN_FEAT_REGISTRY.get(d.species_feat)
+            if sp_feat:
+                lines.append(f"多藝專長：{sp_feat.name_zh}（{sp_feat.name_en}）")
+                lines.append(f"    {sp_feat.description}")
+                lines.append("")
+
         # 技能
         if d.skills:
             sk_str = ", ".join(SKILL_ZH.get(s, s.value) for s in d.skills)
             lines.append(f"技能熟練：{sk_str}")
+            lines.append("")
+
+        # 工具熟練
+        all_tools: list[Tool] = []
+        tool_sources: dict[Tool, str] = {}
+        # 背景工具
+        bg_tools = self.get_tools_from_background()
+        for t in bg_tools:
+            if t not in all_tools:
+                all_tools.append(t)
+                tool_sources[t] = "背景"
+        # Skilled 專長的工具選位
+        for t in d.feat_tool_choices:
+            if t not in all_tools:
+                all_tools.append(t)
+                tool_sources[t] = "博學"
+        if all_tools:
+            parts = [f"{TOOL_ZH.get(t, t.value)}（{tool_sources[t]}）" for t in all_tools]
+            lines.append(f"工具熟練：{', '.join(parts)}")
             lines.append("")
 
         # 裝備
@@ -540,6 +681,16 @@ class CharacterCreationSession:
             return False, "請選擇種族"
         if d.species not in SPECIES_REGISTRY:
             return False, f"未知種族: {d.species!r}"
+
+        # Human 多藝：需選起源專長
+        sd = SPECIES_REGISTRY[d.species]
+        if sd.feat_choice_count > 0 and not d.species_feat:
+            return False, "請選擇多藝起源專長"
+
+        # 背景「任選一種」工具：需選擇
+        bg = BACKGROUND_REGISTRY[d.background]
+        if bg.tool_proficiency_category is not None and d.bg_tool_choice is None:
+            return False, f"請選擇背景工具熟練（{bg.tool_proficiency_label}）"
 
         # 屬性值
         if d.score_method == "point_buy":
@@ -645,9 +796,29 @@ class CharacterCreationSession:
             if cd.default_armor != "none":
                 builder.set_armor(cd.default_armor)
 
-        return builder.build()
+        character = builder.build()
+
+        # 工具熟練：背景固定 + 背景任選 + Skilled 專長工具選位
+        all_tools: list[Tool] = []
+        bg_tools = self.get_tools_from_background()
+        for t in bg_tools:
+            if t not in all_tools:
+                all_tools.append(t)
+        for t in d.feat_tool_choices:
+            if t not in all_tools:
+                all_tools.append(t)
+        character.tool_proficiencies = all_tools
+
+        return character
 
     # ── 內部輔助 ──────────────────────────────────────────────────────────────
+
+    def _has_species_skill_choice(self) -> bool:
+        """種族是否有自選技能（如 Human 多才）。"""
+        sp_id = self.data.species
+        if sp_id and sp_id in SPECIES_REGISTRY:
+            return SPECIES_REGISTRY[sp_id].skill_choice_count > 0
+        return False
 
     def _get_bg_skills(self) -> list[Skill]:
         """取得背景固定技能。"""
