@@ -458,6 +458,20 @@ class CharacterCreationApp(App[Character | None]):
             w.append(Label(f"{cd.name_zh if cd else cc} 在 1 級沒有施法能力，跳過此步。"))
             return
 
+        # ── 種族/血統已有的戲法（不可重複選）──
+        granted = self.session.get_species_granted_cantrips()
+        if granted:
+            from tot.gremlins.bone_engine.spells import load_spell_db
+            db = load_spell_db()
+            names = []
+            for en in granted:
+                sp = db.get(en) or next((s for s in db.values() if s.en_name == en), None)
+                names.append(sp.name if sp else en)
+            w.append(Label(
+                f"── 種族戲法（已有，不可重複選）：{', '.join(names)} ──",
+                classes="section-label",
+            ))
+
         # ── 專長法術（Magic Initiate）──────────────────────────────
         if has_feat_spells:
             self._widgets_feat_spells(w, d)

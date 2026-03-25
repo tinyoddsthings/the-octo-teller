@@ -264,6 +264,7 @@ class LineageOption:
     name_zh: str
     name_en: str
     description: str  # 簡要效果說明
+    granted_cantrips: tuple[str, ...] = ()  # 血統給的戲法 en_name
 
 
 @dataclass(frozen=True)
@@ -282,8 +283,8 @@ class SpeciesData:
     skill_choice_count: int = 0  # 自選技能熟練數（Human 多才 / Elf 敏銳感官）
     skill_choice_pool: tuple[Skill, ...] = ()  # 可選池；空 = 全 18 項
     feat_choice_count: int = 0  # Human 多藝：自選起源專長數
-    has_lineage_spellcasting_choice: bool = False  # Tiefling：血統法術施法屬性 INT/WIS/CHA 選擇
-    feat_choice_count: int = 0  # Human 多藝：自選起源專長數
+    has_lineage_spellcasting_choice: bool = False  # Tiefling：施法屬性 INT/WIS/CHA 選擇
+    granted_cantrips: tuple[str, ...] = ()  # 種族固定給的戲法 en_name（不分血統）
 
 
 SPECIES_REGISTRY: dict[str, SpeciesData] = {
@@ -301,6 +302,7 @@ SPECIES_REGISTRY: dict[str, SpeciesData] = {
             "光亮術戲法（CHA）。"
             "3 級起可變身（天堂之翼/內在光輝/黯蝕帷幕），每回合造成額外傷害。"
         ),
+        granted_cantrips=("Light",),
         lineage_options=(
             LineageOption(
                 id="heavenly_wings",
@@ -386,18 +388,22 @@ SPECIES_REGISTRY: dict[str, SpeciesData] = {
                 "卓爾",
                 "Drow",
                 "暗視增至 36m，舞光術戲法。3 級妖火術、5 級黑暗術。",
+                granted_cantrips=("Dancing Lights",),
             ),
             LineageOption(
                 "high_elf",
                 "高等精靈",
                 "High Elf",
                 "幻術戲法（長休可換）。3 級偵測魔法、5 級迷蹤步。",
+                # 高等精靈可選任何幻術戲法，這裡先給 Minor Illusion 作為預設
+                granted_cantrips=("Minor Illusion",),
             ),
             LineageOption(
                 "wood_elf",
                 "木精靈",
                 "Wood Elf",
                 "速度增至 10.5m，德魯伊工藝戲法。3 級大步奔行、5 級行蹤無跡。",
+                granted_cantrips=("Druidcraft",),
             ),
         ),
     ),
@@ -418,12 +424,14 @@ SPECIES_REGISTRY: dict[str, SpeciesData] = {
                 "森林侏儒",
                 "Forest Gnome",
                 "弱效幻象戲法。動物交談永備（熟練加值次/長休免費施放）。",
+                granted_cantrips=("Minor Illusion",),
             ),
             LineageOption(
                 "rock_gnome",
                 "岩地侏儒",
                 "Rock Gnome",
                 "修復術和幻術戲法。可用幻術創造微型發條裝置。",
+                granted_cantrips=("Mending", "Prestidigitation"),
             ),
         ),
     ),
@@ -510,24 +518,28 @@ SPECIES_REGISTRY: dict[str, SpeciesData] = {
             "異界風采：奇術戲法。"
         ),
         has_lineage_spellcasting_choice=True,
+        granted_cantrips=("Prestidigitation",),  # 異界風采：奇術
         lineage_options=(
             LineageOption(
                 "abyssal",
                 "深淵",
                 "Abyssal",
                 "毒素傷害抗性，毒霧術戲法。3 級疫病射線、5 級定身術。",
+                granted_cantrips=("Poison Spray",),
             ),
             LineageOption(
                 "chthonic",
                 "冥界",
                 "Chthonic",
                 "黯蝕傷害抗性，冷凍之觸戲法。3 級偽死術、5 級虛弱射線。",
+                granted_cantrips=("Chill Touch",),
             ),
             LineageOption(
                 "infernal",
                 "煉獄",
                 "Infernal",
                 "火焰傷害抗性，火焰箭戲法。3 級地獄斥責、5 級黑暗術。",
+                granted_cantrips=("Fire Bolt",),
             ),
         ),
     ),

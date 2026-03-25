@@ -29,7 +29,7 @@ from tot.gremlins.bone_engine.character import (
     validate_spell_selection,
 )
 from tot.gremlins.bone_engine.dice import roll_ability_scores
-from tot.gremlins.bone_engine.spells import list_spells
+from tot.gremlins.bone_engine.spells import list_spells, load_spell_db
 from tot.models.creature import AbilityScores, Character
 from tot.models.enums import TOOL_CATEGORY_MAP, Ability, Skill, Tool
 
@@ -474,13 +474,30 @@ class CharacterCreationSession:
 
         return feat_count + cls_count + species_count
 
+    def get_species_granted_cantrips(self) -> list[str]:
+        """取得種族/血統固定給的戲法 en_name 列表。"""
+        result: list[str] = []
+        sp_id = self.data.species
+        if sp_id and sp_id in SPECIES_REGISTRY:
+            sd = SPECIES_REGISTRY[sp_id]
+            result.extend(sd.granted_cantrips)
+            # 血統給的
+            lin_id = self.data.lineage
+            if lin_id:
+                for lo in sd.lineage_options:
+                    if lo.id == lin_id:
+                        result.extend(lo.granted_cantrips)
+                        break
+        return result
+
     def get_available_cantrips(self) -> list[dict]:
-        """取得可選戲法列表（dict 含 name, en_name, damage_type, effect_type 等）。"""
+        """取得可選戲法列表，排除種族/血統已給的。"""
         cc = self.data.char_class
         if not cc:
             return []
+        granted = set(self.get_species_granted_cantrips())
         spells = list_spells(level=0, char_class=cc)
-        return [_spell_to_dict(s) for s in spells]
+        return [_spell_to_dict(s) for s in spells if s.en_name not in granted]
 
     def get_available_spells(self) -> list[dict]:
         """取得可選 1 環法術列表。"""
@@ -670,6 +687,15 @@ class CharacterCreationSession:
                 sa = d.species_spellcasting_ability
                 sa_name = ABILITY_ZH.get(sa, "未選") if sa else "未選"
                 lines.append(f"  血統法術施法屬性：{sa_name}")
+            # 種族/血統已有的戲法
+            granted = self.get_species_granted_cantrips()
+            if granted:
+                db = load_spell_db()
+                names = []
+                for en in granted:
+                    sp = db.get(en) or next((s for s in db.values() if s.en_name == en), None)
+                    names.append(sp.name if sp else en)
+                lines.append(f"  種族戲法：{', '.join(names)}")
             lines.append("")
 
         # 屬性值
