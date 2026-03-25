@@ -15,6 +15,7 @@ from tot.data.origins import (
     BACKGROUND_REGISTRY,
     SKILL_ZH,
     SPECIES_REGISTRY,
+    TOOL_DATA,
     TOOL_ZH,
 )
 from tot.gremlins.bone_engine.character import (
@@ -626,8 +627,17 @@ class CharacterCreationSession:
                 all_tools.append(t)
                 tool_sources[t] = "博學"
         if all_tools:
-            parts = [f"{TOOL_ZH.get(t, t.value)}（{tool_sources[t]}）" for t in all_tools]
-            lines.append(f"工具熟練：{', '.join(parts)}")
+            parts: list[str] = []
+            for t in all_tools:
+                name = TOOL_ZH.get(t, t.value)
+                info = TOOL_DATA.get(t)
+                desc = f"（{info.ability}）{info.utilize}" if info else ""
+                parts.append(f"{name}（{tool_sources[t]}）")
+                if desc:
+                    parts[-1] += f" — {desc}"
+            lines.append("工具熟練：")
+            for p in parts:
+                lines.append(f"  {p}")
             lines.append("")
 
         # 裝備

@@ -28,6 +28,7 @@ from tot.data.origins import (
     BACKGROUND_REGISTRY,
     SKILL_ZH,
     SPECIES_REGISTRY,
+    TOOL_DATA,
     TOOL_ZH,
 )
 from tot.gremlins.bone_engine.character import (
@@ -212,7 +213,9 @@ class CharacterCreationApp(App[Character | None]):
                 cur_tool = self.session.data.bg_tool_choice
                 tool_btns = []
                 for t in available_tools:
-                    label = f"{TOOL_ZH.get(t, t.value)}（{t.value}）"
+                    info = TOOL_DATA.get(t)
+                    desc = f"（{info.ability}）{info.utilize}" if info else ""
+                    label = f"{TOOL_ZH.get(t, t.value)} — {desc}"
                     tool_btns.append(RadioButton(label, value=(t == cur_tool)))
                 w.append(RadioSet(*tool_btns, id="bg-tool-radio"))
 

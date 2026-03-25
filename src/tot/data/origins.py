@@ -594,6 +594,191 @@ TOOL_ZH: dict[Tool, str] = {
     Tool.THIEVES_TOOLS: "盜賊工具",
 }
 
+
+@dataclass(frozen=True)
+class ToolInfo:
+    """工具描述資料。來源：PHB ch6。"""
+
+    ability: str  # 能力（中文，如「智力」「敏捷」）
+    utilize: str  # 運用動作描述
+    craft: str = ""  # 可製作物品（部分工具沒有）
+
+
+TOOL_DATA: dict[Tool, ToolInfo] = {
+    # ── 工匠工具 ──
+    Tool.ALCHEMIST_SUPPLIES: ToolInfo(
+        ability="智力",
+        utilize="鑑定某種物質（DC 15），或生火（DC 15）",
+        craft="強酸、煉金火、材料袋、油、紙、香水",
+    ),
+    Tool.BREWER_SUPPLIES: ToolInfo(
+        ability="智力",
+        utilize="偵測被下毒的飲料（DC 15），或鑑定酒類（DC 10）",
+        craft="萬解藥",
+    ),
+    Tool.CALLIGRAPHER_SUPPLIES: ToolInfo(
+        ability="敏捷",
+        utilize="以華麗筆跡書寫文字以防偽造（DC 15）",
+        craft="墨水、法術卷軸",
+    ),
+    Tool.CARPENTER_TOOLS: ToolInfo(
+        ability="力量",
+        utilize="封閉或撬開門或容器（DC 20）",
+        craft="棍棒、巨棒、木棍、桶、箱子、梯子、桿、攜帶式衝撞槌、火把",
+    ),
+    Tool.CARTOGRAPHER_TOOLS: ToolInfo(
+        ability="感知",
+        utilize="繪製小區域的地圖（DC 15）",
+        craft="地圖",
+    ),
+    Tool.COBBLER_TOOLS: ToolInfo(
+        ability="敏捷",
+        utilize="修改鞋子，使穿戴者的下一次敏捷（特技動作）檢定具有優勢（DC 10）",
+        craft="攀爬工具包",
+    ),
+    Tool.COOK_UTENSILS: ToolInfo(
+        ability="感知",
+        utilize="改善食物風味（DC 10），或偵測腐壞或被下毒的食物（DC 15）",
+        craft="口糧",
+    ),
+    Tool.GLASSBLOWER_TOOLS: ToolInfo(
+        ability="智力",
+        utilize="辨別玻璃物品在過去 24 小時內盛裝過什麼（DC 15）",
+        craft="玻璃瓶、放大鏡、望遠鏡、小瓶",
+    ),
+    Tool.JEWELER_TOOLS: ToolInfo(
+        ability="智力",
+        utilize="辨別寶石的價值（DC 15）",
+        craft="奧術法器、聖徽",
+    ),
+    Tool.LEATHERWORKER_TOOLS: ToolInfo(
+        ability="敏捷",
+        utilize="在皮革製品上加上設計圖案（DC 10）",
+        craft="投石索、鞭、獸皮甲、皮甲、鑲釘皮甲、背包、弩矢盒、地圖或卷軸盒、羊皮紙、小袋、箭袋、水袋",
+    ),
+    Tool.MASON_TOOLS: ToolInfo(
+        ability="力量",
+        utilize="在石頭上鑿刻符號或孔洞（DC 10）",
+        craft="滑輪組",
+    ),
+    Tool.PAINTER_SUPPLIES: ToolInfo(
+        ability="感知",
+        utilize="畫出你見過的事物的辨識圖像（DC 10）",
+        craft="德魯伊法器、聖徽",
+    ),
+    Tool.POTTER_TOOLS: ToolInfo(
+        ability="智力",
+        utilize="辨別陶瓷物品在過去 24 小時內盛裝過什麼（DC 15）",
+        craft="水壺、油燈",
+    ),
+    Tool.SMITH_TOOLS: ToolInfo(
+        ability="力量",
+        utilize="撬開門或容器（DC 20）",
+        craft="任何近戰武器（棍棒、巨棒、木棍和鞭除外）、中甲（獸皮甲除外）、重甲、滾珠、桶、鐵蒺藜、鏈條、撬棍、火器子彈、抓鈎、鐵鍋、鐵釘、投石子彈",
+    ),
+    Tool.TINKER_TOOLS: ToolInfo(
+        ability="敏捷",
+        utilize="用廢料組裝一個微型物品，1 分鐘後散架（DC 20）",
+        craft="火槍、手槍、鈴鐺、牛眼提燈、酒壺、帶罩提燈、捕獸夾、鎖、枷鎖、鏡子、鏟子、信號哨、火種盒",
+    ),
+    Tool.WEAVER_TOOLS: ToolInfo(
+        ability="敏捷",
+        utilize="修補衣物上的破洞（DC 10），或縫製一個微型圖案（DC 10）",
+        craft="綿甲、籃子、睡袋、毯子、華服、網、長袍、繩子、麻袋、細繩、帳篷、旅行者服裝",
+    ),
+    Tool.WOODCARVER_TOOLS: ToolInfo(
+        ability="敏捷",
+        utilize="在木頭上雕刻圖案（DC 10）",
+        craft="棍棒、巨棒、木棍、遠程武器（手槍、火槍和投石索除外）、奧術法器、箭矢、弩矢、德魯伊法器、墨水筆、吹針",
+    ),
+    # ── 其他工具 ──
+    Tool.DISGUISE_KIT: ToolInfo(
+        ability="魅力",
+        utilize="化妝（DC 10）",
+        craft="戲服",
+    ),
+    Tool.FORGERY_KIT: ToolInfo(
+        ability="敏捷",
+        utilize="模仿他人的 10 個字以內的筆跡（DC 15），或複製蠟封（DC 20）",
+    ),
+    Tool.HERBALISM_KIT: ToolInfo(
+        ability="智力",
+        utilize="辨認植物（DC 10）",
+        craft="萬解藥、蠟燭、治療工具包、治療藥水",
+    ),
+    Tool.NAVIGATOR_TOOLS: ToolInfo(
+        ability="感知",
+        utilize="規劃航線（DC 10），或透過觀星確定位置（DC 15）",
+    ),
+    Tool.POISONER_KIT: ToolInfo(
+        ability="智力",
+        utilize="偵測被下毒的物體（DC 10）",
+        craft="基本毒藥",
+    ),
+    Tool.THIEVES_TOOLS: ToolInfo(
+        ability="敏捷",
+        utilize="撬鎖（DC 15），或拆卸陷阱（DC 15）",
+    ),
+    # ── 遊戲組 ──
+    Tool.DICE_SET: ToolInfo(
+        ability="感知",
+        utilize="辨別某人是否在作弊（DC 10），或贏得遊戲（DC 20）",
+    ),
+    Tool.DRAGONCHESS_SET: ToolInfo(
+        ability="感知",
+        utilize="辨別某人是否在作弊（DC 10），或贏得遊戲（DC 20）",
+    ),
+    Tool.PLAYING_CARDS: ToolInfo(
+        ability="感知",
+        utilize="辨別某人是否在作弊（DC 10），或贏得遊戲（DC 20）",
+    ),
+    Tool.THREE_DRAGON_ANTE: ToolInfo(
+        ability="感知",
+        utilize="辨別某人是否在作弊（DC 10），或贏得遊戲（DC 20）",
+    ),
+    # ── 樂器 ──
+    Tool.BAGPIPES: ToolInfo(
+        ability="魅力",
+        utilize="演奏一首已知曲目（DC 10），或即興演奏一首歌（DC 15）",
+    ),
+    Tool.DRUM: ToolInfo(
+        ability="魅力",
+        utilize="演奏一首已知曲目（DC 10），或即興演奏一首歌（DC 15）",
+    ),
+    Tool.DULCIMER: ToolInfo(
+        ability="魅力",
+        utilize="演奏一首已知曲目（DC 10），或即興演奏一首歌（DC 15）",
+    ),
+    Tool.FLUTE: ToolInfo(
+        ability="魅力",
+        utilize="演奏一首已知曲目（DC 10），或即興演奏一首歌（DC 15）",
+    ),
+    Tool.HORN: ToolInfo(
+        ability="魅力",
+        utilize="演奏一首已知曲目（DC 10），或即興演奏一首歌（DC 15）",
+    ),
+    Tool.LUTE: ToolInfo(
+        ability="魅力",
+        utilize="演奏一首已知曲目（DC 10），或即興演奏一首歌（DC 15）",
+    ),
+    Tool.LYRE: ToolInfo(
+        ability="魅力",
+        utilize="演奏一首已知曲目（DC 10），或即興演奏一首歌（DC 15）",
+    ),
+    Tool.PAN_FLUTE: ToolInfo(
+        ability="魅力",
+        utilize="演奏一首已知曲目（DC 10），或即興演奏一首歌（DC 15）",
+    ),
+    Tool.SHAWM: ToolInfo(
+        ability="魅力",
+        utilize="演奏一首已知曲目（DC 10），或即興演奏一首歌（DC 15）",
+    ),
+    Tool.VIOL: ToolInfo(
+        ability="魅力",
+        utilize="演奏一首已知曲目（DC 10），或即興演奏一首歌（DC 15）",
+    ),
+}
+
 ABILITY_ZH: dict[Ability, str] = {
     Ability.STR: "力量",
     Ability.DEX: "敏捷",
