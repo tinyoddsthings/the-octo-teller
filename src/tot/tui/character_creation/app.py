@@ -5,9 +5,6 @@
 
 from __future__ import annotations
 
-import json
-from pathlib import Path
-
 from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal, Vertical
@@ -24,11 +21,7 @@ from textual.widgets import (
     Static,
 )
 
-from tot.data.classes import (
-    CLASS_DISPLAY,
-    STANDARD_ARRAY_SUGGESTION,
-)
-from tot.data.feats import FeatData, ORIGIN_FEAT_REGISTRY, get_available_class_skills
+from tot.data.classes import CLASS_DISPLAY
 from tot.data.origins import (
     ABILITY_ZH,
     BACKGROUND_REGISTRY,
@@ -39,16 +32,9 @@ from tot.gremlins.bone_engine.character import (
     CLASS_REGISTRY,
     POINT_BUY_BUDGET,
     POINT_BUY_COSTS,
-    STANDARD_ARRAY,
-    CharacterBuilder,
-    apply_background_bonus,
-    validate_point_buy,
-    validate_skill_selection,
-    validate_spell_selection,
-    validate_standard_array,
 )
-from tot.gremlins.bone_engine.dice import roll_ability_scores
-from tot.models.creature import AbilityScores, Character
+from tot.gremlins.bone_engine.character_session import CharacterCreationSession
+from tot.models.creature import Character
 from tot.models.enums import Ability, Skill
 
 # ── 常數 ──────────────────────────────────────────────────────────────────────
@@ -74,45 +60,6 @@ ABILITY_ORDER: list[Ability] = [
     Ability.WIS,
     Ability.CHA,
 ]
-
-DAMAGE_TYPE_ZH: dict[str, str] = {
-    "Fire": "火焰", "Cold": "寒冷", "Lightning": "閃電", "Thunder": "雷鳴",
-    "Acid": "酸液", "Poison": "毒素", "Necrotic": "黯蝕", "Radiant": "光輝",
-    "Force": "力場", "Psychic": "心靈", "Bludgeoning": "鈍擊",
-    "Piercing": "穿刺", "Slashing": "揮砍",
-}
-
-EFFECT_TYPE_ZH: dict[str, str] = {
-    "damage": "傷害", "healing": "治療", "condition": "狀態",
-    "buff": "增益", "utility": "功能",
-}
-
-# ── 法術載入 ──────────────────────────────────────────────────────────────────
-
-_SPELLS_DIR = Path(__file__).resolve().parents[2] / "data" / "spells"
-_SPELLS_JSON_LEGACY = Path(__file__).resolve().parents[2] / "data" / "spells.json"
-
-
-def _load_spells() -> list[dict]:
-    """從 spells 目錄載入所有法術列表。"""
-    result: list[dict] = []
-    if _SPELLS_DIR.is_dir():
-        for f in sorted(_SPELLS_DIR.glob("*.json")):
-            with open(f) as fp:
-                result.extend(json.load(fp))
-    elif _SPELLS_JSON_LEGACY.exists():
-        with open(_SPELLS_JSON_LEGACY) as f:
-            result = json.load(f)
-    return result
-
-
-def _spells_for_class(class_id: str, level: int) -> list[dict]:
-    """取得某職業某環級的法術列表。"""
-    return [
-        s
-        for s in _load_spells()
-        if level == s.get("level", -1) and class_id in s.get("classes", [])
-    ]
 
 
 # ── 主 App ────────────────────────────────────────────────────────────────────
@@ -171,27 +118,7 @@ class CharacterCreationApp(App[Character | None]):
     def __init__(self) -> None:
         super().__init__()
         self._step: int = 1
-        self._data: dict = {
-            "char_class": "",
-            "background": "",
-            "species": "",
-            "lineage": "",
-            "score_method": "standard",  # "standard" / "point_buy" / "roll"
-            "scores": {a: 10 for a in Ability},
-            "bg_adjust_mode": "+1/+1/+1",  # "+1/+1/+1" or "+2/+1"
-            "bg_adjust": {},  # {Ability: int} 背景調整值
-            "feat_skills": [],  # 起源專長選位技能（如 Skilled）
-            "class_skills": [],
-            "bg_equipment": "A",
-            "class_equipment": "A",
-            "cantrips": [],
-            "spells": [],
-            "name": "",
-            # 擲骰結果暫存
-            "_rolled_values": [],
-            # 標準陣列分配暫存
-            "_std_assign": {a: 0 for a in Ability},
-        }
+        self.session = CharacterCreationSession()
 
     # ── Compose ───────────────────────────────────────────────────────────────
 
@@ -251,7 +178,7 @@ class CharacterCreationApp(App[Character | None]):
     # ── Step 1: 職業 ──────────────────────────────────────────────────────────
 
     def _widgets_class(self, w: list) -> None:
-        cc = self._data["char_class"]
+        cc = self.session.data.char_class
         btns = []
         for cid, cd in CLASS_DISPLAY.items():
             label = f"{cd.name_zh}（{cd.name_en}）— {cd.description[:20]}…"
@@ -261,7 +188,7 @@ class CharacterCreationApp(App[Character | None]):
     # ── Step 2: 背景 ──────────────────────────────────────────────────────────
 
     def _widgets_background(self, w: list) -> None:
-        bg = self._data["background"]
+        bg = self.session.data.background
         btns = []
         for bid, bd in BACKGROUND_REGISTRY.items():
             label = f"{bd.name_zh}（{bd.name_en}）"
@@ -271,7 +198,7 @@ class CharacterCreationApp(App[Character | None]):
     # ── Step 3: 種族 ──────────────────────────────────────────────────────────
 
     def _widgets_species(self, w: list) -> None:
-        sp = self._data["species"]
+        sp = self.session.data.species
         btns = []
         for sid, sd in SPECIES_REGISTRY.items():
             label = f"{sd.name_zh}（{sd.name_en}）— {sd.description}"
@@ -283,7 +210,7 @@ class CharacterCreationApp(App[Character | None]):
             sd = SPECIES_REGISTRY[sp]
             if sd.lineage_options:
                 w.append(Label("── 選擇血統/先祖 ──", classes="section-label"))
-                cur_lin = self._data["lineage"]
+                cur_lin = self.session.data.lineage
                 lin_btns = []
                 for lo in sd.lineage_options:
                     lb = f"{lo.name_zh}（{lo.name_en}）— {lo.description}"
@@ -293,7 +220,8 @@ class CharacterCreationApp(App[Character | None]):
     # ── Step 4: 屬性值 ────────────────────────────────────────────────────────
 
     def _widgets_ability_scores(self, w: list) -> None:
-        method = self._data["score_method"]
+        d = self.session.data
+        method = d.score_method
 
         # 方法選擇
         w.append(Label("── 屬性值生成方式 ──", classes="section-label"))
@@ -312,7 +240,7 @@ class CharacterCreationApp(App[Character | None]):
             self._widgets_roll(w)
 
         # 背景屬性調整
-        bg_id = self._data["background"]
+        bg_id = d.background
         if bg_id and bg_id in BACKGROUND_REGISTRY:
             bg = BACKGROUND_REGISTRY[bg_id]
             tags = [ABILITY_ZH[a] for a in bg.ability_tags]
@@ -321,7 +249,7 @@ class CharacterCreationApp(App[Character | None]):
                     f"── 背景屬性調整（{bg.name_zh}：{'/'.join(tags)}）──", classes="section-label"
                 )
             )
-            adj_mode = self._data["bg_adjust_mode"]
+            adj_mode = d.bg_adjust_mode
             adj_btns = [
                 RadioButton("三項各 +1（預設）", value=(adj_mode == "+1/+1/+1")),
                 RadioButton("一項 +2，一項 +1", value=(adj_mode == "+2/+1")),
@@ -331,7 +259,7 @@ class CharacterCreationApp(App[Character | None]):
             if adj_mode == "+2/+1":
                 w.append(Label("  +2 給："))
                 opts_2 = [(ABILITY_ZH[a], a) for a in bg.ability_tags]
-                cur_adj = self._data.get("bg_adjust", {})
+                cur_adj = d.bg_adjust
                 plus2_ab = next((a for a, v in cur_adj.items() if v == 2), None)
                 plus2_sel = Select(opts_2, allow_blank=True, id="adj-plus2")
                 if plus2_ab is not None:
@@ -346,25 +274,18 @@ class CharacterCreationApp(App[Character | None]):
 
     def _widgets_standard_array(self, w: list) -> None:
         w.append(Label("── 標準陣列（依職業建議自動分配）──", classes="section-label"))
-        cc = self._data["char_class"]
-        # 自動帶入職業建議值
-        if cc in STANDARD_ARRAY_SUGGESTION:
-            sug = STANDARD_ARRAY_SUGGESTION[cc]
-            assign = dict(zip(ABILITY_ORDER, sug, strict=False))
-        else:
-            assign = dict(zip(ABILITY_ORDER, STANDARD_ARRAY, strict=False))
-        self._data["_std_assign"] = assign
-        self._data["scores"] = assign
+        # 讓 session 設定 standard 並自動分配
+        self.session.set_ability_method("standard")
+        scores = self.session.data.scores
         for ab in ABILITY_ORDER:
-            val = assign[ab]
+            val = scores[ab]
             mod = (val - 10) // 2
             sign = "+" if mod >= 0 else ""
             w.append(Label(f"  {ABILITY_ZH[ab]}（{ab.value}）：{val}（{sign}{mod}）"))
 
     def _widgets_point_buy(self, w: list) -> None:
-        scores = self._data["scores"]
-        total_cost = sum(POINT_BUY_COSTS.get(scores.get(a, 8), 0) for a in Ability)
-        remaining = POINT_BUY_BUDGET - total_cost
+        d = self.session.data
+        remaining = self.session.get_point_buy_remaining()
         w.append(
             Label(
                 f"── 點數購買（剩餘：{remaining}/{POINT_BUY_BUDGET} 點）──", classes="section-label"
@@ -375,86 +296,58 @@ class CharacterCreationApp(App[Character | None]):
 
         pb_opts = [(str(v), v) for v in range(8, 16)]
         for ab in ABILITY_ORDER:
-            cur = scores.get(ab, 8)
+            cur = d.scores.get(ab, 8)
             w.append(Label(f"  {ab.value} {ABILITY_ZH[ab]}", classes="ability-label"))
             w.append(Select(pb_opts, value=cur, id=f"pb-{ab.value}"))
 
     def _widgets_roll(self, w: list) -> None:
-        rolled = self._data.get("_rolled_values", [])
+        rolled = self.session.data.rolled_values
         if not rolled:
             w.append(Label("  按「確認→下一步」後自動擲骰並分配"))
         else:
             w.append(
-                Label(f"── 擲骰結果：{sorted(rolled, reverse=True)}（依職業最優分配）──", classes="section-label")
+                Label(
+                    f"── 擲骰結果：{sorted(rolled, reverse=True)}（依職業最優分配）──",
+                    classes="section-label",
+                )
             )
-            # 自動分配：按職業主屬性優先
-            assign = self._auto_assign_rolls(rolled)
-            self._data["_std_assign"] = assign
-            self._data["scores"] = assign
+            # session 已分配好 scores
+            scores = self.session.data.scores
             for ab in ABILITY_ORDER:
-                val = assign.get(ab, 10)
+                val = scores.get(ab, 10)
                 mod = (val - 10) // 2
                 sign = "+" if mod >= 0 else ""
                 w.append(Label(f"  {ABILITY_ZH[ab]}（{ab.value}）：{val}（{sign}{mod}）"))
             w.append(Button("重新擲骰", id="reroll-btn", variant="warning"))
 
-    def _auto_assign_rolls(self, rolled: list[int]) -> dict[Ability, int]:
-        """依職業屬性優先順序自動分配擲骰結果。"""
-        cc = self._data["char_class"]
-        sorted_vals = sorted(rolled, reverse=True)
-        # 用標準陣列建議的順序來決定優先度
-        if cc in STANDARD_ARRAY_SUGGESTION:
-            sug = STANDARD_ARRAY_SUGGESTION[cc]
-            # 建議值越高的屬性越重要，給越高的擲骰結果
-            priority = sorted(range(6), key=lambda i: sug[i], reverse=True)
-        else:
-            # 預設 STR>DEX>CON>INT>WIS>CHA
-            priority = list(range(6))
-        assign: dict[Ability, int] = {}
-        for rank, val in enumerate(sorted_vals):
-            ab_idx = priority[rank]
-            assign[ABILITY_ORDER[ab_idx]] = val
-        return assign
-
     # ── Step 5: 技能 ──────────────────────────────────────────────────────────
 
     def _widgets_skills(self, w: list) -> None:
-        bg_id = self._data["background"]
-        cc = self._data["char_class"]
+        d = self.session.data
+        bg_id = d.background
+        cc = d.char_class
 
         # 背景固定技能（顯示，不可改）
-        bg_skill_set: set[Skill] = set()
         if bg_id and bg_id in BACKGROUND_REGISTRY:
             bg = BACKGROUND_REGISTRY[bg_id]
-            bg_skill_set = set(bg.skill_proficiencies)
             bg_labels = [f"{SKILL_ZH[s]}（{s.value}）" for s in bg.skill_proficiencies]
             w.append(Label(f"── 背景技能（{bg.name_zh}，已固定）──", classes="section-label"))
             w.append(Label(f"  {', '.join(bg_labels)}"))
 
-        # 合併選位：專長 + 職業 = 一張表
-        # 總選位數 = feat.skill_choice_count + cls.num_skills
-        feat = self._get_origin_feat()
+        # 從 session 取可選技能和選位數
+        available = self.session.get_available_skills()
+        total_picks = self.session.get_total_skill_picks()
+        feat = self.session.get_origin_feat()
         feat_count = feat.skill_choice_count if feat and feat.skill_choice_count > 0 else 0
-        cls_count = 0
-        if cc and cc in CLASS_REGISTRY:
-            cls_count = CLASS_REGISTRY[cc].num_skills
-        total_picks = feat_count + cls_count
 
         if total_picks > 0:
-            # 候選池 = (專長池 ∪ 職業池) - 背景已佔
-            # 專長池為空時 = 全 18 項；職業池 = skill_choices
-            candidate_set: set[Skill] = set()
-            if feat_count > 0:
-                if feat.skill_choice_pool:
-                    candidate_set.update(feat.skill_choice_pool)
-                else:
-                    candidate_set.update(Skill)  # 全 18 項
-            if cc and cc in CLASS_REGISTRY:
-                candidate_set.update(CLASS_REGISTRY[cc].skill_choices)
-            candidate_set -= bg_skill_set
-
             # 來源標記
-            cls_set = set(CLASS_REGISTRY[cc].skill_choices) if cc and cc in CLASS_REGISTRY else set()
+            cls_count = 0
+            cls_set: set[Skill] = set()
+            if cc and cc in CLASS_REGISTRY:
+                cls_count = CLASS_REGISTRY[cc].num_skills
+                cls_set = set(CLASS_REGISTRY[cc].skill_choices)
+
             sources = []
             if feat_count > 0:
                 sources.append(f"{feat.name_zh} {feat_count}")
@@ -463,41 +356,35 @@ class CharacterCreationApp(App[Character | None]):
                 name = cd.name_zh if cd else cc
                 sources.append(f"{name} {cls_count}")
 
-            w.append(Label(
-                f"── 選擇技能熟練（共 {total_picks} 項：{'＋'.join(sources)}）──",
-                classes="section-label",
-            ))
+            w.append(
+                Label(
+                    f"── 選擇技能熟練（共 {total_picks} 項：{'＋'.join(sources)}）──",
+                    classes="section-label",
+                )
+            )
 
-            selected = self._data.get("class_skills", [])
+            selected = d.skills
             options = []
-            # 職業技能優先排列
-            for s in sorted(candidate_set, key=lambda s: (s not in cls_set, s.value)):
+            for s in available:
                 ab = _skill_ability(s)
                 marker = "" if s in cls_set else "　☆" if feat_count > 0 else ""
                 label = f"{SKILL_ZH.get(s, s.value)}（{s.value}）— {ABILITY_ZH.get(ab, '')}{marker}"
                 options.append((label, s, s in selected))
             w.append(SelectionList(*options, id="skills-list"))
 
-    def _get_origin_feat(self) -> FeatData | None:
-        """取得當前背景的起源專長資料。"""
-        bg_id = self._data["background"]
-        if bg_id and bg_id in BACKGROUND_REGISTRY:
-            feat_id = BACKGROUND_REGISTRY[bg_id].feat
-            return ORIGIN_FEAT_REGISTRY.get(feat_id)
-        return None
-
     # ── Step 6: 裝備 ──────────────────────────────────────────────────────────
 
     def _widgets_equipment(self, w: list) -> None:
-        bg_id = self._data["background"]
-        cc = self._data["char_class"]
+        d = self.session.data
+        bg_id = d.background
+        cc = d.char_class
 
         if bg_id and bg_id in BACKGROUND_REGISTRY:
             bg = BACKGROUND_REGISTRY[bg_id]
             w.append(Label(f"── 背景裝備（{bg.name_zh}）──", classes="section-label"))
             w.append(Label(f"  A：{bg.equipment_a}"))
             w.append(Label(f"  B：{bg.equipment_b}"))
-            cur_bg = self._data.get("bg_equipment", "A")
+            cur_bg = d.bg_equipment or "A"
             btns = [
                 RadioButton("選 A", value=(cur_bg == "A")),
                 RadioButton("選 B", value=(cur_bg == "B")),
@@ -509,7 +396,7 @@ class CharacterCreationApp(App[Character | None]):
             w.append(Label(f"── 職業裝備（{cd.name_zh}）──", classes="section-label"))
             w.append(Label(f"  A：{cd.equipment_a}"))
             w.append(Label(f"  B：{cd.equipment_b}"))
-            cur_cls = self._data.get("class_equipment", "A")
+            cur_cls = d.class_equipment or "A"
             btns = [
                 RadioButton("選 A", value=(cur_cls == "A")),
                 RadioButton("選 B", value=(cur_cls == "B")),
@@ -519,7 +406,8 @@ class CharacterCreationApp(App[Character | None]):
     # ── Step 7: 戲法與法術 ────────────────────────────────────────────────────
 
     def _widgets_spells(self, w: list) -> None:
-        cc = self._data["char_class"]
+        d = self.session.data
+        cc = d.char_class
         if not cc:
             w.append(Label("請先選擇職業"))
             return
@@ -531,7 +419,7 @@ class CharacterCreationApp(App[Character | None]):
 
         # 戲法
         if cd.num_cantrips > 0:
-            cantrips = _spells_for_class(cc, 0)
+            cantrips = self.session.get_available_cantrips()
             w.append(
                 Label(
                     f"── 戲法（選 {cd.num_cantrips} 個）──",
@@ -539,24 +427,24 @@ class CharacterCreationApp(App[Character | None]):
                 )
             )
             if cantrips:
-                sel = self._data.get("cantrips", [])
+                sel = d.cantrips
                 opts = []
                 for s in cantrips:
-                    dt = DAMAGE_TYPE_ZH.get(s.get("damage_type", ""), "")
-                    et = EFFECT_TYPE_ZH.get(s.get("effect_type", ""), "")
-                    tag = dt if dt else et
-                    opts.append((
-                        f"{s['name']}（{s['en_name']}）— {tag}",
-                        s["en_name"],
-                        s["en_name"] in sel,
-                    ))
+                    tag = s["damage_type_zh"] if s["damage_type_zh"] else s["effect_type_zh"]
+                    opts.append(
+                        (
+                            f"{s['name']}（{s['en_name']}）— {tag}",
+                            s["en_name"],
+                            s["en_name"] in sel,
+                        )
+                    )
                 w.append(SelectionList(*opts, id="cantrip-list"))
             else:
                 w.append(Label("  （法術資料庫尚無此職業的戲法）"))
 
         # 1 環法術
         if cd.num_prepared_spells > 0:
-            spells_1 = _spells_for_class(cc, 1)
+            spells_1 = self.session.get_available_spells()
             w.append(
                 Label(
                     f"── 1 環法術（選 {cd.num_prepared_spells} 個）──",
@@ -564,17 +452,17 @@ class CharacterCreationApp(App[Character | None]):
                 )
             )
             if spells_1:
-                sel = self._data.get("spells", [])
+                sel = d.spells
                 opts = []
                 for s in spells_1:
-                    dt = DAMAGE_TYPE_ZH.get(s.get("damage_type", ""), "")
-                    et = EFFECT_TYPE_ZH.get(s.get("effect_type", ""), "")
-                    tag = dt if dt else et
-                    opts.append((
-                        f"{s['name']}（{s['en_name']}）— {tag}",
-                        s["en_name"],
-                        s["en_name"] in sel,
-                    ))
+                    tag = s["damage_type_zh"] if s["damage_type_zh"] else s["effect_type_zh"]
+                    opts.append(
+                        (
+                            f"{s['name']}（{s['en_name']}）— {tag}",
+                            s["en_name"],
+                            s["en_name"] in sel,
+                        )
+                    )
                 w.append(SelectionList(*opts, id="spell-list"))
             else:
                 w.append(Label("  （法術資料庫尚無此職業的 1 環法術）"))
@@ -582,10 +470,11 @@ class CharacterCreationApp(App[Character | None]):
     # ── Step 8: 名稱＋確認 ────────────────────────────────────────────────────
 
     def _widgets_confirm(self, w: list) -> None:
+        d = self.session.data
         w.append(Label("── 角色名稱 ──", classes="section-label"))
         w.append(
             Input(
-                value=self._data["name"],
+                value=d.name,
                 placeholder="輸入角色名稱...",
                 id="name-input",
             )
@@ -594,239 +483,22 @@ class CharacterCreationApp(App[Character | None]):
         # 完整角色卡預覽
         w.append(Label("── 角色卡預覽 ──", classes="section-label"))
         try:
-            char = self._build_character()
-            summary = self._format_full_summary(char)
-            w.append(Static(summary))
+            ok, msg = self.session.validate()
+            if ok:
+                char = self.session.build_character()
+                summary = self._format_confirm_summary(char)
+                w.append(Static(summary))
+            else:
+                w.append(Static(f"[yellow]{msg}[/yellow]"))
         except Exception as e:
             w.append(Static(f"[red]建角錯誤：{e}[/red]"))
 
-    # ── Preview panel ─────────────────────────────────────────────────────────
-
-    def _update_preview(self) -> None:
-        """更新右側預覽面板：顯示已選項目的詳細資訊。"""
-        d = self._data
-        preview = self.query_one("#preview-panel", Static)
-        lines: list[str] = ["角色預覽", "─" * 36]
-
-        # 職業
-        cc = d["char_class"]
-        if cc and cc in CLASS_DISPLAY:
-            cd = CLASS_DISPLAY[cc]
-            cls = CLASS_REGISTRY.get(cc)
-            lines.append(f"職業：{cd.name_zh}（{cd.name_en}）")
-            lines.append(f"  {cd.description}")
-            lines.append(f"  複雜度：{cd.complexity}　生命骰：d{cls.hit_die if cls else '?'}")
-            if cls:
-                sa = cls.spellcasting_ability
-                lines.append(
-                    f"  核心能力：{ABILITY_ZH.get(cls.primary_ability, '?')}"
-                    + (f"　施法屬性：{ABILITY_ZH.get(sa, '')}" if sa else "")
-                )
-            lines.append(f"  護甲：{', '.join(cd.armor_training) or '無'}")
-            lines.append(f"  武器：{', '.join(cd.weapon_training)}")
-            if cd.num_cantrips or cd.num_prepared_spells:
-                lines.append(f"  1級戲法：{cd.num_cantrips}　1級法術：{cd.num_prepared_spells}")
-            if cd.features_1st:
-                lines.append(f"  1級特性：{', '.join(cd.features_1st)}")
-        else:
-            lines.append("職業：—")
-
-        lines.append("")
-
-        # 背景
-        bg_id = d["background"]
-        if bg_id and bg_id in BACKGROUND_REGISTRY:
-            bg = BACKGROUND_REGISTRY[bg_id]
-            feat = ORIGIN_FEAT_REGISTRY.get(bg.feat)
-            lines.append(f"背景：{bg.name_zh}（{bg.name_en}）")
-            lines.append(f"  {bg.description}")
-            lines.append(f"  專長：{bg.feat_zh}")
-            if feat:
-                lines.append(f"    {feat.description}")
-            bg_skills = [f"{SKILL_ZH[s]}" for s in bg.skill_proficiencies]
-            lines.append(f"  技能：{', '.join(bg_skills)}　工具：{bg.tool_proficiency}")
-            tags = [ABILITY_ZH[a] for a in bg.ability_tags]
-            lines.append(f"  屬性調整：{'/'.join(tags)} 中選 +2/+1 或各 +1")
-        else:
-            lines.append("背景：—")
-
-        lines.append("")
-
-        # 種族
-        sp_id = d["species"]
-        if sp_id and sp_id in SPECIES_REGISTRY:
-            sd = SPECIES_REGISTRY[sp_id]
-            lines.append(f"種族：{sd.name_zh}（{sd.name_en}）")
-            lines.append(f"  {sd.description}")
-            lines.append(f"  體型：{sd.size}　速度：{sd.speed}")
-            lines.append(f"  特性：{', '.join(sd.traits)}")
-            lines.append(f"  {sd.traits_description}")
-            lin = d.get("lineage")
-            if lin and sd.lineage_options:
-                lo = next((l for l in sd.lineage_options if l.id == lin), None)
-                if lo:
-                    lines.append(f"  血統：{lo.name_zh}（{lo.name_en}）— {lo.description}")
-        else:
-            lines.append("種族：—")
-
-        lines.append("")
-
-        # 屬性值
-        scores = d["scores"]
-        bg_adj = d.get("bg_adjust", {})
-        if any(v != 10 for v in scores.values()):
-            lines.append("屬性值：")
-            for ab in ABILITY_ORDER:
-                base = scores.get(ab, 10)
-                adj = bg_adj.get(ab, 0)
-                total = base + adj
-                mod = (total - 10) // 2
-                sign = "+" if mod >= 0 else ""
-                adj_str = f" (+{adj})" if adj > 0 else ""
-                lines.append(
-                    f"  {ab.value} {ABILITY_ZH[ab]:<4} {total:>2}{adj_str:<6} 修正值 {sign}{mod}"
-                )
-        else:
-            lines.append("屬性值：—")
-
-        # 技能（合併顯示）
-        cls_skills = d.get("class_skills", [])
-        if cls_skills:
-            sk_str = ", ".join(SKILL_ZH.get(s, s.value) for s in cls_skills)
-            lines.append(f"\n技能熟練：{sk_str}")
-
-        # 裝備（步驟 6 以後才顯示）
-        if self._step < 6:
-            preview.update("\n".join(lines))
-            return
-        bg_eq = d.get("bg_equipment", "A")
-        cls_eq = d.get("class_equipment", "A")
-        bg_id_eq = d["background"]
-        cc_eq = d["char_class"]
-        equip_lines = []
-        if bg_id_eq and bg_id_eq in BACKGROUND_REGISTRY:
-            bg_data = BACKGROUND_REGISTRY[bg_id_eq]
-            eq_text = bg_data.equipment_a if bg_eq == "A" else bg_data.equipment_b
-            equip_lines.append(f"  背景（{bg_eq}）：{eq_text}")
-        if cc_eq and cc_eq in CLASS_DISPLAY:
-            cd_data = CLASS_DISPLAY[cc_eq]
-            eq_text = cd_data.equipment_a if cls_eq == "A" else cd_data.equipment_b
-            equip_lines.append(f"  職業（{cls_eq}）：{eq_text}")
-        if equip_lines:
-            lines.append("\n裝備：")
-            lines.extend(equip_lines)
-
-        # 法術
-        cantrips = d.get("cantrips", [])
-        spells = d.get("spells", [])
-        if cantrips or spells:
-            lines.append("")
-            all_spell_data = _load_spells()
-            spell_lookup = {s["en_name"]: s for s in all_spell_data}
-            if cantrips:
-                names = []
-                for en in cantrips:
-                    sd = spell_lookup.get(en)
-                    names.append(sd["name"] if sd else en)
-                lines.append(f"戲法：{', '.join(names)}")
-            if spells:
-                names = []
-                for en in spells:
-                    sd = spell_lookup.get(en)
-                    names.append(sd["name"] if sd else en)
-                lines.append(f"1 環法術：{', '.join(names)}")
-            # 所有選中的法術都顯示詳情
-            all_selected = list(cantrips) + list(spells)
-            for en in all_selected:
-                sd = spell_lookup.get(en)
-                if sd:
-                    dt = DAMAGE_TYPE_ZH.get(sd.get("damage_type", ""), "")
-                    et = EFFECT_TYPE_ZH.get(sd.get("effect_type", ""), "")
-                    tag = dt if dt else et
-                    lines.append(f"  ▸ {sd['name']}（{tag}）：{sd.get('description', '')[:60]}")
-
-        preview.update("\n".join(lines))
-
-    # ── Build helper ──────────────────────────────────────────────────────────
-
-    def _build_character(self) -> Character:
-        """從 _data 建出 Character。"""
-        d = self._data
-        builder = CharacterBuilder()
-        builder.set_name(d["name"] or "冒險者")
-        builder.set_background(d["background"] or "Unknown")
-        builder.set_species(d["species"] or "Unknown")
-        builder.set_class(d["char_class"])
-
-        # 屬性值：先建基礎值，再用 bone_engine 套用背景加值（含上限 20 檢查）
-        base = d["scores"]
-        base_scores = AbilityScores(
-            STR=base.get(Ability.STR, 10),
-            DEX=base.get(Ability.DEX, 10),
-            CON=base.get(Ability.CON, 10),
-            INT=base.get(Ability.INT, 10),
-            WIS=base.get(Ability.WIS, 10),
-            CHA=base.get(Ability.CHA, 10),
-        )
-        bg_adj = d.get("bg_adjust", {})
-        if bg_adj:
-            try:
-                final_scores = apply_background_bonus(base_scores, bg_adj)
-            except ValueError:
-                # 加值導致超過 20 等異常，退回基礎值
-                final_scores = base_scores
-        else:
-            final_scores = base_scores
-        builder.set_ability_scores(final_scores)
-
-        # 技能：背景（固定） + 專長（選位） + 職業（選位）
-        all_skills: list[Skill] = []
-        bg_id = d["background"]
-        if bg_id and bg_id in BACKGROUND_REGISTRY:
-            for s in BACKGROUND_REGISTRY[bg_id].skill_proficiencies:
-                if s not in all_skills:
-                    all_skills.append(s)
-        for s in d.get("feat_skills", []):
-            if s not in all_skills:
-                all_skills.append(s)
-        for s in d.get("class_skills", []):
-            if s not in all_skills:
-                all_skills.append(s)
-
-        # 確保數量至少足夠 CharacterBuilder
-        cc = d["char_class"]
-        if cc in CLASS_REGISTRY:
-            needed = CLASS_REGISTRY[cc].num_skills
-            cls_only = [
-                s
-                for s in all_skills
-                if bg_id not in BACKGROUND_REGISTRY
-                or s not in BACKGROUND_REGISTRY[bg_id].skill_proficiencies
-            ]
-            if len(cls_only) < needed:
-                available = list(CLASS_REGISTRY[cc].skill_choices)
-                for s in available:
-                    if s not in all_skills and len(cls_only) < needed:
-                        all_skills.append(s)
-                        cls_only.append(s)
-
-        builder.set_skills(all_skills)
-
-        # 護甲：由 ClassDisplayData.default_armor 決定（選裝備包 A 時使用預設）
-        equip_choice = d.get("class_equipment", "A")
-        if equip_choice == "A" and cc in CLASS_DISPLAY:
-            cd = CLASS_DISPLAY[cc]
-            if cd.default_armor != "none":
-                builder.set_armor(cd.default_armor)
-
-        return builder.build()
-
-    def _format_full_summary(self, char: Character) -> str:
-        """格式化完整角色卡摘要。"""
-        d = self._data
-        cc = d["char_class"]
-        bg_id = d["background"]
-        sp_id = d["species"]
+    def _format_confirm_summary(self, char: Character) -> str:
+        """格式化確認頁的角色卡摘要（含計算後數值）。"""
+        d = self.session.data
+        cc = d.char_class
+        bg_id = d.background
+        sp_id = d.species
 
         cd = CLASS_DISPLAY.get(cc)
         bg = BACKGROUND_REGISTRY.get(bg_id) if bg_id else None
@@ -839,14 +511,14 @@ class CharacterCreationApp(App[Character | None]):
         ]
 
         # 血統
-        lin = d.get("lineage")
+        lin = d.lineage
         if lin and sd and sd.lineage_options:
-            lo = next((l for l in sd.lineage_options if l.id == lin), None)
+            lo = next((opt for opt in sd.lineage_options if opt.id == lin), None)
             if lo:
                 lines.append(f"血統：{lo.name_zh}（{lo.name_en}）")
 
         lines += ["", "── 屬性值 ──"]
-        bg_adj = d.get("bg_adjust", {})
+        bg_adj = d.bg_adjust
         for ab in ABILITY_ORDER:
             val = char.ability_scores.score(ab)
             mod = char.ability_scores.modifier(ab)
@@ -858,7 +530,9 @@ class CharacterCreationApp(App[Character | None]):
         lines += [
             "",
             f"HP：{char.hp_current}　AC：{char.ac}　速度：{sd.speed if sd else '9m'}",
-            f"被動感知：{char.passive_perception}　先攻：{'+' if char.ability_scores.modifier(Ability.DEX) >= 0 else ''}{char.ability_scores.modifier(Ability.DEX)}",
+            f"被動感知：{char.passive_perception}　先攻："
+            f"{'+' if char.ability_scores.modifier(Ability.DEX) >= 0 else ''}"
+            f"{char.ability_scores.modifier(Ability.DEX)}",
             "熟練加值：+2",
         ]
 
@@ -875,7 +549,7 @@ class CharacterCreationApp(App[Character | None]):
 
         # 背景起源專長
         if bg:
-            feat = ORIGIN_FEAT_REGISTRY.get(bg.feat)
+            feat = self.session.get_origin_feat()
             lines += ["", "── 起源專長 ──"]
             lines.append(f"  {bg.feat_zh}（{bg.feat}）")
             if feat:
@@ -888,7 +562,7 @@ class CharacterCreationApp(App[Character | None]):
                 bonus = char.skill_bonus(s)
                 sign = "+" if bonus >= 0 else ""
                 lines.append(f"  {SKILL_ZH.get(s, s.value):<8}（{s.value}）{sign}{bonus}  [背景]")
-        for s in d.get("class_skills", []):
+        for s in d.skills:
             bonus = char.skill_bonus(s)
             sign = "+" if bonus >= 0 else ""
             lines.append(f"  {SKILL_ZH.get(s, s.value):<8}（{s.value}）{sign}{bonus}  [職業]")
@@ -899,13 +573,11 @@ class CharacterCreationApp(App[Character | None]):
 
         # 裝備
         lines += ["", "── 起始裝備 ──"]
-        bg_eq = d.get("bg_equipment", "A")
-        cls_eq = d.get("class_equipment", "A")
         if bg:
-            eq_text = bg.equipment_a if bg_eq == "A" else bg.equipment_b
+            eq_text = bg.equipment_a if d.bg_equipment == "A" else bg.equipment_b
             lines.append(f"  背景：{eq_text}")
         if cd:
-            eq_text = cd.equipment_a if cls_eq == "A" else cd.equipment_b
+            eq_text = cd.equipment_a if d.class_equipment == "A" else cd.equipment_b
             lines.append(f"  職業：{eq_text}")
 
         # 種族特性
@@ -915,14 +587,12 @@ class CharacterCreationApp(App[Character | None]):
             lines.append(f"  {sd.traits_description}")
 
         # 戲法與法術
-        cantrips = d.get("cantrips", [])
-        spells = d.get("spells", [])
-        if cantrips or spells:
+        if d.cantrips or d.spells:
             lines += ["", "── 法術 ──"]
-            if cantrips:
-                lines.append(f"  戲法：{', '.join(cantrips)}")
-            if spells:
-                lines.append(f"  1 環法術：{', '.join(spells)}")
+            if d.cantrips:
+                lines.append(f"  戲法：{', '.join(d.cantrips)}")
+            if d.spells:
+                lines.append(f"  1 環法術：{', '.join(d.spells)}")
             if cc in CLASS_REGISTRY and CLASS_REGISTRY[cc].spellcasting_ability:
                 sa = CLASS_REGISTRY[cc].spellcasting_ability
                 lines.append(f"  施法屬性：{ABILITY_ZH.get(sa, '')}（{sa.value}）")
@@ -935,10 +605,22 @@ class CharacterCreationApp(App[Character | None]):
 
         return "\n".join(lines)
 
+    # ── Preview panel ─────────────────────────────────────────────────────────
+
+    def _update_preview(self) -> None:
+        """更新右側預覽面板：委託 session.get_summary()。"""
+        preview = self.query_one("#preview-panel", Static)
+        summary = self.session.get_summary()
+        header = "角色預覽\n" + "─" * 36 + "\n"
+        if summary:
+            preview.update(header + summary)
+        else:
+            preview.update(header + "（尚無選擇）")
+
     # ── Data collection ───────────────────────────────────────────────────────
 
     def _collect_step_data(self, step: int) -> None:
-        """讀取當步 widget → _data。驗證失敗 raise ValueError。"""
+        """讀取當步 widget → session。驗證失敗 raise ValueError。"""
         if step == 1:
             self._collect_class()
         elif step == 2:
@@ -962,13 +644,7 @@ class CharacterCreationApp(App[Character | None]):
         if idx is None:
             raise ValueError("請選擇職業")
         keys = list(CLASS_DISPLAY.keys())
-        new_class = keys[idx]
-        if new_class != self._data["char_class"]:
-            # 切換職業時清空依賴資料
-            self._data["class_skills"] = []
-            self._data["_std_assign"] = {}
-            self._data["scores"] = {a: 10 for a in Ability}
-        self._data["char_class"] = new_class
+        self.session.set_class(keys[idx])
 
     def _collect_background(self) -> None:
         rs = self.query_one("#bg-radio", RadioSet)
@@ -976,7 +652,7 @@ class CharacterCreationApp(App[Character | None]):
         if idx is None:
             raise ValueError("請選擇背景")
         keys = list(BACKGROUND_REGISTRY.keys())
-        self._data["background"] = keys[idx]
+        self.session.set_background(keys[idx])
 
     def _collect_species(self) -> None:
         rs = self.query_one("#species-radio", RadioSet)
@@ -985,24 +661,20 @@ class CharacterCreationApp(App[Character | None]):
             raise ValueError("請選擇種族")
         keys = list(SPECIES_REGISTRY.keys())
         sp_id = keys[idx]
-        self._data["species"] = sp_id
 
         # 血統子選項
         sd = SPECIES_REGISTRY[sp_id]
+        lineage_id = ""
         if sd.lineage_options:
             try:
                 lin_rs = self.query_one("#lineage-radio", RadioSet)
                 lin_idx = lin_rs.pressed_index
                 if lin_idx is not None:
-                    self._data["lineage"] = sd.lineage_options[lin_idx].id
-                else:
-                    # 未選血統，自動選第一個
-                    self._data["lineage"] = sd.lineage_options[0].id
+                    lineage_id = sd.lineage_options[lin_idx].id
             except Exception:
-                # RadioSet 尚未渲染（首次選擇種族），預設第一個
-                self._data["lineage"] = sd.lineage_options[0].id
-        else:
-            self._data["lineage"] = ""
+                pass
+
+        self.session.set_species(sp_id, lineage_id)
 
     def _collect_ability_scores(self) -> None:
         # 方法
@@ -1010,164 +682,109 @@ class CharacterCreationApp(App[Character | None]):
             mrs = self.query_one("#method-radio", RadioSet)
             idx = mrs.pressed_index
             if idx is not None:
-                self._data["score_method"] = ["standard", "point_buy", "roll"][idx]
+                method = ["standard", "point_buy", "roll"][idx]
+                self.session.set_ability_method(method)
         except Exception:
             pass
 
-        method = self._data["score_method"]
+        method = self.session.data.score_method
 
-        if method == "standard":
-            self._collect_standard_array()
-        elif method == "point_buy":
+        if method == "point_buy":
             self._collect_point_buy()
         elif method == "roll":
             self._collect_roll()
+        # standard 已在 set_ability_method 中自動分配
 
         # 背景調整
         self._collect_bg_adjust()
 
-    def _collect_standard_array(self) -> None:
-        # 標準陣列已在 _widgets_standard_array 中自動分配
-        # 這裡只確認 scores 已設定
-        if not self._data.get("scores") or all(v == 10 for v in self._data["scores"].values()):
-            cc = self._data["char_class"]
-            if cc in STANDARD_ARRAY_SUGGESTION:
-                sug = STANDARD_ARRAY_SUGGESTION[cc]
-                assign = dict(zip(ABILITY_ORDER, sug, strict=False))
-            else:
-                assign = dict(zip(ABILITY_ORDER, STANDARD_ARRAY, strict=False))
-            self._data["scores"] = assign
-            self._data["_std_assign"] = assign
-
     def _collect_point_buy(self) -> None:
-        scores: dict[Ability, int] = {}
         for ab in ABILITY_ORDER:
             try:
                 sel = self.query_one(f"#pb-{ab.value}", Select)
                 val = sel.value
                 if val is not None and val != Select.BLANK:
-                    scores[ab] = int(val)
-                else:
-                    scores[ab] = 8
+                    self.session.set_point_buy_score(ab, int(val))
             except Exception:
-                scores[ab] = 8
+                pass
 
-        ok, msg = validate_point_buy(scores)
-        if not ok:
-            raise ValueError(msg)
-
-        self._data["scores"] = scores
+        # 驗證購點預算
+        remaining = self.session.get_point_buy_remaining()
+        if remaining < 0:
+            raise ValueError(f"購點超支 {-remaining} 點")
+        if remaining > 0:
+            raise ValueError(f"還有 {remaining} 點未使用")
 
     def _collect_roll(self) -> None:
-        rolled = self._data.get("_rolled_values", [])
+        rolled = self.session.data.rolled_values
         if not rolled:
-            # 首次進入擲骰模式，自動擲骰並分配
-            rolled = roll_ability_scores()
-            self._data["_rolled_values"] = rolled
-            assign = self._auto_assign_rolls(rolled)
-            self._data["scores"] = assign
-            self._data["_std_assign"] = assign
+            # 首次進入擲骰模式，自動擲骰
+            self.session.reroll_abilities()
             raise ValueError("已擲骰並自動分配，請確認結果")
 
-        # 擲骰結果已在 _widgets_roll 中自動分配
-        if not self._data.get("scores") or all(v == 10 for v in self._data["scores"].values()):
-            assign = self._auto_assign_rolls(rolled)
-            self._data["scores"] = assign
-            self._data["_std_assign"] = assign
-
     def _collect_bg_adjust(self) -> None:
-        bg_id = self._data["background"]
-        if not bg_id or bg_id not in BACKGROUND_REGISTRY:
+        d = self.session.data
+        if not d.background or d.background not in BACKGROUND_REGISTRY:
             return
-
-        bg = BACKGROUND_REGISTRY[bg_id]
 
         # 調整模式
         try:
             adj_rs = self.query_one("#adjust-mode-radio", RadioSet)
             idx = adj_rs.pressed_index
             if idx is not None:
-                self._data["bg_adjust_mode"] = ["+1/+1/+1", "+2/+1"][idx]
+                mode = ["+1/+1/+1", "+2/+1"][idx]
+                self.session.set_bg_adjust_mode(mode)
         except Exception:
             pass
 
-        mode = self._data["bg_adjust_mode"]
-
-        if mode == "+1/+1/+1":
-            self._data["bg_adjust"] = {a: 1 for a in bg.ability_tags}
-        elif mode == "+2/+1":
-            adj: dict[Ability, int] = {}
+        if d.bg_adjust_mode == "+2/+1":
             try:
                 sel2 = self.query_one("#adj-plus2", Select)
                 if isinstance(sel2.value, Ability):
-                    adj[sel2.value] = 2
+                    self.session.set_bg_adjust_plus2(sel2.value)
             except Exception:
                 pass
             try:
                 sel1 = self.query_one("#adj-plus1", Select)
-                if isinstance(sel1.value, Ability) and sel1.value not in adj:
-                    adj[sel1.value] = 1
+                if isinstance(sel1.value, Ability):
+                    self.session.set_bg_adjust_plus1(sel1.value)
             except Exception:
                 pass
 
-            if not adj:
-                # 預設：第一項 +2，第二項 +1
-                adj = {bg.ability_tags[0]: 2, bg.ability_tags[1]: 1}
-
-            self._data["bg_adjust"] = adj
-
     def _collect_skills(self) -> None:
-        cc = self._data["char_class"]
-        if not cc or cc not in CLASS_REGISTRY:
-            return
-        bg_id = self._data["background"]
-        bg_skills = (
-            list(BACKGROUND_REGISTRY[bg_id].skill_proficiencies)
-            if bg_id and bg_id in BACKGROUND_REGISTRY
-            else []
-        )
-
-        # 合併選位：從單一 skills-list 收集
-        feat = self._get_origin_feat()
-        feat_count = feat.skill_choice_count if feat and feat.skill_choice_count > 0 else 0
-        cls_count = CLASS_REGISTRY[cc].num_skills
-        total_picks = feat_count + cls_count
-
         try:
             sl = self.query_one("#skills-list", SelectionList)
-            selected = list(sl.selected)
-            if len(selected) != total_picks:
-                raise ValueError(f"需選 {total_picks} 項技能，已選 {len(selected)}")
-            # 確認無重複且不在背景中
-            bg_set = set(bg_skills)
-            for s in selected:
-                if s in bg_set:
-                    raise ValueError(f"技能 {SKILL_ZH.get(s, s.value)} 已由背景提供")
-            self._data["class_skills"] = selected
-            self._data["feat_skills"] = []  # 不再分開存，統一在 class_skills
+            self.session.set_skills(list(sl.selected))
         except ValueError:
             raise
         except Exception:
             pass
 
     def _collect_equipment(self) -> None:
+        d = self.session.data
+        bg_eq = d.bg_equipment or "A"
+        cls_eq = d.class_equipment or "A"
+
         try:
             bg_rs = self.query_one("#bg-equip-radio", RadioSet)
             idx = bg_rs.pressed_index
             if idx is not None:
-                self._data["bg_equipment"] = "A" if idx == 0 else "B"
+                bg_eq = "A" if idx == 0 else "B"
         except Exception:
             pass
         try:
             cls_rs = self.query_one("#cls-equip-radio", RadioSet)
             idx = cls_rs.pressed_index
             if idx is not None:
-                self._data["class_equipment"] = "A" if idx == 0 else "B"
+                cls_eq = "A" if idx == 0 else "B"
         except Exception:
             pass
 
+        self.session.set_equipment(bg_eq, cls_eq)
+
     def _collect_spells(self) -> None:
-        cc = self._data["char_class"]
+        d = self.session.data
+        cc = d.char_class
         cd = CLASS_DISPLAY.get(cc) if cc else None
         if not cd:
             return
@@ -1189,32 +806,17 @@ class CharacterCreationApp(App[Character | None]):
             except Exception:
                 pass
 
-        # 只在有法術資料庫時驗證數量
-        has_cantrips_db = bool(_spells_for_class(cc, 0)) if cd.num_cantrips > 0 else False
-        has_spells_db = bool(_spells_for_class(cc, 1)) if cd.num_prepared_spells > 0 else False
-        ok, msg = validate_spell_selection(
-            cantrips_sel if has_cantrips_db else ["_"] * cd.num_cantrips,
-            spells_sel if has_spells_db else ["_"] * cd.num_prepared_spells,
-            cd.num_cantrips,
-            cd.num_prepared_spells,
-        )
-        if not ok:
-            raise ValueError(msg)
-
-        self._data["cantrips"] = cantrips_sel
-        self._data["spells"] = spells_sel
+        self.session.set_cantrips(cantrips_sel)
+        self.session.set_spells(spells_sel)
 
     def _collect_confirm(self) -> None:
         try:
             name_input = self.query_one("#name-input", Input)
-            val = name_input.value.strip()
-            if not val:
-                raise ValueError("角色名稱不能為空")
-            self._data["name"] = val
+            self.session.set_name(name_input.value)
         except ValueError:
             raise
-        except Exception:
-            raise ValueError("角色名稱不能為空")
+        except Exception as exc:
+            raise ValueError("角色名稱不能為空") from exc
 
     # ── Actions ───────────────────────────────────────────────────────────────
 
@@ -1235,7 +837,7 @@ class CharacterCreationApp(App[Character | None]):
 
         # 非施法職業跳過步驟 7
         if self._step == 6:
-            cc = self._data["char_class"]
+            cc = self.session.data.char_class
             cd = CLASS_DISPLAY.get(cc)
             if cd and cd.num_cantrips == 0 and cd.num_prepared_spells == 0:
                 self._step = 7  # 會被 += 1 變成 8
@@ -1249,7 +851,7 @@ class CharacterCreationApp(App[Character | None]):
         if self._step > 1:
             # 非施法職業從步驟 8 退回跳過 7
             if self._step == 8:
-                cc = self._data["char_class"]
+                cc = self.session.data.char_class
                 cd = CLASS_DISPLAY.get(cc)
                 if cd and cd.num_cantrips == 0 and cd.num_prepared_spells == 0:
                     self._step = 7  # 會被 -= 1 變成 6
@@ -1263,30 +865,24 @@ class CharacterCreationApp(App[Character | None]):
         if event.button.id in ("next-btn", "confirm-btn"):
             await self.action_next_step()
         elif event.button.id == "reroll-btn":
-            self._data["_rolled_values"] = roll_ability_scores()
-            self._data["_std_assign"] = {a: 0 for a in Ability}
+            self.session.reroll_abilities()
             await self._render_step()
+            self._update_preview()
 
     async def on_select_changed(self, event: Select.Changed) -> None:
         """Select 變更時即時更新。"""
         sel_id = event.select.id or ""
         if sel_id.startswith("pb-"):
-            # 即時更新 scores 和計算剩餘點數
-            total_cost = 0
-            scores: dict[Ability, int] = {}
+            # 即時更新 scores
             for ab in ABILITY_ORDER:
                 try:
                     sel = self.query_one(f"#pb-{ab.value}", Select)
                     val = sel.value
                     if isinstance(val, int):
-                        scores[ab] = val
-                        total_cost += POINT_BUY_COSTS.get(val, 0)
-                    else:
-                        scores[ab] = 8
+                        self.session.set_point_buy_score(ab, val)
                 except Exception:
-                    scores[ab] = 8
-            self._data["scores"] = scores
-            remaining = POINT_BUY_BUDGET - total_cost
+                    pass
+            remaining = self.session.get_point_buy_remaining()
             self._update_preview()
             severity = "error" if remaining < 0 else "information"
             self.notify(f"剩餘點數：{remaining}/{POINT_BUY_BUDGET}", severity=severity)
@@ -1295,17 +891,20 @@ class CharacterCreationApp(App[Character | None]):
             try:
                 sel2 = self.query_one("#adj-plus2", Select)
                 sel1 = self.query_one("#adj-plus1", Select)
-                if (isinstance(sel2.value, Ability) and isinstance(sel1.value, Ability)
-                        and sel2.value == sel1.value):
+                if (
+                    isinstance(sel2.value, Ability)
+                    and isinstance(sel1.value, Ability)
+                    and sel2.value == sel1.value
+                ):
                     self.notify("+2 和 +1 不能選同一屬性！", severity="error")
                 else:
-                    # 即時更新 bg_adjust 資料
-                    adj: dict[Ability, int] = {}
                     if isinstance(sel2.value, Ability):
-                        adj[sel2.value] = 2
-                    if isinstance(sel1.value, Ability) and sel1.value not in adj:
-                        adj[sel1.value] = 1
-                    self._data["bg_adjust"] = adj
+                        self.session.set_bg_adjust_plus2(sel2.value)
+                    if isinstance(sel1.value, Ability):
+                        import contextlib
+
+                        with contextlib.suppress(ValueError):
+                            self.session.set_bg_adjust_plus1(sel1.value)
                     self._update_preview()
             except Exception:
                 pass
@@ -1314,13 +913,14 @@ class CharacterCreationApp(App[Character | None]):
         """技能/法術勾選時即時更新預覽。"""
         sl_id = event.selection_list.id or ""
         if sl_id == "skills-list":
-            self._data["class_skills"] = list(event.selection_list.selected)
+            # 即時更新 session（不驗證數量，等 collect 時驗證）
+            self.session.data.skills = list(event.selection_list.selected)
             self._update_preview()
         elif sl_id == "cantrip-list":
-            self._data["cantrips"] = list(event.selection_list.selected)
+            self.session.data.cantrips = list(event.selection_list.selected)
             self._update_preview()
         elif sl_id == "spell-list":
-            self._data["spells"] = list(event.selection_list.selected)
+            self.session.data.spells = list(event.selection_list.selected)
             self._update_preview()
 
     async def on_input_submitted(self, event: Input.Submitted) -> None:
@@ -1335,14 +935,14 @@ class CharacterCreationApp(App[Character | None]):
             idx = event.radio_set.pressed_index
             if idx is not None:
                 keys = list(CLASS_DISPLAY.keys())
-                self._data["char_class"] = keys[idx]
+                self.session.set_class(keys[idx])
                 self._update_preview()
 
         elif rs_id == "bg-radio":
             idx = event.radio_set.pressed_index
             if idx is not None:
                 keys = list(BACKGROUND_REGISTRY.keys())
-                self._data["background"] = keys[idx]
+                self.session.set_background(keys[idx])
                 self._update_preview()
 
         elif rs_id == "species-radio":
@@ -1350,58 +950,60 @@ class CharacterCreationApp(App[Character | None]):
             if idx is not None:
                 keys = list(SPECIES_REGISTRY.keys())
                 new_sp = keys[idx]
-                old_sp = self._data.get("species", "")
-                self._data["species"] = new_sp
-                self._data["lineage"] = ""
+                old_sp = self.session.data.species
+                self.session.set_species(new_sp)
                 self._update_preview()
                 # 切換種族時重新渲染（顯示或隱藏血統選項）
                 if new_sp != old_sp:
                     await self._render_step()
 
         elif rs_id == "lineage-radio":
-            sp_id = self._data.get("species", "")
+            sp_id = self.session.data.species
             if sp_id in SPECIES_REGISTRY:
                 sd = SPECIES_REGISTRY[sp_id]
                 idx = event.radio_set.pressed_index
                 if idx is not None and idx < len(sd.lineage_options):
-                    self._data["lineage"] = sd.lineage_options[idx].id
+                    self.session.set_species(sp_id, sd.lineage_options[idx].id)
                     self._update_preview()
 
         elif rs_id == "adjust-mode-radio":
             idx = event.radio_set.pressed_index
             if idx is not None:
                 mode = ["+1/+1/+1", "+2/+1"][idx]
-                self._data["bg_adjust_mode"] = mode
-                # 即時更新 bg_adjust
-                bg_id = self._data["background"]
-                if mode == "+1/+1/+1" and bg_id in BACKGROUND_REGISTRY:
-                    bg = BACKGROUND_REGISTRY[bg_id]
-                    self._data["bg_adjust"] = {a: 1 for a in bg.ability_tags}
+                self.session.set_bg_adjust_mode(mode)
                 await self._render_step()
 
         elif rs_id == "bg-equip-radio":
             idx = event.radio_set.pressed_index
             if idx is not None:
-                self._data["bg_equipment"] = "A" if idx == 0 else "B"
+                bg_eq = "A" if idx == 0 else "B"
+                cls_eq = self.session.data.class_equipment or "A"
+                self.session.set_equipment(bg_eq, cls_eq)
                 self._update_preview()
 
         elif rs_id == "cls-equip-radio":
             idx = event.radio_set.pressed_index
             if idx is not None:
-                self._data["class_equipment"] = "A" if idx == 0 else "B"
+                bg_eq = self.session.data.bg_equipment or "A"
+                cls_eq = "A" if idx == 0 else "B"
+                self.session.set_equipment(bg_eq, cls_eq)
                 self._update_preview()
 
         elif rs_id == "method-radio":
             idx = event.radio_set.pressed_index
             if idx is not None:
-                self._data["score_method"] = ["standard", "point_buy", "roll"][idx]
+                method = ["standard", "point_buy", "roll"][idx]
+                self.session.set_ability_method(method)
                 await self._render_step()
 
     def _finish(self) -> None:
         try:
             self._collect_step_data(TOTAL_STEPS)
-            char = self._build_character()
-            # 自動存檔角色卡
+            ok, msg = self.session.validate()
+            if not ok:
+                self.notify(msg, severity="error")
+                return
+            char = self.session.build_character()
             from tot.tui.character_io import save_character
 
             saved_path = save_character(char)
