@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 from tot.models.enums import Ability, Skill
 
@@ -379,9 +379,7 @@ SPECIES_REGISTRY: dict[str, SpeciesData] = {
         speed="9m",
         traits=("暗視", "侏儒狡詐", "侏儒血統"),
         traits_description=(
-            "18m 暗視。"
-            "侏儒狡詐：INT/WIS/CHA 豁免有優勢。"
-            "侏儒血統：依血統獲得不同魔法能力。"
+            "18m 暗視。侏儒狡詐：INT/WIS/CHA 豁免有優勢。侏儒血統：依血統獲得不同魔法能力。"
         ),
         lineage_options=(
             LineageOption(
@@ -414,13 +412,9 @@ SPECIES_REGISTRY: dict[str, SpeciesData] = {
         lineage_options=(
             LineageOption("cloud", "雲巨人", "Cloud's Jaunt", "附贈動作傳送至 9m 內。"),
             LineageOption("fire", "火巨人", "Fire's Burn", "命中時額外 1d10 火焰傷害。"),
-            LineageOption(
-                "frost", "冰巨人", "Frost's Chill", "命中時額外 1d6 寒冷傷害，降速 3m。"
-            ),
+            LineageOption("frost", "冰巨人", "Frost's Chill", "命中時額外 1d6 寒冷傷害，降速 3m。"),
             LineageOption("hill", "丘巨人", "Hill's Tumble", "命中大型或更小生物可使其倒地。"),
-            LineageOption(
-                "stone", "石巨人", "Stone's Endurance", "受傷時反應擲 1d12+CON 減傷。"
-            ),
+            LineageOption("stone", "石巨人", "Stone's Endurance", "受傷時反應擲 1d12+CON 減傷。"),
             LineageOption(
                 "storm", "風暴巨人", "Storm's Thunder", "18m 內生物對你造傷時反應 1d8 雷鳴。"
             ),
@@ -478,9 +472,7 @@ SPECIES_REGISTRY: dict[str, SpeciesData] = {
         speed="9m",
         traits=("暗視", "魔裔傳承", "異界風采"),
         traits_description=(
-            "18m 暗視。"
-            "魔裔傳承：依傳承獲得傷害抗性+戲法+3/5 級法術。"
-            "異界風采：奇術戲法。"
+            "18m 暗視。魔裔傳承：依傳承獲得傷害抗性+戲法+3/5 級法術。異界風采：奇術戲法。"
         ),
         lineage_options=(
             LineageOption(

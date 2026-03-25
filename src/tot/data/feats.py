@@ -6,7 +6,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 from tot.models.enums import Skill
 
@@ -55,8 +55,7 @@ ORIGIN_FEAT_REGISTRY: dict[str, FeatData] = {
         name_en="Alert",
         category="起源",
         description=(
-            "先攻熟練：擲先攻時加上熟練加值。"
-            "先攻交換：擲完先攻後，可與一名自願盟友交換先攻順序。"
+            "先攻熟練：擲先攻時加上熟練加值。先攻交換：擲完先攻後，可與一名自願盟友交換先攻順序。"
         ),
     ),
     "Crafter": FeatData(
@@ -87,8 +86,7 @@ ORIGIN_FEAT_REGISTRY: dict[str, FeatData] = {
         name_en="Lucky",
         category="起源",
         description=(
-            "幸運點數 = 熟練加值，長休恢復。"
-            "消耗 1 點給自己 d20 檢定優勢，或給敵人攻擊擲骰劣勢。"
+            "幸運點數 = 熟練加值，長休恢復。消耗 1 點給自己 d20 檢定優勢，或給敵人攻擊擲骰劣勢。"
         ),
     ),
     "Magic Initiate: Cleric": FeatData(
