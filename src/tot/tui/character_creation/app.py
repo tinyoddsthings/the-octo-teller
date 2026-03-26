@@ -115,6 +115,8 @@ class CharacterCreationApp(App[Character | None]):
         self.session = CharacterCreationSession()
         # 多選上限追蹤：{widget_id: [value_order]}
         self._selection_order: dict[str, list] = {}
+        # 防止 re-render 時事件循環
+        self._rendering: bool = False
 
     # ── Step helpers ───────────────────────────────────────────────────────
 
@@ -154,6 +156,7 @@ class CharacterCreationApp(App[Character | None]):
 
     async def _render_step(self) -> None:
         """清除左側面板，重建當步 widgets。"""
+        self._rendering = True
         left = self.query_one("#left-panel", Vertical)
         await left.remove_children()
 
@@ -194,6 +197,7 @@ class CharacterCreationApp(App[Character | None]):
             widgets.append(Button("確認 →  (Ctrl+N)", id="next-btn", variant="primary"))
 
         await left.mount(*widgets)
+        self._rendering = False
 
     def _widgets_placeholder(self, w: list) -> None:
         """未實作步驟的佔位。"""
@@ -1346,6 +1350,8 @@ class CharacterCreationApp(App[Character | None]):
         self, event: SelectionList.SelectedChanged
     ) -> None:
         """技能/法術勾選時即時更新預覽，超過上限自動取消最早的。"""
+        if self._rendering:
+            return  # re-render 時的事件，忽略
         sl = event.selection_list
         sl_id = sl.id or ""
         limit = self._get_selection_limit(sl_id)
