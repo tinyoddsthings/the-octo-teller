@@ -7,14 +7,22 @@ TUI 和未來的 LLM Narrator 都呼叫同一套 API。
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from enum import StrEnum
 
-from tot.data.classes import CLASS_DISPLAY, STANDARD_ARRAY_SUGGESTION
+from tot.data.classes import (
+    CLASS_DISPLAY,
+    INVOCATION_REGISTRY,
+    STANDARD_ARRAY_SUGGESTION,
+    InvocationData,
+)
 from tot.data.feats import ORIGIN_FEAT_REGISTRY, FeatData
 from tot.data.origins import (
     ABILITY_ZH,
     BACKGROUND_REGISTRY,
     SKILL_ZH,
     SPECIES_REGISTRY,
+    TOOL_DATA,
+    TOOL_ZH,
 )
 from tot.gremlins.bone_engine.character import (
     CLASS_REGISTRY,
@@ -27,9 +35,31 @@ from tot.gremlins.bone_engine.character import (
     validate_spell_selection,
 )
 from tot.gremlins.bone_engine.dice import roll_ability_scores
-from tot.gremlins.bone_engine.spells import list_spells
+from tot.gremlins.bone_engine.spells import list_spells, load_spell_db
 from tot.models.creature import AbilityScores, Character
-from tot.models.enums import Ability, Skill
+from tot.models.enums import TOOL_CATEGORY_MAP, Ability, Skill, Tool
+
+# ── 建角步驟類型 ──────────────────────────────────────────────────────────────
+
+
+class StepType(StrEnum):
+    CLASS = "class"
+    BACKGROUND = "background"
+    SPECIES = "species"
+    ABILITY_SCORES = "ability_scores"
+    SKILLS = "skills"
+    DIVINE_ORDER = "divine_order"
+    PRIMAL_ORDER = "primal_order"
+    FIGHTING_STYLE = "fighting_style"
+    WEAPON_MASTERY = "weapon_mastery"
+    EXPERTISE = "expertise"
+    LANGUAGE = "language"
+    INVOCATIONS = "invocations"
+    CANTRIPS = "cantrips"
+    SPELLS = "spells"
+    EQUIPMENT = "equipment"
+    CONFIRM = "confirm"
+
 
 # ── 常數 ──────────────────────────────────────────────────────────────────────
 
@@ -88,8 +118,29 @@ class CharacterCreationData:
     cantrips: list = field(default_factory=list)  # en_name 列表
     spells: list = field(default_factory=list)  # en_name 列表
     name: str = ""
-    # 內部暫存
+    # Human 多藝：選的起源專長 ID（如 "Skilled"）
+    species_feat: str = ""
+    # Tiefling 魔裔傳承：施法屬性選擇（選血統時決定，永久）
+    species_spellcasting_ability: Ability | None = None
+    # 背景「任選一種」工具的選擇
+    bg_tool_choice: Tool | None = None
+    # Skilled 專長的工具選位（如果選了工具而非技能）
+    feat_tool_choices: list = field(default_factory=list)  # list[Tool]
+    # Magic Initiate 專長法術選擇
+    feat_spellcasting_ability: Ability | None = None  # 施法屬性（INT/WIS/CHA）
+    feat_cantrips: list = field(default_factory=list)  # 專長戲法 en_name 列表
+    feat_spells: list = field(default_factory=list)  # 專長 1 環法術 en_name 列表
+    # 魔能祈喚（Warlock）
+    invocations: list = field(default_factory=list)  # 選的祈喚 ID 列表
+    # 契約之書（Pact of the Tome）
+    tome_cantrips: list = field(default_factory=list)  # 契約之書 3 戲法 en_name
+    tome_rituals: list = field(default_factory=list)  # 契約之書 2 儀式 en_name
+    # 體型選擇（中型或小型種族可選）
+    species_size: str = ""  # "中型" / "小型"，空=由種族決定
+    # 內部暫存（各方法的 scores 持久化，切換方法時保留）
     rolled_values: list = field(default_factory=list)
+    _scores_point_buy: dict = field(default_factory=dict)
+    _scores_roll: dict = field(default_factory=dict)
 
 
 # ── 狀態機 ────────────────────────────────────────────────────────────────────
@@ -100,6 +151,73 @@ class CharacterCreationSession:
 
     def __init__(self) -> None:
         self.data = CharacterCreationData()
+
+    # ── 動態步驟 ──────────────────────────────────────────────────────────────
+
+    def get_steps(self) -> list[StepType]:
+        """依當前職業動態計算步驟列表。"""
+        steps = [
+            StepType.CLASS,
+            StepType.BACKGROUND,
+            StepType.SPECIES,
+            StepType.ABILITY_SCORES,
+            StepType.SKILLS,
+        ]
+        cc = self.data.char_class
+
+        # 職業特有步驟
+        if cc == "Cleric":
+            steps.append(StepType.DIVINE_ORDER)
+        elif cc == "Druid":
+            steps.append(StepType.PRIMAL_ORDER)
+        elif cc == "Fighter":
+            steps.append(StepType.FIGHTING_STYLE)
+        elif cc == "Rogue":
+            steps.extend([StepType.EXPERTISE, StepType.LANGUAGE])
+        elif cc == "Warlock":
+            steps.append(StepType.INVOCATIONS)
+
+        # 武器精通
+        if cc in ("Barbarian", "Fighter", "Paladin", "Ranger", "Rogue"):
+            steps.append(StepType.WEAPON_MASTERY)
+
+        # 戲法（職業戲法、專長戲法、或契約之書戲法）
+        cd = CLASS_DISPLAY.get(cc)
+        has_class_cantrips = cd and cd.num_cantrips > 0
+        has_feat_spells = self.has_feat_spell_choices()
+        has_tome = self.has_pact_of_the_tome()
+        if has_class_cantrips or has_feat_spells or has_tome:
+            steps.append(StepType.CANTRIPS)
+
+        # 法術（職業 1 環法術、專長 1 環法術）
+        has_class_spells = cd and cd.num_prepared_spells > 0
+        if has_class_spells or has_feat_spells:
+            steps.append(StepType.SPELLS)
+
+        steps.extend([StepType.EQUIPMENT, StepType.CONFIRM])
+        return steps
+
+    def get_step_title(self, step: StepType) -> str:
+        """取得步驟的中文標題。"""
+        titles = {
+            StepType.CLASS: "選擇職業",
+            StepType.BACKGROUND: "選擇背景",
+            StepType.SPECIES: "選擇種族",
+            StepType.ABILITY_SCORES: "設定屬性值",
+            StepType.SKILLS: "選擇技能",
+            StepType.DIVINE_ORDER: "神聖秩序",
+            StepType.PRIMAL_ORDER: "原初秩序",
+            StepType.FIGHTING_STYLE: "戰鬥風格",
+            StepType.WEAPON_MASTERY: "武器精通",
+            StepType.EXPERTISE: "專精",
+            StepType.LANGUAGE: "額外語言",
+            StepType.INVOCATIONS: "魔能祈喚",
+            StepType.CANTRIPS: "選擇戲法",
+            StepType.SPELLS: "選擇法術",
+            StepType.EQUIPMENT: "選擇裝備",
+            StepType.CONFIRM: "角色名稱＋確認",
+        }
+        return titles.get(step, str(step))
 
     # ── 設定選擇 ──────────────────────────────────────────────────────────────
 
@@ -113,6 +231,7 @@ class CharacterCreationSession:
             self.data.rolled_values = []
             self.data.cantrips = []
             self.data.spells = []
+            self.data.invocations = []
         self.data.char_class = class_id
 
     def set_background(self, bg_id: str) -> None:
@@ -121,6 +240,12 @@ class CharacterCreationSession:
             raise ValueError(f"未知背景: {bg_id!r}")
         if bg_id != self.data.background:
             self.data.skills = []
+            self.data.feat_tool_choices = []
+            self.data.bg_tool_choice = None
+            # 重設專長法術選擇（背景專長可能改變）
+            self.data.feat_spellcasting_ability = None
+            self.data.feat_cantrips = []
+            self.data.feat_spells = []
             # 重設背景調整
             self.data.bg_adjust_mode = "+1/+1/+1"
             self.data.bg_adjust = {}
@@ -131,9 +256,18 @@ class CharacterCreationSession:
             self.data.bg_adjust = {a: 1 for a in bg.ability_tags}
 
     def set_species(self, species_id: str, lineage_id: str = "") -> None:
-        """設定種族。若有血統選項但未指定，自動選第一個。"""
+        """設定種族。若有血統選項但未指定，自動選第一個。
+
+        若種族有 feat_choice_count > 0（如 Human 多藝），species_feat 預設為空（等 TUI 設定）。
+        """
         if species_id not in SPECIES_REGISTRY:
             raise ValueError(f"未知種族: {species_id!r}")
+        if species_id != self.data.species:
+            # 切換種族時清空種族相關選擇
+            self.data.species_feat = ""
+            self.data.species_spellcasting_ability = None
+            self.data.species_size = ""
+            self.data.skills = []
         self.data.species = species_id
         sd = SPECIES_REGISTRY[species_id]
         if sd.lineage_options:
@@ -148,26 +282,54 @@ class CharacterCreationSession:
         else:
             self.data.lineage = ""
 
+    def set_species_size(self, size: str) -> None:
+        """設定體型選擇（中型或小型種族可選）。"""
+        if size not in ("中型", "小型"):
+            raise ValueError(f"體型只能是「中型」或「小型」，收到 {size!r}")
+        self.data.species_size = size
+
+    def has_size_choice(self) -> bool:
+        """種族是否需要選擇體型。"""
+        sp = SPECIES_REGISTRY.get(self.data.species)
+        return sp is not None and sp.size == "中型或小型"
+
     def set_ability_method(self, method: str) -> None:
         """設定屬性值生成方式。"standard" / "point_buy" / "roll"。
 
+        切換方法時保存當前 scores 到對應暫存，恢復時載回。
         standard：自動帶入 STANDARD_ARRAY_SUGGESTION[class]。
+        point_buy：首次預設標準陣列配法，之後恢復上次設定。
         roll：若尚無 rolled_values，自動擲骰並按職業優先度分配。
-        point_buy：重設為全 8。
         """
         if method not in ("standard", "point_buy", "roll"):
             raise ValueError(f"不支援的屬性生成方式: {method!r}")
+
+        # 保存當前方法的 scores
+        old_method = self.data.score_method
+        if old_method == "point_buy":
+            self.data._scores_point_buy = dict(self.data.scores)
+        elif old_method == "roll":
+            self.data._scores_roll = dict(self.data.scores)
+
         self.data.score_method = method
 
         if method == "standard":
             self._apply_standard_array()
         elif method == "point_buy":
-            self.data.scores = {a: 8 for a in Ability}
+            if self.data._scores_point_buy:
+                # 恢復上次的點數購買設定
+                self.data.scores = dict(self.data._scores_point_buy)
+            else:
+                # 首次：預設標準陣列配法
+                self._apply_standard_array()
+                self.data._scores_point_buy = dict(self.data.scores)
         elif method == "roll":
-            if not self.data.rolled_values:
+            if self.data._scores_roll:
+                # 恢復上次的擲骰分配
+                self.data.scores = dict(self.data._scores_roll)
+            elif not self.data.rolled_values:
                 self.reroll_abilities()
             else:
-                # 已有擲骰結果，重新分配
                 self._auto_assign_rolls(self.data.rolled_values)
 
     def set_point_buy_score(self, ability: Ability, value: int) -> None:
@@ -289,27 +451,167 @@ class CharacterCreationSession:
             raise ValueError("角色名稱不能為空")
         self.data.name = stripped
 
+    def set_species_feat(self, feat_id: str) -> None:
+        """設定 Human 多藝選的起源專長。
+
+        驗證 feat_id 在 ORIGIN_FEAT_REGISTRY 中。切換時清空技能與工具選位。
+        """
+        if feat_id not in ORIGIN_FEAT_REGISTRY:
+            raise ValueError(f"未知起源專長: {feat_id!r}")
+        if feat_id != self.data.species_feat:
+            self.data.skills = []
+            self.data.feat_tool_choices = []
+            # 重設專長法術選擇（多藝專長可能改變）
+            self.data.feat_spellcasting_ability = None
+            self.data.feat_cantrips = []
+            self.data.feat_spells = []
+        self.data.species_feat = feat_id
+
+    def set_species_spellcasting_ability(self, ability: Ability) -> None:
+        """設定種族血統法術的施法屬性（如 Tiefling 魔裔傳承）。
+
+        選擇傳承時決定，永久綁定。只接受 INT/WIS/CHA。
+        """
+        if ability not in (Ability.INT, Ability.WIS, Ability.CHA):
+            raise ValueError("血統法術施法屬性只能是 INT/WIS/CHA")
+        sp_id = self.data.species
+        if sp_id and sp_id in SPECIES_REGISTRY:
+            sd = SPECIES_REGISTRY[sp_id]
+            if not sd.has_lineage_spellcasting_choice:
+                raise ValueError(f"{sd.name_zh} 不需要選擇血統法術施法屬性")
+        self.data.species_spellcasting_ability = ability
+
+    def set_bg_tool_choice(self, tool: Tool) -> None:
+        """設定背景「任選一種」工具。
+
+        驗證 tool 在對應的 ToolCategory 中。
+        """
+        bg_id = self.data.background
+        if not bg_id or bg_id not in BACKGROUND_REGISTRY:
+            raise ValueError("請先選擇背景")
+        bg = BACKGROUND_REGISTRY[bg_id]
+        if bg.tool_proficiency_category is None:
+            raise ValueError(f"背景 {bg.name_zh} 的工具熟練是固定的，無需選擇")
+        expected_cat = bg.tool_proficiency_category
+        actual_cat = TOOL_CATEGORY_MAP.get(tool)
+        if actual_cat != expected_cat:
+            raise ValueError(
+                f"工具 {TOOL_ZH.get(tool, tool.value)} 不屬於類別 {expected_cat.value}"
+            )
+        self.data.bg_tool_choice = tool
+
+    def set_feat_tool_choices(self, tools: list[Tool]) -> None:
+        """設定 Skilled 專長選的工具（技能或工具混合選位中的工具部分）。"""
+        self.data.feat_tool_choices = list(tools)
+
+    def set_feat_spellcasting_ability(self, ability: Ability) -> None:
+        """設定 Magic Initiate 的施法屬性。"""
+        if ability not in (Ability.INT, Ability.WIS, Ability.CHA):
+            raise ValueError("Magic Initiate 施法屬性只能是 INT/WIS/CHA")
+        self.data.feat_spellcasting_ability = ability
+
+    def set_feat_cantrips(self, cantrips: list[str]) -> None:
+        """設定專長戲法選擇（en_name 列表）。"""
+        self.data.feat_cantrips = list(cantrips)
+
+    def set_feat_spells(self, spells: list[str]) -> None:
+        """設定專長 1 環法術選擇（en_name 列表）。"""
+        self.data.feat_spells = list(spells)
+
+    def set_invocations(self, invocation_ids: list[str]) -> None:
+        """設定魔能祈喚選擇（Warlock）。驗證數量和合法性。"""
+        expected = self.get_num_invocations()
+        if len(invocation_ids) != expected:
+            raise ValueError(f"需選 {expected} 項祈喚，收到 {len(invocation_ids)}")
+        available_ids = {inv.id for inv in self.get_available_invocations()}
+        for inv_id in invocation_ids:
+            if inv_id not in available_ids:
+                raise ValueError(f"祈喚 {inv_id!r} 不在可選範圍內")
+        # 如果取消了契約之書，清空 tome_cantrips 和 tome_rituals
+        if "Pact of the Tome" not in invocation_ids:
+            self.data.tome_cantrips = []
+            self.data.tome_rituals = []
+        self.data.invocations = list(invocation_ids)
+
+    def get_available_invocations(self) -> list[InvocationData]:
+        """取得當前等級（1 級）可選的魔能祈喚列表。"""
+        return [inv for inv in INVOCATION_REGISTRY.values() if inv.min_level <= 1]
+
+    def get_num_invocations(self) -> int:
+        """取得職業的祈喚選位數。"""
+        cc = self.data.char_class
+        cd = CLASS_DISPLAY.get(cc)
+        return cd.num_invocations if cd else 0
+
+    def has_pact_of_the_tome(self) -> bool:
+        """是否選了契約之書祈喚。"""
+        return "Pact of the Tome" in self.data.invocations
+
+    def get_available_tome_cantrips(self) -> list[dict]:
+        """全職業戲法，排除已有的（種族+職業+專長+書已選的）。"""
+        db = load_spell_db()
+        all_cantrips = [s for s in db.values() if s.level == 0]
+        # 排除已選的
+        excluded = set(self.get_species_granted_cantrips())
+        excluded.update(self.data.cantrips)
+        excluded.update(self.data.feat_cantrips)
+        excluded.update(self.data.tome_cantrips)
+        return [_spell_to_dict(s) for s in all_cantrips if s.en_name not in excluded]
+
+    def get_available_tome_rituals(self) -> list[dict]:
+        """全職業 1 環 ritual=True 法術，排除已備妥的。"""
+        db = load_spell_db()
+        rituals = [s for s in db.values() if s.level == 1 and s.ritual]
+        # 排除已選的
+        excluded = set(self.data.spells)
+        excluded.update(self.data.feat_spells)
+        excluded.update(self.data.tome_rituals)
+        return [_spell_to_dict(s) for s in rituals if s.en_name not in excluded]
+
+    def set_tome_cantrips(self, cantrips: list[str]) -> None:
+        """設定契約之書的 3 個戲法。"""
+        if len(cantrips) != 3:
+            raise ValueError("契約之書需選 3 個戲法")
+        self.data.tome_cantrips = list(cantrips)
+
+    def set_tome_rituals(self, rituals: list[str]) -> None:
+        """設定契約之書的 2 個儀式法術。"""
+        if len(rituals) != 2:
+            raise ValueError("契約之書需選 2 個儀式法術")
+        self.data.tome_rituals = list(rituals)
+
     # ── 查詢可選項 ────────────────────────────────────────────────────────────
 
     def get_available_skills(self) -> list[Skill]:
-        """取得可選技能清單：(FeatPool ∪ ClassList) - BackgroundSkills。
+        """取得可選技能清單。
+
+        (AllFeatPools ∪ ClassList ∪ AllSkills if Human多才) - BackgroundSkills。
 
         職業技能優先排列。
         """
         cc = self.data.char_class
         bg_skill_set = set(self._get_bg_skills())
 
-        feat = self.get_origin_feat()
-        feat_count = feat.skill_choice_count if feat and feat.skill_choice_count > 0 else 0
+        origin_feats = self.get_origin_feats()
+        has_human_versatility = self._has_species_skill_choice()
 
         candidate_set: set[Skill] = set()
 
-        # 專長池
-        if feat_count > 0:
-            if feat.skill_choice_pool:
-                candidate_set.update(feat.skill_choice_pool)
+        # 所有起源專長的技能池
+        for feat in origin_feats:
+            if feat.skill_choice_count > 0:
+                if feat.skill_choice_pool:
+                    candidate_set.update(feat.skill_choice_pool)
+                else:
+                    candidate_set.update(Skill)  # 全 18 項
+
+        # 種族自選技能（Human 多才：全 18 項；Elf 敏銳感官：限定池）
+        if has_human_versatility:
+            sp = SPECIES_REGISTRY.get(self.data.species)
+            if sp and sp.skill_choice_pool:
+                candidate_set.update(sp.skill_choice_pool)
             else:
-                candidate_set.update(Skill)  # 全 18 項
+                candidate_set.update(Skill)
 
         # 職業池
         cls_set: set[Skill] = set()
@@ -324,22 +626,56 @@ class CharacterCreationSession:
         return sorted(candidate_set, key=lambda s: (s not in cls_set, s.value))
 
     def get_total_skill_picks(self) -> int:
-        """取得總技能選位數 = feat_count + cls_count。"""
-        feat = self.get_origin_feat()
-        feat_count = feat.skill_choice_count if feat and feat.skill_choice_count > 0 else 0
+        """取得總技能選位數。
+
+        = sum(feat.skill_choice_count) + cls_count + species.skill_choice_count。
+
+        注意：Skilled 的 skill_choice_count 包含了「技能或工具」的混合選位，
+        實際技能選位 = skill_choice_count - len(feat_tool_choices)。
+        """
+        origin_feats = self.get_origin_feats()
+        feat_count = sum(f.skill_choice_count for f in origin_feats if f.skill_choice_count > 0)
+        # 扣除已分配給工具的選位
+        feat_count -= len(self.data.feat_tool_choices)
+
+        # Human 多才
+        species_count = 0
+        sp_id = self.data.species
+        if sp_id and sp_id in SPECIES_REGISTRY:
+            species_count = SPECIES_REGISTRY[sp_id].skill_choice_count
+
         cls_count = 0
         cc = self.data.char_class
         if cc and cc in CLASS_REGISTRY:
             cls_count = CLASS_REGISTRY[cc].num_skills
-        return feat_count + cls_count
+
+        return feat_count + cls_count + species_count
+
+    def get_species_granted_cantrips(self) -> list[str]:
+        """取得種族/血統固定給的戲法 en_name 列表。"""
+        result: list[str] = []
+        sp_id = self.data.species
+        if sp_id and sp_id in SPECIES_REGISTRY:
+            sd = SPECIES_REGISTRY[sp_id]
+            result.extend(sd.granted_cantrips)
+            # 血統給的
+            lin_id = self.data.lineage
+            if lin_id:
+                for lo in sd.lineage_options:
+                    if lo.id == lin_id:
+                        result.extend(lo.granted_cantrips)
+                        break
+        return result
 
     def get_available_cantrips(self) -> list[dict]:
-        """取得可選戲法列表（dict 含 name, en_name, damage_type, effect_type 等）。"""
+        """取得可選戲法列表，排除種族/血統已給的和契約之書已選的。"""
         cc = self.data.char_class
         if not cc:
             return []
+        excluded = set(self.get_species_granted_cantrips())
+        excluded.update(self.data.tome_cantrips)
         spells = list_spells(level=0, char_class=cc)
-        return [_spell_to_dict(s) for s in spells]
+        return [_spell_to_dict(s) for s in spells if s.en_name not in excluded]
 
     def get_available_spells(self) -> list[dict]:
         """取得可選 1 環法術列表。"""
@@ -348,6 +684,33 @@ class CharacterCreationSession:
             return []
         spells = list_spells(level=1, char_class=cc)
         return [_spell_to_dict(s) for s in spells]
+
+    def get_available_feat_cantrips(self) -> list[dict]:
+        """取得專長可選戲法列表（從 spell_class 的戲法列表）。"""
+        feat = self._get_spell_feat()
+        if not feat:
+            return []
+        spells = list_spells(level=0, char_class=feat.spell_class)
+        return [_spell_to_dict(s) for s in spells]
+
+    def get_available_feat_spells(self) -> list[dict]:
+        """取得專長可選 1 環法術列表（從 spell_class 的法術列表）。"""
+        feat = self._get_spell_feat()
+        if not feat:
+            return []
+        spells = list_spells(level=1, char_class=feat.spell_class)
+        return [_spell_to_dict(s) for s in spells]
+
+    def has_feat_spell_choices(self) -> bool:
+        """檢查所有起源專長是否有法術選擇。"""
+        return any(f.has_spell_choice for f in self.get_origin_feats())
+
+    def _get_spell_feat(self) -> FeatData | None:
+        """取得有法術選擇的起源專長（第一個 has_spell_choice=True 的）。"""
+        for f in self.get_origin_feats():
+            if f.has_spell_choice and f.spell_class:
+                return f
+        return None
 
     def get_bg_adjust_tags(self) -> list[Ability]:
         """取得背景的三項可調屬性。"""
@@ -361,6 +724,18 @@ class CharacterCreationSession:
         total_cost = sum(POINT_BUY_COSTS.get(self.data.scores.get(a, 8), 0) for a in Ability)
         return POINT_BUY_BUDGET - total_cost
 
+    def format_score_line(self, ability: Ability) -> str:
+        """格式化單一屬性的顯示文字（含修正值）。"""
+        val = self.data.scores.get(ability, 10)
+        mod = (val - 10) // 2
+        sign = "+" if mod >= 0 else ""
+        name = ABILITY_ZH.get(ability, ability.value)
+        return f"  {name}（{ability.value}）：{val}（{sign}{mod}）"
+
+    def sync_point_buy_cache(self) -> None:
+        """將當前 scores 同步到點數購買暫存。由 TUI 在改動後呼叫。"""
+        self.data._scores_point_buy = dict(self.data.scores)
+
     def get_computed_scores(self) -> dict[Ability, int]:
         """取得最終屬性值（base + bg_adjust），上限 20。"""
         result: dict[Ability, int] = {}
@@ -371,17 +746,57 @@ class CharacterCreationSession:
         return result
 
     def get_origin_feat(self) -> FeatData | None:
-        """取得當前背景的起源專長資料。"""
+        """取得當前背景的起源專長資料（向後相容）。"""
         bg_id = self.data.background
         if bg_id and bg_id in BACKGROUND_REGISTRY:
             feat_id = BACKGROUND_REGISTRY[bg_id].feat
             return ORIGIN_FEAT_REGISTRY.get(feat_id)
         return None
 
+    def get_origin_feats(self) -> list[FeatData]:
+        """取得所有起源專長：背景專長 + Human 多藝選的專長。"""
+        feats: list[FeatData] = []
+        # 背景專長
+        bg_id = self.data.background
+        if bg_id and bg_id in BACKGROUND_REGISTRY:
+            feat_id = BACKGROUND_REGISTRY[bg_id].feat
+            feat = ORIGIN_FEAT_REGISTRY.get(feat_id)
+            if feat:
+                feats.append(feat)
+        # Human 多藝
+        if self.data.species_feat:
+            species_feat = ORIGIN_FEAT_REGISTRY.get(self.data.species_feat)
+            if species_feat:
+                feats.append(species_feat)
+        return feats
+
     def has_feat_skill_choices(self) -> bool:
         """當前起源專長是否有技能選位。"""
-        feat = self.get_origin_feat()
-        return feat is not None and feat.skill_choice_count > 0
+        return any(f.skill_choice_count > 0 for f in self.get_origin_feats())
+
+    def get_tools_from_background(self) -> list[Tool]:
+        """取得背景提供的工具熟練清單（固定 + 任選一種的選擇）。"""
+        bg_id = self.data.background
+        if not bg_id or bg_id not in BACKGROUND_REGISTRY:
+            return []
+        bg = BACKGROUND_REGISTRY[bg_id]
+        tools: list[Tool] = []
+        if bg.tool_proficiency_enum is not None:
+            tools.append(bg.tool_proficiency_enum)
+        if bg.tool_proficiency_category is not None and self.data.bg_tool_choice is not None:
+            tools.append(self.data.bg_tool_choice)
+        return tools
+
+    def get_available_bg_tools(self) -> list[Tool]:
+        """回傳背景「任選一種」的可選工具清單（依 ToolCategory 過濾）。"""
+        bg_id = self.data.background
+        if not bg_id or bg_id not in BACKGROUND_REGISTRY:
+            return []
+        bg = BACKGROUND_REGISTRY[bg_id]
+        if bg.tool_proficiency_category is None:
+            return []
+        cat = bg.tool_proficiency_category
+        return [t for t, c in TOOL_CATEGORY_MAP.items() if c == cat]
 
     # ── 摘要 ──────────────────────────────────────────────────────────────────
 
@@ -445,6 +860,20 @@ class CharacterCreationSession:
                 )
                 if lo:
                     lines.append(f"  血統：{lo.name_zh}（{lo.name_en}）— {lo.description}")
+            # Tiefling 等：血統法術施法屬性
+            if sd.has_lineage_spellcasting_choice:
+                sa = d.species_spellcasting_ability
+                sa_name = ABILITY_ZH.get(sa, "未選") if sa else "未選"
+                lines.append(f"  血統法術施法屬性：{sa_name}")
+            # 種族/血統已有的戲法
+            granted = self.get_species_granted_cantrips()
+            if granted:
+                db = load_spell_db()
+                names = []
+                for en in granted:
+                    sp = db.get(en) or next((s for s in db.values() if s.en_name == en), None)
+                    names.append(sp.name if sp else en)
+                lines.append(f"  種族戲法：{', '.join(names)}")
             lines.append("")
 
         # 屬性值
@@ -464,10 +893,47 @@ class CharacterCreationSession:
                 )
             lines.append("")
 
+        # Human 多藝選的起源專長
+        if d.species_feat:
+            sp_feat = ORIGIN_FEAT_REGISTRY.get(d.species_feat)
+            if sp_feat:
+                lines.append(f"多藝專長：{sp_feat.name_zh}（{sp_feat.name_en}）")
+                lines.append(f"    {sp_feat.description}")
+                lines.append("")
+
         # 技能
         if d.skills:
             sk_str = ", ".join(SKILL_ZH.get(s, s.value) for s in d.skills)
             lines.append(f"技能熟練：{sk_str}")
+            lines.append("")
+
+        # 工具熟練
+        all_tools: list[Tool] = []
+        tool_sources: dict[Tool, str] = {}
+        # 背景工具
+        bg_tools = self.get_tools_from_background()
+        for t in bg_tools:
+            if t not in all_tools:
+                all_tools.append(t)
+                tool_sources[t] = "背景"
+        # Skilled 專長的工具選位
+        for t in d.feat_tool_choices:
+            if t not in all_tools:
+                all_tools.append(t)
+                tool_sources[t] = "博學"
+        if all_tools:
+            parts: list[str] = []
+            for t in all_tools:
+                name = TOOL_ZH.get(t, t.value)
+                info = TOOL_DATA.get(t)
+                desc = f"（{info.ability}）{info.utilize}" if info else ""
+                craft = f"　製作：{info.craft}" if info and info.craft else ""
+                parts.append(f"{name}（{tool_sources[t]}）")
+                if desc:
+                    parts[-1] += f" — {desc}{craft}"
+            lines.append("工具熟練：")
+            for p in parts:
+                lines.append(f"  {p}")
             lines.append("")
 
         # 裝備
@@ -485,7 +951,21 @@ class CharacterCreationSession:
             lines.extend(equip_lines)
             lines.append("")
 
-        # 戲法與法術
+        # 專長法術（Magic Initiate）
+        spell_feat = self._get_spell_feat()
+        if spell_feat and (d.feat_cantrips or d.feat_spells):
+            sa = d.feat_spellcasting_ability
+            sa_name = ABILITY_ZH.get(sa, "未選") if sa else "未選"
+            lines.append(f"專長法術（{spell_feat.name_zh}，施法屬性：{sa_name}）：")
+            if d.feat_cantrips:
+                feat_cantrip_names = self._resolve_spell_names(d.feat_cantrips)
+                lines.append(f"  戲法：{', '.join(feat_cantrip_names)}")
+            if d.feat_spells:
+                feat_spell_names = self._resolve_spell_names(d.feat_spells)
+                lines.append(f"  1 環：{', '.join(feat_spell_names)}")
+            lines.append("")
+
+        # 職業戲法與法術
         if d.cantrips or d.spells:
             spell_lines: list[str] = []
             if d.cantrips:
@@ -498,6 +978,31 @@ class CharacterCreationSession:
             if spell_lines:
                 lines.extend(spell_lines)
                 lines.append("")
+
+        # 魔能祈喚（Warlock）
+        if d.invocations:
+            lines.append("魔能祈喚：")
+            for inv_id in d.invocations:
+                inv = INVOCATION_REGISTRY.get(inv_id)
+                if inv:
+                    lines.append(f"  {inv.name_zh}（{inv.name_en}）")
+                    lines.append(f"    {inv.description}")
+                else:
+                    lines.append(f"  {inv_id}")
+            # 契約之書子選項
+            if self.has_pact_of_the_tome():
+                if d.tome_cantrips:
+                    tome_cantrip_names = self._resolve_spell_names(d.tome_cantrips)
+                    lines.append(f"  暗影之書戲法：{', '.join(tome_cantrip_names)}")
+                if d.tome_rituals:
+                    tome_ritual_names = self._resolve_spell_names(d.tome_rituals)
+                    lines.append(f"  暗影之書儀式：{', '.join(tome_ritual_names)}")
+            lines.append("")
+
+        # 體型選擇
+        if self.has_size_choice() and d.species_size:
+            lines.append(f"體型：{d.species_size}")
+            lines.append("")
 
         return "\n".join(lines)
 
@@ -521,6 +1026,16 @@ class CharacterCreationSession:
             return False, "請選擇種族"
         if d.species not in SPECIES_REGISTRY:
             return False, f"未知種族: {d.species!r}"
+
+        # Human 多藝：需選起源專長
+        sd = SPECIES_REGISTRY[d.species]
+        if sd.feat_choice_count > 0 and not d.species_feat:
+            return False, "請選擇多藝起源專長"
+
+        # 背景「任選一種」工具：需選擇
+        bg = BACKGROUND_REGISTRY[d.background]
+        if bg.tool_proficiency_category is not None and d.bg_tool_choice is None:
+            return False, f"請選擇背景工具熟練（{bg.tool_proficiency_label}）"
 
         # 屬性值
         if d.score_method == "point_buy":
@@ -552,6 +1067,32 @@ class CharacterCreationSession:
             )
             if not ok:
                 return False, msg
+
+        # 專長法術（Magic Initiate）
+        spell_feat = self._get_spell_feat()
+        if spell_feat:
+            has_feat_cantrip_db = bool(list_spells(level=0, char_class=spell_feat.spell_class))
+            has_feat_spell_db = bool(list_spells(level=1, char_class=spell_feat.spell_class))
+            if spell_feat.spellcasting_ability_choice and d.feat_spellcasting_ability is None:
+                return False, "請選擇專長施法屬性（INT/WIS/CHA）"
+            need_c = spell_feat.num_feat_cantrips
+            need_s = spell_feat.num_feat_spells
+            if has_feat_cantrip_db and len(d.feat_cantrips) != need_c:
+                return False, f"專長需選 {need_c} 個戲法，已選 {len(d.feat_cantrips)}"
+            if has_feat_spell_db and len(d.feat_spells) != need_s:
+                return False, f"專長需選 {need_s} 個 1 環法術，已選 {len(d.feat_spells)}"
+
+        # 魔能祈喚（Warlock）
+        num_inv = self.get_num_invocations()
+        if num_inv > 0 and len(d.invocations) != num_inv:
+            return False, f"需選 {num_inv} 項魔能祈喚，已選 {len(d.invocations)}"
+
+        # 契約之書（Pact of the Tome）
+        if self.has_pact_of_the_tome():
+            if len(d.tome_cantrips) != 3:
+                return False, f"契約之書需選 3 個戲法，已選 {len(d.tome_cantrips)}"
+            if len(d.tome_rituals) != 2:
+                return False, f"契約之書需選 2 個儀式法術，已選 {len(d.tome_rituals)}"
 
         if not d.name:
             return False, "角色名稱不能為空"
@@ -626,9 +1167,53 @@ class CharacterCreationSession:
             if cd.default_armor != "none":
                 builder.set_armor(cd.default_armor)
 
-        return builder.build()
+        character = builder.build()
+
+        # 工具熟練：背景固定 + 背景任選 + Skilled 專長工具選位
+        all_tools: list[Tool] = []
+        bg_tools = self.get_tools_from_background()
+        for t in bg_tools:
+            if t not in all_tools:
+                all_tools.append(t)
+        for t in d.feat_tool_choices:
+            if t not in all_tools:
+                all_tools.append(t)
+        character.tool_proficiencies = all_tools
+
+        # 專長法術（Magic Initiate）加入已知/已備法術
+        if d.feat_cantrips:
+            for c in d.feat_cantrips:
+                if c not in character.spells_known:
+                    character.spells_known.append(c)
+        if d.feat_spells:
+            for s in d.feat_spells:
+                if s not in character.spells_known:
+                    character.spells_known.append(s)
+                if s not in character.spells_prepared:
+                    character.spells_prepared.append(s)
+
+        # 契約之書（Pact of the Tome）法術
+        if d.tome_cantrips:
+            for c in d.tome_cantrips:
+                if c not in character.spells_known:
+                    character.spells_known.append(c)
+        if d.tome_rituals:
+            for s in d.tome_rituals:
+                if s not in character.spells_known:
+                    character.spells_known.append(s)
+                if s not in character.spells_prepared:
+                    character.spells_prepared.append(s)
+
+        return character
 
     # ── 內部輔助 ──────────────────────────────────────────────────────────────
+
+    def _has_species_skill_choice(self) -> bool:
+        """種族是否有自選技能（如 Human 多才）。"""
+        sp_id = self.data.species
+        if sp_id and sp_id in SPECIES_REGISTRY:
+            return SPECIES_REGISTRY[sp_id].skill_choice_count > 0
+        return False
 
     def _get_bg_skills(self) -> list[Skill]:
         """取得背景固定技能。"""
@@ -687,6 +1272,7 @@ def _spell_to_dict(spell: object) -> dict:
         "en_name": spell.en_name,
         "level": spell.level,
         "school": spell.school.value if hasattr(spell.school, "value") else str(spell.school),
+        "ritual": getattr(spell, "ritual", False),
         "damage_type": spell.damage_type.value if spell.damage_type else "",
         "effect_type": (
             spell.effect_type.value

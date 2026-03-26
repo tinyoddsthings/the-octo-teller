@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from tot.models.enums import Ability, Skill
+from tot.models.enums import Ability, Skill, Tool, ToolCategory
 
 # ─────────────────────────────────────────────────────────────────────────────
 # 背景資料
@@ -26,9 +26,12 @@ class BackgroundData:
     feat: str  # 起源專長 id（如 "Magic Initiate: Cleric"）
     feat_zh: str  # 專長中文名
     skill_proficiencies: tuple[Skill, ...]  # 2 項固定技能
-    tool_proficiency: str  # 工具名稱
+    tool_proficiency: str  # 工具顯示名稱（向後相容）
     equipment_a: str  # 裝備選項 A
     equipment_b: str = "50 GP"  # 裝備選項 B（固定 50 GP）
+    tool_proficiency_enum: Tool | None = None  # 固定工具（型別安全）
+    tool_proficiency_category: ToolCategory | None = None  # 「任選一種」的類別
+    tool_proficiency_label: str = ""  # 顯示用（如「賭具（任選一種）」）
 
 
 BACKGROUND_REGISTRY: dict[str, BackgroundData] = {
@@ -43,6 +46,7 @@ BACKGROUND_REGISTRY: dict[str, BackgroundData] = {
         skill_proficiencies=(Skill.INSIGHT, Skill.RELIGION),
         tool_proficiency="書法工具",
         equipment_a="書法工具、書籍（禱文）、聖徽、羊皮紙×10、長袍、8 GP",
+        tool_proficiency_enum=Tool.CALLIGRAPHER_SUPPLIES,
     ),
     "Artisan": BackgroundData(
         id="Artisan",
@@ -55,6 +59,8 @@ BACKGROUND_REGISTRY: dict[str, BackgroundData] = {
         skill_proficiencies=(Skill.INVESTIGATION, Skill.PERSUASION),
         tool_proficiency="工匠工具（任選一種）",
         equipment_a="工匠工具、小袋×2、旅行者服裝、32 GP",
+        tool_proficiency_category=ToolCategory.ARTISAN,
+        tool_proficiency_label="工匠工具（任選一種）",
     ),
     "Charlatan": BackgroundData(
         id="Charlatan",
@@ -67,6 +73,7 @@ BACKGROUND_REGISTRY: dict[str, BackgroundData] = {
         skill_proficiencies=(Skill.DECEPTION, Skill.SLEIGHT_OF_HAND),
         tool_proficiency="偽造工具組",
         equipment_a="偽造工具組、戲服、華服、15 GP",
+        tool_proficiency_enum=Tool.FORGERY_KIT,
     ),
     "Criminal": BackgroundData(
         id="Criminal",
@@ -79,6 +86,7 @@ BACKGROUND_REGISTRY: dict[str, BackgroundData] = {
         skill_proficiencies=(Skill.SLEIGHT_OF_HAND, Skill.STEALTH),
         tool_proficiency="盜賊工具",
         equipment_a="匕首×2、盜賊工具、撬棍、小袋×2、旅行者服裝、16 GP",
+        tool_proficiency_enum=Tool.THIEVES_TOOLS,
     ),
     "Entertainer": BackgroundData(
         id="Entertainer",
@@ -91,6 +99,8 @@ BACKGROUND_REGISTRY: dict[str, BackgroundData] = {
         skill_proficiencies=(Skill.ACROBATICS, Skill.PERFORMANCE),
         tool_proficiency="樂器（任選一種）",
         equipment_a="樂器、戲服×2、鏡子、香水、旅行者服裝、11 GP",
+        tool_proficiency_category=ToolCategory.MUSICAL,
+        tool_proficiency_label="樂器（任選一種）",
     ),
     "Farmer": BackgroundData(
         id="Farmer",
@@ -103,6 +113,7 @@ BACKGROUND_REGISTRY: dict[str, BackgroundData] = {
         skill_proficiencies=(Skill.ANIMAL_HANDLING, Skill.NATURE),
         tool_proficiency="木匠工具",
         equipment_a="鐮刀、木匠工具、治療工具包、鐵鍋、鏟子、旅行者服裝、30 GP",
+        tool_proficiency_enum=Tool.CARPENTER_TOOLS,
     ),
     "Guard": BackgroundData(
         id="Guard",
@@ -115,6 +126,8 @@ BACKGROUND_REGISTRY: dict[str, BackgroundData] = {
         skill_proficiencies=(Skill.ATHLETICS, Skill.PERCEPTION),
         tool_proficiency="賭具（任選一種）",
         equipment_a="矛、輕弩、弩箭×20、賭具、附蓋提燈、手銬、箭袋、旅行者服裝、12 GP",
+        tool_proficiency_category=ToolCategory.GAMING,
+        tool_proficiency_label="賭具（任選一種）",
     ),
     "Guide": BackgroundData(
         id="Guide",
@@ -127,6 +140,7 @@ BACKGROUND_REGISTRY: dict[str, BackgroundData] = {
         skill_proficiencies=(Skill.STEALTH, Skill.SURVIVAL),
         tool_proficiency="製圖工具",
         equipment_a="短弓、箭×20、製圖工具、睡袋、箭袋、帳篷、旅行者服裝、3 GP",
+        tool_proficiency_enum=Tool.CARTOGRAPHER_TOOLS,
     ),
     "Hermit": BackgroundData(
         id="Hermit",
@@ -139,6 +153,7 @@ BACKGROUND_REGISTRY: dict[str, BackgroundData] = {
         skill_proficiencies=(Skill.MEDICINE, Skill.RELIGION),
         tool_proficiency="草藥工具",
         equipment_a="長棍、草藥工具、睡袋、書籍（哲學）、油燈、燈油×3、旅行者服裝、16 GP",
+        tool_proficiency_enum=Tool.HERBALISM_KIT,
     ),
     "Merchant": BackgroundData(
         id="Merchant",
@@ -151,6 +166,7 @@ BACKGROUND_REGISTRY: dict[str, BackgroundData] = {
         skill_proficiencies=(Skill.ANIMAL_HANDLING, Skill.PERSUASION),
         tool_proficiency="領航工具",
         equipment_a="領航工具、小袋×2、旅行者服裝、22 GP",
+        tool_proficiency_enum=Tool.NAVIGATOR_TOOLS,
     ),
     "Noble": BackgroundData(
         id="Noble",
@@ -163,6 +179,8 @@ BACKGROUND_REGISTRY: dict[str, BackgroundData] = {
         skill_proficiencies=(Skill.HISTORY, Skill.PERSUASION),
         tool_proficiency="賭具（任選一種）",
         equipment_a="賭具、華服、香水、29 GP",
+        tool_proficiency_category=ToolCategory.GAMING,
+        tool_proficiency_label="賭具（任選一種）",
     ),
     "Sage": BackgroundData(
         id="Sage",
@@ -175,6 +193,7 @@ BACKGROUND_REGISTRY: dict[str, BackgroundData] = {
         skill_proficiencies=(Skill.ARCANA, Skill.HISTORY),
         tool_proficiency="書法工具",
         equipment_a="長棍、書法工具、書籍（歷史）、羊皮紙×8、長袍、8 GP",
+        tool_proficiency_enum=Tool.CALLIGRAPHER_SUPPLIES,
     ),
     "Sailor": BackgroundData(
         id="Sailor",
@@ -187,6 +206,7 @@ BACKGROUND_REGISTRY: dict[str, BackgroundData] = {
         skill_proficiencies=(Skill.ACROBATICS, Skill.PERCEPTION),
         tool_proficiency="領航工具",
         equipment_a="匕首、領航工具、繩索、旅行者服裝、20 GP",
+        tool_proficiency_enum=Tool.NAVIGATOR_TOOLS,
     ),
     "Scribe": BackgroundData(
         id="Scribe",
@@ -199,6 +219,7 @@ BACKGROUND_REGISTRY: dict[str, BackgroundData] = {
         skill_proficiencies=(Skill.INVESTIGATION, Skill.PERCEPTION),
         tool_proficiency="書法工具",
         equipment_a="書法工具、華服、油燈、燈油×3、羊皮紙×12、23 GP",
+        tool_proficiency_enum=Tool.CALLIGRAPHER_SUPPLIES,
     ),
     "Soldier": BackgroundData(
         id="Soldier",
@@ -211,6 +232,8 @@ BACKGROUND_REGISTRY: dict[str, BackgroundData] = {
         skill_proficiencies=(Skill.ATHLETICS, Skill.INTIMIDATION),
         tool_proficiency="賭具（任選一種）",
         equipment_a="矛、短弓、箭×20、賭具、治療工具包、箭袋、旅行者服裝、14 GP",
+        tool_proficiency_category=ToolCategory.GAMING,
+        tool_proficiency_label="賭具（任選一種）",
     ),
     "Wayfarer": BackgroundData(
         id="Wayfarer",
@@ -223,6 +246,7 @@ BACKGROUND_REGISTRY: dict[str, BackgroundData] = {
         skill_proficiencies=(Skill.INSIGHT, Skill.STEALTH),
         tool_proficiency="盜賊工具",
         equipment_a="匕首×2、盜賊工具、賭具（任選）、睡袋、小袋×2、旅行者服裝、16 GP",
+        tool_proficiency_enum=Tool.THIEVES_TOOLS,
     ),
 }
 
@@ -240,6 +264,7 @@ class LineageOption:
     name_zh: str
     name_en: str
     description: str  # 簡要效果說明
+    granted_cantrips: tuple[str, ...] = ()  # 血統給的戲法 en_name
 
 
 @dataclass(frozen=True)
@@ -255,6 +280,11 @@ class SpeciesData:
     traits: tuple[str, ...]  # 特性名稱清單
     traits_description: str  # 特性簡述
     lineage_options: tuple[LineageOption, ...] = ()  # 血統子選項
+    skill_choice_count: int = 0  # 自選技能熟練數（Human 多才 / Elf 敏銳感官）
+    skill_choice_pool: tuple[Skill, ...] = ()  # 可選池；空 = 全 18 項
+    feat_choice_count: int = 0  # Human 多藝：自選起源專長數
+    has_lineage_spellcasting_choice: bool = False  # Tiefling：施法屬性 INT/WIS/CHA 選擇
+    granted_cantrips: tuple[str, ...] = ()  # 種族固定給的戲法 en_name（不分血統）
 
 
 SPECIES_REGISTRY: dict[str, SpeciesData] = {
@@ -272,6 +302,7 @@ SPECIES_REGISTRY: dict[str, SpeciesData] = {
             "光亮術戲法（CHA）。"
             "3 級起可變身（天堂之翼/內在光輝/黯蝕帷幕），每回合造成額外傷害。"
         ),
+        granted_cantrips=("Light",),
         lineage_options=(
             LineageOption(
                 id="heavenly_wings",
@@ -349,24 +380,31 @@ SPECIES_REGISTRY: dict[str, SpeciesData] = {
             "敏銳感官：洞察/觀察/求生三選一熟練。"
             "冥想：4 小時冥想替代睡眠完成長休。"
         ),
+        has_lineage_spellcasting_choice=True,
+        skill_choice_count=1,
+        skill_choice_pool=(Skill.INSIGHT, Skill.PERCEPTION, Skill.SURVIVAL),
         lineage_options=(
             LineageOption(
                 "drow",
                 "卓爾",
                 "Drow",
                 "暗視增至 36m，舞光術戲法。3 級妖火術、5 級黑暗術。",
+                granted_cantrips=("Dancing Lights",),
             ),
             LineageOption(
                 "high_elf",
                 "高等精靈",
                 "High Elf",
                 "幻術戲法（長休可換）。3 級偵測魔法、5 級迷蹤步。",
+                # 高等精靈可選任何幻術戲法，這裡先給 Minor Illusion 作為預設
+                granted_cantrips=("Minor Illusion",),
             ),
             LineageOption(
                 "wood_elf",
                 "木精靈",
                 "Wood Elf",
                 "速度增至 10.5m，德魯伊工藝戲法。3 級大步奔行、5 級行蹤無跡。",
+                granted_cantrips=("Druidcraft",),
             ),
         ),
     ),
@@ -381,18 +419,21 @@ SPECIES_REGISTRY: dict[str, SpeciesData] = {
         traits_description=(
             "18m 暗視。侏儒狡詐：INT/WIS/CHA 豁免有優勢。侏儒血統：依血統獲得不同魔法能力。"
         ),
+        has_lineage_spellcasting_choice=True,
         lineage_options=(
             LineageOption(
                 "forest_gnome",
                 "森林侏儒",
                 "Forest Gnome",
                 "弱效幻象戲法。動物交談永備（熟練加值次/長休免費施放）。",
+                granted_cantrips=("Minor Illusion",),
             ),
             LineageOption(
                 "rock_gnome",
                 "岩地侏儒",
                 "Rock Gnome",
                 "修復術和幻術戲法。可用幻術創造微型發條裝置。",
+                granted_cantrips=("Mending", "Prestidigitation"),
             ),
         ),
     ),
@@ -448,6 +489,8 @@ SPECIES_REGISTRY: dict[str, SpeciesData] = {
             "多才：獲得一項自選技能熟練。"
             "多藝：獲得一個自選起源專長（建議博學）。"
         ),
+        skill_choice_count=1,
+        feat_choice_count=1,
     ),
     "Orc": SpeciesData(
         id="Orc",
@@ -472,26 +515,33 @@ SPECIES_REGISTRY: dict[str, SpeciesData] = {
         speed="9m",
         traits=("暗視", "魔裔傳承", "異界風采"),
         traits_description=(
-            "18m 暗視。魔裔傳承：依傳承獲得傷害抗性+戲法+3/5 級法術。異界風采：奇術戲法。"
+            "18m 暗視。魔裔傳承：依傳承獲得傷害抗性+戲法+3/5 級法術"
+            "（施法屬性 INT/WIS/CHA 三選一，選擇傳承時決定）。"
+            "異界風采：奇術戲法。"
         ),
+        has_lineage_spellcasting_choice=True,
+        granted_cantrips=("Prestidigitation",),  # 異界風采：奇術
         lineage_options=(
             LineageOption(
                 "abyssal",
                 "深淵",
                 "Abyssal",
                 "毒素傷害抗性，毒霧術戲法。3 級疫病射線、5 級定身術。",
+                granted_cantrips=("Poison Spray",),
             ),
             LineageOption(
                 "chthonic",
                 "冥界",
                 "Chthonic",
                 "黯蝕傷害抗性，冷凍之觸戲法。3 級偽死術、5 級虛弱射線。",
+                granted_cantrips=("Chill Touch",),
             ),
             LineageOption(
                 "infernal",
                 "煉獄",
                 "Infernal",
                 "火焰傷害抗性，火焰箭戲法。3 級地獄斥責、5 級黑暗術。",
+                granted_cantrips=("Fire Bolt",),
             ),
         ),
     ),
@@ -520,6 +570,235 @@ SKILL_ZH: dict[Skill, str] = {
     Skill.INTIMIDATION: "威嚇",
     Skill.PERFORMANCE: "表演",
     Skill.PERSUASION: "說服",
+}
+
+TOOL_ZH: dict[Tool, str] = {
+    # 工匠工具
+    Tool.ALCHEMIST_SUPPLIES: "煉金工具",
+    Tool.BREWER_SUPPLIES: "釀造工具",
+    Tool.CALLIGRAPHER_SUPPLIES: "書法工具",
+    Tool.CARPENTER_TOOLS: "木匠工具",
+    Tool.CARTOGRAPHER_TOOLS: "製圖工具",
+    Tool.COBBLER_TOOLS: "鞋匠工具",
+    Tool.COOK_UTENSILS: "烹飪用具",
+    Tool.GLASSBLOWER_TOOLS: "吹玻璃工具",
+    Tool.JEWELER_TOOLS: "珠寶匠工具",
+    Tool.LEATHERWORKER_TOOLS: "皮革匠工具",
+    Tool.MASON_TOOLS: "石匠工具",
+    Tool.PAINTER_SUPPLIES: "畫具",
+    Tool.POTTER_TOOLS: "陶匠工具",
+    Tool.SMITH_TOOLS: "鐵匠工具",
+    Tool.TINKER_TOOLS: "修補匠工具",
+    Tool.WEAVER_TOOLS: "織工工具",
+    Tool.WOODCARVER_TOOLS: "木雕工具",
+    # 遊戲組
+    Tool.DICE_SET: "骰子組",
+    Tool.DRAGONCHESS_SET: "龍棋組",
+    Tool.PLAYING_CARDS: "撲克牌",
+    Tool.THREE_DRAGON_ANTE: "三龍賭牌組",
+    # 樂器
+    Tool.BAGPIPES: "風笛",
+    Tool.DRUM: "鼓",
+    Tool.DULCIMER: "揚琴",
+    Tool.FLUTE: "長笛",
+    Tool.HORN: "號角",
+    Tool.LUTE: "魯特琴",
+    Tool.LYRE: "里拉琴",
+    Tool.PAN_FLUTE: "排笛",
+    Tool.SHAWM: "蕭姆管",
+    Tool.VIOL: "維奧爾琴",
+    # 其他
+    Tool.DISGUISE_KIT: "易容工具",
+    Tool.FORGERY_KIT: "偽造工具組",
+    Tool.HERBALISM_KIT: "草藥工具",
+    Tool.NAVIGATOR_TOOLS: "領航工具",
+    Tool.POISONER_KIT: "毒藥工具",
+    Tool.THIEVES_TOOLS: "盜賊工具",
+}
+
+
+@dataclass(frozen=True)
+class ToolInfo:
+    """工具描述資料。來源：PHB ch6。"""
+
+    ability: str  # 能力（中文，如「智力」「敏捷」）
+    utilize: str  # 運用動作描述
+    craft: str = ""  # 可製作物品（部分工具沒有）
+
+
+TOOL_DATA: dict[Tool, ToolInfo] = {
+    # ── 工匠工具 ──
+    Tool.ALCHEMIST_SUPPLIES: ToolInfo(
+        ability="智力",
+        utilize="鑑定某種物質（DC 15），或生火（DC 15）",
+        craft="強酸、煉金火、材料袋、油、紙、香水",
+    ),
+    Tool.BREWER_SUPPLIES: ToolInfo(
+        ability="智力",
+        utilize="偵測被下毒的飲料（DC 15），或鑑定酒類（DC 10）",
+        craft="萬解藥",
+    ),
+    Tool.CALLIGRAPHER_SUPPLIES: ToolInfo(
+        ability="敏捷",
+        utilize="以華麗筆跡書寫文字以防偽造（DC 15）",
+        craft="墨水、法術卷軸",
+    ),
+    Tool.CARPENTER_TOOLS: ToolInfo(
+        ability="力量",
+        utilize="封閉或撬開門或容器（DC 20）",
+        craft="棍棒、巨棒、木棍、桶、箱子、梯子、桿、攜帶式衝撞槌、火把",
+    ),
+    Tool.CARTOGRAPHER_TOOLS: ToolInfo(
+        ability="感知",
+        utilize="繪製小區域的地圖（DC 15）",
+        craft="地圖",
+    ),
+    Tool.COBBLER_TOOLS: ToolInfo(
+        ability="敏捷",
+        utilize="修改鞋子，使穿戴者的下一次敏捷（特技動作）檢定具有優勢（DC 10）",
+        craft="攀爬工具包",
+    ),
+    Tool.COOK_UTENSILS: ToolInfo(
+        ability="感知",
+        utilize="改善食物風味（DC 10），或偵測腐壞或被下毒的食物（DC 15）",
+        craft="口糧",
+    ),
+    Tool.GLASSBLOWER_TOOLS: ToolInfo(
+        ability="智力",
+        utilize="辨別玻璃物品在過去 24 小時內盛裝過什麼（DC 15）",
+        craft="玻璃瓶、放大鏡、望遠鏡、小瓶",
+    ),
+    Tool.JEWELER_TOOLS: ToolInfo(
+        ability="智力",
+        utilize="辨別寶石的價值（DC 15）",
+        craft="奧術法器、聖徽",
+    ),
+    Tool.LEATHERWORKER_TOOLS: ToolInfo(
+        ability="敏捷",
+        utilize="在皮革製品上加上設計圖案（DC 10）",
+        craft="投石索、鞭、獸皮甲、皮甲、鑲釘皮甲、背包、弩矢盒、地圖或卷軸盒、羊皮紙、小袋、箭袋、水袋",
+    ),
+    Tool.MASON_TOOLS: ToolInfo(
+        ability="力量",
+        utilize="在石頭上鑿刻符號或孔洞（DC 10）",
+        craft="滑輪組",
+    ),
+    Tool.PAINTER_SUPPLIES: ToolInfo(
+        ability="感知",
+        utilize="畫出你見過的事物的辨識圖像（DC 10）",
+        craft="德魯伊法器、聖徽",
+    ),
+    Tool.POTTER_TOOLS: ToolInfo(
+        ability="智力",
+        utilize="辨別陶瓷物品在過去 24 小時內盛裝過什麼（DC 15）",
+        craft="水壺、油燈",
+    ),
+    Tool.SMITH_TOOLS: ToolInfo(
+        ability="力量",
+        utilize="撬開門或容器（DC 20）",
+        craft="任何近戰武器（棍棒、巨棒、木棍和鞭除外）、中甲（獸皮甲除外）、重甲、滾珠、桶、鐵蒺藜、鏈條、撬棍、火器子彈、抓鈎、鐵鍋、鐵釘、投石子彈",
+    ),
+    Tool.TINKER_TOOLS: ToolInfo(
+        ability="敏捷",
+        utilize="用廢料組裝一個微型物品，1 分鐘後散架（DC 20）",
+        craft="火槍、手槍、鈴鐺、牛眼提燈、酒壺、帶罩提燈、捕獸夾、鎖、枷鎖、鏡子、鏟子、信號哨、火種盒",
+    ),
+    Tool.WEAVER_TOOLS: ToolInfo(
+        ability="敏捷",
+        utilize="修補衣物上的破洞（DC 10），或縫製一個微型圖案（DC 10）",
+        craft="綿甲、籃子、睡袋、毯子、華服、網、長袍、繩子、麻袋、細繩、帳篷、旅行者服裝",
+    ),
+    Tool.WOODCARVER_TOOLS: ToolInfo(
+        ability="敏捷",
+        utilize="在木頭上雕刻圖案（DC 10）",
+        craft="棍棒、巨棒、木棍、遠程武器（手槍、火槍和投石索除外）、奧術法器、箭矢、弩矢、德魯伊法器、墨水筆、吹針",
+    ),
+    # ── 其他工具 ──
+    Tool.DISGUISE_KIT: ToolInfo(
+        ability="魅力",
+        utilize="化妝（DC 10）",
+        craft="戲服",
+    ),
+    Tool.FORGERY_KIT: ToolInfo(
+        ability="敏捷",
+        utilize="模仿他人的 10 個字以內的筆跡（DC 15），或複製蠟封（DC 20）",
+    ),
+    Tool.HERBALISM_KIT: ToolInfo(
+        ability="智力",
+        utilize="辨認植物（DC 10）",
+        craft="萬解藥、蠟燭、治療工具包、治療藥水",
+    ),
+    Tool.NAVIGATOR_TOOLS: ToolInfo(
+        ability="感知",
+        utilize="規劃航線（DC 10），或透過觀星確定位置（DC 15）",
+    ),
+    Tool.POISONER_KIT: ToolInfo(
+        ability="智力",
+        utilize="偵測被下毒的物體（DC 10）",
+        craft="基本毒藥",
+    ),
+    Tool.THIEVES_TOOLS: ToolInfo(
+        ability="敏捷",
+        utilize="撬鎖（DC 15），或拆卸陷阱（DC 15）",
+    ),
+    # ── 遊戲組 ──
+    Tool.DICE_SET: ToolInfo(
+        ability="感知",
+        utilize="感知對手是否作弊（DC 10），或贏得賭局來獲取利益或情報（DC 20）",
+    ),
+    Tool.DRAGONCHESS_SET: ToolInfo(
+        ability="感知",
+        utilize="感知對手是否作弊（DC 10），或贏得賭局來獲取利益或情報（DC 20）",
+    ),
+    Tool.PLAYING_CARDS: ToolInfo(
+        ability="感知",
+        utilize="感知對手是否作弊（DC 10），或贏得賭局來獲取利益或情報（DC 20）",
+    ),
+    Tool.THREE_DRAGON_ANTE: ToolInfo(
+        ability="感知",
+        utilize="感知對手是否作弊（DC 10），或贏得賭局來獲取利益或情報（DC 20）",
+    ),
+    # ── 樂器 ──
+    Tool.BAGPIPES: ToolInfo(
+        ability="魅力",
+        utilize="演奏一首已知曲目（DC 10），或即興演奏一首歌（DC 15）",
+    ),
+    Tool.DRUM: ToolInfo(
+        ability="魅力",
+        utilize="演奏一首已知曲目（DC 10），或即興演奏一首歌（DC 15）",
+    ),
+    Tool.DULCIMER: ToolInfo(
+        ability="魅力",
+        utilize="演奏一首已知曲目（DC 10），或即興演奏一首歌（DC 15）",
+    ),
+    Tool.FLUTE: ToolInfo(
+        ability="魅力",
+        utilize="演奏一首已知曲目（DC 10），或即興演奏一首歌（DC 15）",
+    ),
+    Tool.HORN: ToolInfo(
+        ability="魅力",
+        utilize="演奏一首已知曲目（DC 10），或即興演奏一首歌（DC 15）",
+    ),
+    Tool.LUTE: ToolInfo(
+        ability="魅力",
+        utilize="演奏一首已知曲目（DC 10），或即興演奏一首歌（DC 15）",
+    ),
+    Tool.LYRE: ToolInfo(
+        ability="魅力",
+        utilize="演奏一首已知曲目（DC 10），或即興演奏一首歌（DC 15）",
+    ),
+    Tool.PAN_FLUTE: ToolInfo(
+        ability="魅力",
+        utilize="演奏一首已知曲目（DC 10），或即興演奏一首歌（DC 15）",
+    ),
+    Tool.SHAWM: ToolInfo(
+        ability="魅力",
+        utilize="演奏一首已知曲目（DC 10），或即興演奏一首歌（DC 15）",
+    ),
+    Tool.VIOL: ToolInfo(
+        ability="魅力",
+        utilize="演奏一首已知曲目（DC 10），或即興演奏一首歌（DC 15）",
+    ),
 }
 
 ABILITY_ZH: dict[Ability, str] = {

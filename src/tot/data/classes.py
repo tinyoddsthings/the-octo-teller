@@ -25,6 +25,7 @@ class ClassDisplayData:
     default_armor: str = "none"  # 1 級預設護甲："light"/"medium"/"heavy"/"none"
     num_cantrips: int = 0  # 1 級戲法數量
     num_prepared_spells: int = 0  # 1 級備妥法術數量
+    num_invocations: int = 0  # 1 級祈喚數（Warlock = 1）
     features_1st: tuple[str, ...] = ()  # 1 級職業特性名稱
 
 
@@ -182,6 +183,7 @@ CLASS_DISPLAY: dict[str, ClassDisplayData] = {
         default_armor="light",
         num_cantrips=2,
         num_prepared_spells=2,
+        num_invocations=1,
         features_1st=("魔能祈喚", "契約魔法"),
     ),
     "Wizard": ClassDisplayData(
@@ -219,4 +221,68 @@ STANDARD_ARRAY_SUGGESTION: dict[str, tuple[int, ...]] = {
     "Sorcerer": (10, 13, 14, 8, 12, 15),
     "Warlock": (8, 14, 13, 12, 10, 15),
     "Wizard": (8, 12, 13, 15, 14, 10),
+}
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 魔能祈喚（Eldritch Invocations）— Warlock 職業特性
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+@dataclass(frozen=True)
+class InvocationData:
+    """魔能祈喚資料。"""
+
+    id: str  # 英文 key
+    name_zh: str
+    name_en: str
+    description: str  # 完整描述（中文）
+    prerequisite: str = ""  # 先決條件文字（空 = 1 級可選）
+    min_level: int = 1  # 最低契術師等級
+
+
+INVOCATION_REGISTRY: dict[str, InvocationData] = {
+    "Pact of the Blade": InvocationData(
+        id="Pact of the Blade",
+        name_zh="契約之刃",
+        name_en="Pact of the Blade",
+        description=(
+            "以附贈動作召喚一把契約武器（簡易或軍用近戰），使用魅力進行攻擊和傷害檢定。"
+            "可選擇造成黯蝕、心靈或光輝傷害（取代原本傷害類型）。"
+            "也可與一把魔法武器結合，使其成為你的契約武器。"
+            "契約武器可在未持握時消失，再以附贈動作召回。"
+        ),
+    ),
+    "Pact of the Chain": InvocationData(
+        id="Pact of the Chain",
+        name_zh="契約之鎖",
+        name_en="Pact of the Chain",
+        description=(
+            "學會尋獲魔寵法術，可用魔法動作施放且不消耗法術位。"
+            "魔寵可選擇特殊形態（小惡魔、擬龍、小精靈、魔蠍等）。"
+            "攻擊時可放棄你的一次攻擊，讓魔寵以反應動作進行攻擊。"
+        ),
+    ),
+    "Pact of the Tome": InvocationData(
+        id="Pact of the Tome",
+        name_zh="契約之書",
+        name_en="Pact of the Tome",
+        description=(
+            "短休或長休後召喚暗影之書（Book of Shadows）。"
+            "獲得 3 個來自任意職業法術列表的戲法，及 2 個帶儀式標籤的 1 環法術"
+            "（來自任何職業列表，不計入備妥數量）。"
+            "暗影之書可作為你的施法法器。"
+        ),
+    ),
+    "Armor of Shadows": InvocationData(
+        id="Armor of Shadows",
+        name_zh="暗影之甲",
+        name_en="Armor of Shadows",
+        description=("你可以不消耗法術位對自己施放法師護甲（Mage Armor）。"),
+    ),
+    "Eldritch Mind": InvocationData(
+        id="Eldritch Mind",
+        name_zh="魔能之心",
+        name_en="Eldritch Mind",
+        description=("你對維持專注的體質豁免檢定具有優勢。"),
+    ),
 }
