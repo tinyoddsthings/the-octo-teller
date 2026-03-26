@@ -292,6 +292,16 @@ class CharacterCreationApp(App[Character | None]):
                     feat_btns.append(RadioButton(label, value=(fid == cur_feat)))
                 w.append(RadioSet(*feat_btns, id="species-feat-radio"))
 
+            # 體型選擇（中型或小型種族可選）
+            if self.session.has_size_choice():
+                w.append(Label("── 體型選擇 ──", classes="section-label"))
+                cur_size = self.session.data.species_size
+                size_btns = [
+                    RadioButton("中型", value=(cur_size == "中型")),
+                    RadioButton("小型", value=(cur_size == "小型")),
+                ]
+                w.append(RadioSet(*size_btns, id="species-size-radio"))
+
     # ── Step 4: 屬性值 ────────────────────────────────────────────────────────
 
     def _widgets_ability_scores(self, w: list) -> None:
@@ -492,6 +502,44 @@ class CharacterCreationApp(App[Character | None]):
             for inv in available_inv:
                 marker = "▶ " if inv.id in sel else "  "
                 w.append(Static(f"{marker}{inv.name_zh}：{inv.description}"))
+
+        # 契約之書子選項
+        if self.session.has_pact_of_the_tome():
+            w.append(Label("── 暗影之書 ──", classes="section-label"))
+
+            # 選 3 個戲法（任何職業列表）
+            tome_cantrips = self.session.get_available_tome_cantrips()
+            w.append(Label("── 選 3 個戲法（任何職業列表）──", classes="section-label"))
+            if tome_cantrips:
+                sel_tc = d.tome_cantrips
+                tc_opts = []
+                for s in tome_cantrips:
+                    tag = s["damage_type_zh"] if s["damage_type_zh"] else s["effect_type_zh"]
+                    tc_opts.append(
+                        (
+                            f"{s['name']}（{s['en_name']}）— {tag}",
+                            s["en_name"],
+                            s["en_name"] in sel_tc,
+                        )
+                    )
+                w.append(SelectionList(*tc_opts, id="tome-cantrip-list"))
+
+            # 選 2 個 1 環儀式法術
+            tome_rituals = self.session.get_available_tome_rituals()
+            w.append(Label("── 選 2 個 1 環儀式法術 ──", classes="section-label"))
+            if tome_rituals:
+                sel_tr = d.tome_rituals
+                tr_opts = []
+                for s in tome_rituals:
+                    tag = s["damage_type_zh"] if s["damage_type_zh"] else s["effect_type_zh"]
+                    tr_opts.append(
+                        (
+                            f"{s['name']}（{s['en_name']}）— {tag}",
+                            s["en_name"],
+                            s["en_name"] in sel_tr,
+                        )
+                    )
+                w.append(SelectionList(*tr_opts, id="tome-ritual-list"))
 
     # ── Step: 戲法與法術 ─────────────────────────────────────────────────────
 
@@ -960,6 +1008,21 @@ class CharacterCreationApp(App[Character | None]):
             except Exception:
                 raise ValueError("請選擇起源專長（多藝）") from None
 
+        # 體型選擇
+        if self.session.has_size_choice():
+            try:
+                size_rs = self.query_one("#species-size-radio", RadioSet)
+                size_idx = size_rs.pressed_index
+                if size_idx is not None:
+                    size_map = ["中型", "小型"]
+                    self.session.set_species_size(size_map[size_idx])
+                else:
+                    raise ValueError("請選擇體型（中型/小型）")
+            except ValueError:
+                raise
+            except Exception:
+                raise ValueError("請選擇體型（中型/小型）") from None
+
     def _collect_ability_scores(self) -> None:
         # 方法
         try:
@@ -1075,6 +1138,23 @@ class CharacterCreationApp(App[Character | None]):
             raise
         except Exception:
             pass
+
+        # 契約之書子選項
+        if self.session.has_pact_of_the_tome():
+            try:
+                tc_sl = self.query_one("#tome-cantrip-list", SelectionList)
+                self.session.set_tome_cantrips(list(tc_sl.selected))
+            except ValueError:
+                raise
+            except Exception:
+                pass
+            try:
+                tr_sl = self.query_one("#tome-ritual-list", SelectionList)
+                self.session.set_tome_rituals(list(tr_sl.selected))
+            except ValueError:
+                raise
+            except Exception:
+                pass
 
     def _collect_spells(self) -> None:
         d = self.session.data
@@ -1245,6 +1325,10 @@ class CharacterCreationApp(App[Character | None]):
         elif sl_id == "feat-spell-list":
             spell_feat = self.session._get_spell_feat()
             return spell_feat.num_feat_spells if spell_feat else 0
+        elif sl_id == "tome-cantrip-list":
+            return 3
+        elif sl_id == "tome-ritual-list":
+            return 2
         return 999
 
     def _enforce_selection_limit(self, sl: SelectionList, sl_id: str, limit: int) -> list:
@@ -1277,10 +1361,24 @@ class CharacterCreationApp(App[Character | None]):
 
         if sl_id == "invocation-list":
             selected = self._enforce_selection_limit(sl, sl_id, limit)
+            old_had_tome = self.session.has_pact_of_the_tome()
             self.session.data.invocations = selected
+            new_has_tome = self.session.has_pact_of_the_tome()
+            # 如果取消了契約之書，清空相關資料
+            if old_had_tome and not new_has_tome:
+                self.session.data.tome_cantrips = []
+                self.session.data.tome_rituals = []
             self._update_preview()
-            # 重新渲染以更新祈喚描述的 ▶ 標記
+            # 重新渲染以更新祈喚描述的 ▶ 標記和契約之書子選項
             await self._render_step()
+        elif sl_id == "tome-cantrip-list":
+            selected = self._enforce_selection_limit(sl, sl_id, limit)
+            self.session.data.tome_cantrips = selected
+            self._update_preview()
+        elif sl_id == "tome-ritual-list":
+            selected = self._enforce_selection_limit(sl, sl_id, limit)
+            self.session.data.tome_rituals = selected
+            self._update_preview()
         elif sl_id == "skills-list":
             selected = self._enforce_selection_limit(sl, sl_id, limit)
             self.session.data.skills = selected
@@ -1371,6 +1469,13 @@ class CharacterCreationApp(App[Character | None]):
                 if idx < len(keys):
                     self.session.set_species_feat(keys[idx])
                     self._update_preview()
+
+        elif rs_id == "species-size-radio":
+            idx = event.radio_set.pressed_index
+            if idx is not None:
+                size_map = ["中型", "小型"]
+                self.session.set_species_size(size_map[idx])
+                self._update_preview()
 
         elif rs_id == "adjust-mode-radio":
             idx = event.radio_set.pressed_index

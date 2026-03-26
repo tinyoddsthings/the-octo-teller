@@ -380,6 +380,7 @@ SPECIES_REGISTRY: dict[str, SpeciesData] = {
             "敏銳感官：洞察/觀察/求生三選一熟練。"
             "冥想：4 小時冥想替代睡眠完成長休。"
         ),
+        has_lineage_spellcasting_choice=True,
         skill_choice_count=1,
         skill_choice_pool=(Skill.INSIGHT, Skill.PERCEPTION, Skill.SURVIVAL),
         lineage_options=(
@@ -418,6 +419,7 @@ SPECIES_REGISTRY: dict[str, SpeciesData] = {
         traits_description=(
             "18m 暗視。侏儒狡詐：INT/WIS/CHA 豁免有優勢。侏儒血統：依血統獲得不同魔法能力。"
         ),
+        has_lineage_spellcasting_choice=True,
         lineage_options=(
             LineageOption(
                 "forest_gnome",

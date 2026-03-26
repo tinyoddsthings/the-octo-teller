@@ -132,8 +132,10 @@ class CharacterCreationData:
     # 魔能祈喚（Warlock）
     invocations: list = field(default_factory=list)  # 選的祈喚 ID 列表
     # 契約之書（Pact of the Tome）
-    tome_cantrips: list = field(default_factory=list)  # 契約之書 3 戲法
-    tome_rituals: list = field(default_factory=list)  # 契約之書 2 儀式法術
+    tome_cantrips: list = field(default_factory=list)  # 契約之書 3 戲法 en_name
+    tome_rituals: list = field(default_factory=list)  # 契約之書 2 儀式 en_name
+    # 體型選擇（中型或小型種族可選）
+    species_size: str = ""  # "中型" / "小型"，空=由種族決定
     # 內部暫存（各方法的 scores 持久化，切換方法時保留）
     rolled_values: list = field(default_factory=list)
     _scores_point_buy: dict = field(default_factory=dict)
@@ -182,9 +184,7 @@ class CharacterCreationSession:
         cd = CLASS_DISPLAY.get(cc)
         has_spells = cd and (cd.num_cantrips > 0 or cd.num_prepared_spells > 0)
         has_feat_spells = self.has_feat_spell_choices()
-        has_invocation_spells = (
-            self.has_pact_of_the_tome() if hasattr(self, "has_pact_of_the_tome") else False
-        )
+        has_invocation_spells = self.has_pact_of_the_tome()
         if has_spells or has_feat_spells or has_invocation_spells:
             steps.append(StepType.SPELLS)
 
@@ -259,6 +259,7 @@ class CharacterCreationSession:
             # 切換種族時清空種族相關選擇
             self.data.species_feat = ""
             self.data.species_spellcasting_ability = None
+            self.data.species_size = ""
             self.data.skills = []
         self.data.species = species_id
         sd = SPECIES_REGISTRY[species_id]
@@ -273,6 +274,17 @@ class CharacterCreationSession:
                 self.data.lineage = sd.lineage_options[0].id
         else:
             self.data.lineage = ""
+
+    def set_species_size(self, size: str) -> None:
+        """設定體型選擇（中型或小型種族可選）。"""
+        if size not in ("中型", "小型"):
+            raise ValueError(f"體型只能是「中型」或「小型」，收到 {size!r}")
+        self.data.species_size = size
+
+    def has_size_choice(self) -> bool:
+        """種族是否需要選擇體型。"""
+        sp = SPECIES_REGISTRY.get(self.data.species)
+        return sp is not None and sp.size == "中型或小型"
 
     def set_ability_method(self, method: str) -> None:
         """設定屬性值生成方式。"standard" / "point_buy" / "roll"。
@@ -508,6 +520,10 @@ class CharacterCreationSession:
         for inv_id in invocation_ids:
             if inv_id not in available_ids:
                 raise ValueError(f"祈喚 {inv_id!r} 不在可選範圍內")
+        # 如果取消了契約之書，清空 tome_cantrips 和 tome_rituals
+        if "Pact of the Tome" not in invocation_ids:
+            self.data.tome_cantrips = []
+            self.data.tome_rituals = []
         self.data.invocations = list(invocation_ids)
 
     def get_available_invocations(self) -> list[InvocationData]:
@@ -519,6 +535,43 @@ class CharacterCreationSession:
         cc = self.data.char_class
         cd = CLASS_DISPLAY.get(cc)
         return cd.num_invocations if cd else 0
+
+    def has_pact_of_the_tome(self) -> bool:
+        """是否選了契約之書祈喚。"""
+        return "Pact of the Tome" in self.data.invocations
+
+    def get_available_tome_cantrips(self) -> list[dict]:
+        """全職業戲法，排除已有的（種族+職業+專長+書已選的）。"""
+        db = load_spell_db()
+        all_cantrips = [s for s in db.values() if s.level == 0]
+        # 排除已選的
+        excluded = set(self.get_species_granted_cantrips())
+        excluded.update(self.data.cantrips)
+        excluded.update(self.data.feat_cantrips)
+        excluded.update(self.data.tome_cantrips)
+        return [_spell_to_dict(s) for s in all_cantrips if s.en_name not in excluded]
+
+    def get_available_tome_rituals(self) -> list[dict]:
+        """全職業 1 環 ritual=True 法術，排除已備妥的。"""
+        db = load_spell_db()
+        rituals = [s for s in db.values() if s.level == 1 and s.ritual]
+        # 排除已選的
+        excluded = set(self.data.spells)
+        excluded.update(self.data.feat_spells)
+        excluded.update(self.data.tome_rituals)
+        return [_spell_to_dict(s) for s in rituals if s.en_name not in excluded]
+
+    def set_tome_cantrips(self, cantrips: list[str]) -> None:
+        """設定契約之書的 3 個戲法。"""
+        if len(cantrips) != 3:
+            raise ValueError("契約之書需選 3 個戲法")
+        self.data.tome_cantrips = list(cantrips)
+
+    def set_tome_rituals(self, rituals: list[str]) -> None:
+        """設定契約之書的 2 個儀式法術。"""
+        if len(rituals) != 2:
+            raise ValueError("契約之書需選 2 個儀式法術")
+        self.data.tome_rituals = list(rituals)
 
     # ── 查詢可選項 ────────────────────────────────────────────────────────────
 
@@ -608,13 +661,14 @@ class CharacterCreationSession:
         return result
 
     def get_available_cantrips(self) -> list[dict]:
-        """取得可選戲法列表，排除種族/血統已給的。"""
+        """取得可選戲法列表，排除種族/血統已給的和契約之書已選的。"""
         cc = self.data.char_class
         if not cc:
             return []
-        granted = set(self.get_species_granted_cantrips())
+        excluded = set(self.get_species_granted_cantrips())
+        excluded.update(self.data.tome_cantrips)
         spells = list_spells(level=0, char_class=cc)
-        return [_spell_to_dict(s) for s in spells if s.en_name not in granted]
+        return [_spell_to_dict(s) for s in spells if s.en_name not in excluded]
 
     def get_available_spells(self) -> list[dict]:
         """取得可選 1 環法術列表。"""
@@ -928,6 +982,19 @@ class CharacterCreationSession:
                     lines.append(f"    {inv.description}")
                 else:
                     lines.append(f"  {inv_id}")
+            # 契約之書子選項
+            if self.has_pact_of_the_tome():
+                if d.tome_cantrips:
+                    tome_cantrip_names = self._resolve_spell_names(d.tome_cantrips)
+                    lines.append(f"  暗影之書戲法：{', '.join(tome_cantrip_names)}")
+                if d.tome_rituals:
+                    tome_ritual_names = self._resolve_spell_names(d.tome_rituals)
+                    lines.append(f"  暗影之書儀式：{', '.join(tome_ritual_names)}")
+            lines.append("")
+
+        # 體型選擇
+        if self.has_size_choice() and d.species_size:
+            lines.append(f"體型：{d.species_size}")
             lines.append("")
 
         return "\n".join(lines)
@@ -1012,6 +1079,13 @@ class CharacterCreationSession:
         num_inv = self.get_num_invocations()
         if num_inv > 0 and len(d.invocations) != num_inv:
             return False, f"需選 {num_inv} 項魔能祈喚，已選 {len(d.invocations)}"
+
+        # 契約之書（Pact of the Tome）
+        if self.has_pact_of_the_tome():
+            if len(d.tome_cantrips) != 3:
+                return False, f"契約之書需選 3 個戲法，已選 {len(d.tome_cantrips)}"
+            if len(d.tome_rituals) != 2:
+                return False, f"契約之書需選 2 個儀式法術，已選 {len(d.tome_rituals)}"
 
         if not d.name:
             return False, "角色名稱不能為空"
@@ -1111,6 +1185,18 @@ class CharacterCreationSession:
                 if s not in character.spells_prepared:
                     character.spells_prepared.append(s)
 
+        # 契約之書（Pact of the Tome）法術
+        if d.tome_cantrips:
+            for c in d.tome_cantrips:
+                if c not in character.spells_known:
+                    character.spells_known.append(c)
+        if d.tome_rituals:
+            for s in d.tome_rituals:
+                if s not in character.spells_known:
+                    character.spells_known.append(s)
+                if s not in character.spells_prepared:
+                    character.spells_prepared.append(s)
+
         return character
 
     # ── 內部輔助 ──────────────────────────────────────────────────────────────
@@ -1179,6 +1265,7 @@ def _spell_to_dict(spell: object) -> dict:
         "en_name": spell.en_name,
         "level": spell.level,
         "school": spell.school.value if hasattr(spell.school, "value") else str(spell.school),
+        "ritual": getattr(spell, "ritual", False),
         "damage_type": spell.damage_type.value if spell.damage_type else "",
         "effect_type": (
             spell.effect_type.value
