@@ -499,10 +499,10 @@ class CharacterCreationApp(App[Character | None]):
                     )
                 )
             w.append(SelectionList(*opts, id="invocation-list"))
-            # 顯示各祈喚的完整描述
+            # 已選的祈喚顯示詳情（左面板只顯示已選的）
             for inv in available_inv:
-                marker = "▶ " if inv.id in sel else "  "
-                w.append(Static(f"{marker}{inv.name_zh}：{inv.description}"))
+                if inv.id in sel:
+                    w.append(Static(f"  ◆ {inv.name_zh}：{inv.description}"))
 
         # 契約之書子選項
         if self.session.has_pact_of_the_tome():
@@ -524,6 +524,12 @@ class CharacterCreationApp(App[Character | None]):
                         )
                     )
                 w.append(SelectionList(*tc_opts, id="tome-cantrip-list"))
+                # 已選戲法詳情
+                tc_lookup = {s["en_name"]: s for s in tome_cantrips}
+                for en in sel_tc:
+                    sd = tc_lookup.get(en)
+                    if sd:
+                        w.append(Static(f"  ◆ {sd['name']}：{sd.get('description', '')}"))
 
             # 選 2 個 1 環儀式法術
             tome_rituals = self.session.get_available_tome_rituals()
@@ -533,14 +539,21 @@ class CharacterCreationApp(App[Character | None]):
                 tr_opts = []
                 for s in tome_rituals:
                     tag = s["damage_type_zh"] if s["damage_type_zh"] else s["effect_type_zh"]
+                    ritual_tag = "（儀式）" if s.get("ritual") else ""
                     tr_opts.append(
                         (
-                            f"{s['name']}（{s['en_name']}）— {tag}",
+                            f"{s['name']}（{s['en_name']}）— {tag}{ritual_tag}",
                             s["en_name"],
                             s["en_name"] in sel_tr,
                         )
                     )
                 w.append(SelectionList(*tr_opts, id="tome-ritual-list"))
+                # 已選儀式詳情
+                tr_lookup = {s["en_name"]: s for s in tome_rituals}
+                for en in sel_tr:
+                    sd = tr_lookup.get(en)
+                    if sd:
+                        w.append(Static(f"  ◆ {sd['name']}：{sd.get('description', '')}"))
 
     # ── Step: 戲法 ──────────────────────────────────────────────────────────
 
@@ -1349,14 +1362,14 @@ class CharacterCreationApp(App[Character | None]):
             self._update_preview()
             # 重新渲染以更新祈喚描述的 ▶ 標記和契約之書子選項
             await self._render_step()
-        elif sl_id == "tome-cantrip-list":
+        elif sl_id in ("tome-cantrip-list", "tome-ritual-list"):
             selected = self._enforce_selection_limit(sl, sl_id, limit)
-            self.session.data.tome_cantrips = selected
+            if sl_id == "tome-cantrip-list":
+                self.session.data.tome_cantrips = selected
+            else:
+                self.session.data.tome_rituals = selected
             self._update_preview()
-        elif sl_id == "tome-ritual-list":
-            selected = self._enforce_selection_limit(sl, sl_id, limit)
-            self.session.data.tome_rituals = selected
-            self._update_preview()
+            await self._render_step()
         elif sl_id == "skills-list":
             selected = self._enforce_selection_limit(sl, sl_id, limit)
             self.session.data.skills = selected
