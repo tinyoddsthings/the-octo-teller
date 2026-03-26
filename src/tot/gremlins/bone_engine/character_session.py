@@ -6,6 +6,7 @@ TUI 和未來的 LLM Narrator 都呼叫同一套 API。
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from enum import StrEnum
 
@@ -788,8 +789,8 @@ class CharacterCreationSession:
             req_line = parts[0]
             detail = parts[1].strip() if len(parts) > 1 else ""
 
-        rng = spell_dict.get("range", "")
-        dur = spell_dict.get("duration", "")
+        rng = _translate_range(spell_dict.get("range", ""))
+        dur = _translate_duration(spell_dict.get("duration", ""))
         conc = "（專注）" if spell_dict.get("concentration") else ""
         ritual = "（儀式）" if spell_dict.get("ritual") else ""
 
@@ -1338,6 +1339,57 @@ class CharacterCreationSession:
 
 
 # ── 工具函式 ──────────────────────────────────────────────────────────────────
+
+
+def _translate_range(rng: str) -> str:
+    """將法術範圍從英制轉為公制中文。5ft = 1.5m。"""
+    if not rng:
+        return ""
+    if rng == "Self":
+        return "自身"
+    if rng == "Touch":
+        return "觸碰"
+
+    def _ft_to_m(match: re.Match) -> str:
+        ft = int(match.group(1))
+        m = ft * 0.3
+        return f"{m:g}m"
+
+    result = re.sub(r"(\d+)ft", _ft_to_m, rng)
+    result = result.replace("Self", "自身")
+    result = result.replace("cone", "錐形")
+    result = result.replace("cube", "立方")
+    result = result.replace("sphere", "球形")
+    result = result.replace("line", "直線")
+    result = result.replace("emanation", "散發")
+    result = result.replace("(", "（").replace(")", "）")
+    return result
+
+
+def _translate_duration(dur: str) -> str:
+    """將法術持續時間從英文轉為中文。"""
+    if not dur:
+        return ""
+    translations = {
+        "Instantaneous": "立即",
+    }
+    if dur in translations:
+        return translations[dur]
+
+    # 解析 "N unit" 格式
+    m = re.match(r"(\d+)\s+(round|minute|minutes|hour|hours|day|days)", dur)
+    if m:
+        n = int(m.group(1))
+        unit = m.group(2)
+        unit_zh = {
+            "round": "回合",
+            "minute": "分鐘", "minutes": "分鐘",
+            "hour": "小時", "hours": "小時",
+            "day": "天", "days": "天",
+        }
+        return f"{n} {unit_zh.get(unit, unit)}"
+
+    return dur  # 無法解析的保持原樣
 
 
 def _spell_to_dict(spell: object) -> dict:
