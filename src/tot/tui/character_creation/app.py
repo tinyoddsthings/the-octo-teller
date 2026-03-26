@@ -1384,6 +1384,7 @@ class CharacterCreationApp(App[Character | None]):
             else:
                 self.session.data.tome_rituals = selected
             self._update_preview()
+            await self._render_step()  # _rendering flag 防止事件循環
         elif sl_id == "skills-list":
             selected = self._enforce_selection_limit(sl, sl_id, limit)
             self.session.data.skills = selected
