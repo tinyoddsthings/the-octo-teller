@@ -556,24 +556,28 @@ class CharacterCreationSession:
         return "Pact of the Tome" in self.data.invocations
 
     def get_available_tome_cantrips(self) -> list[dict]:
-        """全職業戲法，排除已有的（種族+職業+專長+書已選的）。"""
+        """全職業戲法，排除其他來源已有的（種族+職業+專長）。
+
+        不排除 tome_cantrips 自己已選的，否則 re-render 時選項會消失。
+        """
         db = load_spell_db()
         all_cantrips = [s for s in db.values() if s.level == 0]
-        # 排除已選的
         excluded = set(self.get_species_granted_cantrips())
         excluded.update(self.data.cantrips)
         excluded.update(self.data.feat_cantrips)
-        excluded.update(self.data.tome_cantrips)
+        # 不排除 self.data.tome_cantrips
         return [_spell_to_dict(s) for s in all_cantrips if s.en_name not in excluded]
 
     def get_available_tome_rituals(self) -> list[dict]:
-        """全職業 1 環 ritual=True 法術，排除已備妥的。"""
+        """全職業 1 環 ritual=True 法術，排除其他來源已備妥的。
+
+        不排除 tome_rituals 自己已選的。
+        """
         db = load_spell_db()
         rituals = [s for s in db.values() if s.level == 1 and s.ritual]
-        # 排除已選的
         excluded = set(self.data.spells)
         excluded.update(self.data.feat_spells)
-        excluded.update(self.data.tome_rituals)
+        # 不排除 self.data.tome_rituals
         return [_spell_to_dict(s) for s in rituals if s.en_name not in excluded]
 
     def set_tome_cantrips(self, cantrips: list[str]) -> None:
