@@ -55,6 +55,8 @@ class StepType(StrEnum):
     EXPERTISE = "expertise"
     LANGUAGE = "language"
     INVOCATIONS = "invocations"
+    TOME_CANTRIPS = "tome_cantrips"    # 契約之書 3 戲法
+    TOME_RITUALS = "tome_rituals"      # 契約之書 2 儀式
     CANTRIPS = "cantrips"
     SPELLS = "spells"
     EQUIPMENT = "equipment"
@@ -176,6 +178,10 @@ class CharacterCreationSession:
             steps.extend([StepType.EXPERTISE, StepType.LANGUAGE])
         elif cc == "Warlock":
             steps.append(StepType.INVOCATIONS)
+            # 契約之書：額外的戲法和儀式步驟
+            if self.has_pact_of_the_tome():
+                steps.append(StepType.TOME_CANTRIPS)
+                steps.append(StepType.TOME_RITUALS)
 
         # 武器精通
         if cc in ("Barbarian", "Fighter", "Paladin", "Ranger", "Rogue"):
@@ -212,6 +218,8 @@ class CharacterCreationSession:
             StepType.EXPERTISE: "專精",
             StepType.LANGUAGE: "額外語言",
             StepType.INVOCATIONS: "魔能祈喚",
+            StepType.TOME_CANTRIPS: "暗影之書：戲法",
+            StepType.TOME_RITUALS: "暗影之書：儀式",
             StepType.CANTRIPS: "選擇戲法",
             StepType.SPELLS: "選擇法術",
             StepType.EQUIPMENT: "選擇裝備",

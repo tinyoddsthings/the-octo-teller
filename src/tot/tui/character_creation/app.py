@@ -174,6 +174,8 @@ class CharacterCreationApp(App[Character | None]):
             StepType.ABILITY_SCORES: self._widgets_ability_scores,
             StepType.SKILLS: self._widgets_skills,
             StepType.INVOCATIONS: self._widgets_invocations,
+            StepType.TOME_CANTRIPS: self._widgets_tome_cantrips,
+            StepType.TOME_RITUALS: self._widgets_tome_rituals,
             StepType.CANTRIPS: self._widgets_cantrips,
             StepType.SPELLS: self._widgets_spells,
             StepType.EQUIPMENT: self._widgets_equipment,
@@ -508,56 +510,58 @@ class CharacterCreationApp(App[Character | None]):
                 if inv.id in sel:
                     w.append(Static(f"  ◆ {inv.name_zh}：{inv.description}"))
 
-        # 契約之書子選項
+        # 契約之書提示
         if self.session.has_pact_of_the_tome():
-            w.append(Label("── 暗影之書 ──", classes="section-label"))
+            w.append(Label("  ※ 下兩步將選擇暗影之書的戲法和儀式"))
 
-            # 選 3 個戲法（任何職業列表）
-            tome_cantrips = self.session.get_available_tome_cantrips()
-            w.append(Label("── 選 3 個戲法（任何職業列表）──", classes="section-label"))
-            if tome_cantrips:
-                sel_tc = d.tome_cantrips
-                tc_opts = []
-                for s in tome_cantrips:
-                    tag = s["damage_type_zh"] if s["damage_type_zh"] else s["effect_type_zh"]
-                    tc_opts.append(
-                        (
-                            f"{s['name']}（{s['en_name']}）— {tag}",
-                            s["en_name"],
-                            s["en_name"] in sel_tc,
-                        )
-                    )
-                w.append(SelectionList(*tc_opts, id="tome-cantrip-list"))
-                # 已選戲法詳情
-                tc_lookup = {s["en_name"]: s for s in tome_cantrips}
-                for en in sel_tc:
-                    sd = tc_lookup.get(en)
-                    if sd:
-                        w.append(Static(f"  ◆ {sd['name']}：{sd.get('description', '')}"))
+    # ── Step: 暗影之書戲法（契約之書獨立步驟）──────────────────────────────────
 
-            # 選 2 個 1 環儀式法術
-            tome_rituals = self.session.get_available_tome_rituals()
-            w.append(Label("── 選 2 個 1 環儀式法術 ──", classes="section-label"))
-            if tome_rituals:
-                sel_tr = d.tome_rituals
-                tr_opts = []
-                for s in tome_rituals:
-                    tag = s["damage_type_zh"] if s["damage_type_zh"] else s["effect_type_zh"]
-                    ritual_tag = "（儀式）" if s.get("ritual") else ""
-                    tr_opts.append(
-                        (
-                            f"{s['name']}（{s['en_name']}）— {tag}{ritual_tag}",
-                            s["en_name"],
-                            s["en_name"] in sel_tr,
-                        )
-                    )
-                w.append(SelectionList(*tr_opts, id="tome-ritual-list"))
-                # 已選儀式詳情
-                tr_lookup = {s["en_name"]: s for s in tome_rituals}
-                for en in sel_tr:
-                    sd = tr_lookup.get(en)
-                    if sd:
-                        w.append(Static(f"  ◆ {sd['name']}：{sd.get('description', '')}"))
+    def _widgets_tome_cantrips(self, w: list) -> None:
+        d = self.session.data
+        tome_cantrips = self.session.get_available_tome_cantrips()
+        w.append(Label("── 選 3 個戲法（任何職業列表）──", classes="section-label"))
+        if tome_cantrips:
+            sel = d.tome_cantrips
+            opts = []
+            for s in tome_cantrips:
+                tag = s["damage_type_zh"] if s["damage_type_zh"] else s["effect_type_zh"]
+                opts.append((
+                    f"{s['name']}（{s['en_name']}）— {tag}",
+                    s["en_name"],
+                    s["en_name"] in sel,
+                ))
+            w.append(SelectionList(*opts, id="tome-cantrip-list"))
+            # 已選詳情
+            lookup = {s["en_name"]: s for s in tome_cantrips}
+            for en in sel:
+                sd = lookup.get(en)
+                if sd:
+                    w.append(Static(f"  ◆ {sd['name']}：{sd.get('description', '')}"))
+
+    # ── Step: 暗影之書儀式（契約之書獨立步驟）──────────────────────────────────
+
+    def _widgets_tome_rituals(self, w: list) -> None:
+        d = self.session.data
+        tome_rituals = self.session.get_available_tome_rituals()
+        w.append(Label("── 選 2 個 1 環儀式法術 ──", classes="section-label"))
+        if tome_rituals:
+            sel = d.tome_rituals
+            opts = []
+            for s in tome_rituals:
+                tag = s["damage_type_zh"] if s["damage_type_zh"] else s["effect_type_zh"]
+                ritual_tag = "（儀式）" if s.get("ritual") else ""
+                opts.append((
+                    f"{s['name']}（{s['en_name']}）— {tag}{ritual_tag}",
+                    s["en_name"],
+                    s["en_name"] in sel,
+                ))
+            w.append(SelectionList(*opts, id="tome-ritual-list"))
+            # 已選詳情
+            lookup = {s["en_name"]: s for s in tome_rituals}
+            for en in sel:
+                sd = lookup.get(en)
+                if sd:
+                    w.append(Static(f"  ◆ {sd['name']}：{sd.get('description', '')}"))
 
     # ── Step: 戲法 ──────────────────────────────────────────────────────────
 
@@ -914,6 +918,8 @@ class CharacterCreationApp(App[Character | None]):
             StepType.ABILITY_SCORES: self._collect_ability_scores,
             StepType.SKILLS: self._collect_skills,
             StepType.INVOCATIONS: self._collect_invocations,
+            StepType.TOME_CANTRIPS: self._collect_tome_cantrips,
+            StepType.TOME_RITUALS: self._collect_tome_rituals,
             StepType.CANTRIPS: self._collect_cantrips,
             StepType.SPELLS: self._collect_spells,
             StepType.EQUIPMENT: self._collect_equipment,
@@ -1133,7 +1139,7 @@ class CharacterCreationApp(App[Character | None]):
         self.session.set_equipment(bg_eq, cls_eq)
 
     def _collect_invocations(self) -> None:
-        """收集魔能祈喚選擇（Warlock 獨立步驟）。"""
+        """收集魔能祈喚選擇。"""
         try:
             sl = self.query_one("#invocation-list", SelectionList)
             self.session.set_invocations(list(sl.selected))
@@ -1142,22 +1148,25 @@ class CharacterCreationApp(App[Character | None]):
         except Exception:
             pass
 
-        # 契約之書子選項
-        if self.session.has_pact_of_the_tome():
-            try:
-                tc_sl = self.query_one("#tome-cantrip-list", SelectionList)
-                self.session.set_tome_cantrips(list(tc_sl.selected))
-            except ValueError:
-                raise
-            except Exception:
-                pass
-            try:
-                tr_sl = self.query_one("#tome-ritual-list", SelectionList)
-                self.session.set_tome_rituals(list(tr_sl.selected))
-            except ValueError:
-                raise
-            except Exception:
-                pass
+    def _collect_tome_cantrips(self) -> None:
+        """收集契約之書戲法。"""
+        try:
+            sl = self.query_one("#tome-cantrip-list", SelectionList)
+            self.session.set_tome_cantrips(list(sl.selected))
+        except ValueError:
+            raise
+        except Exception:
+            pass
+
+    def _collect_tome_rituals(self) -> None:
+        """收集契約之書儀式。"""
+        try:
+            sl = self.query_one("#tome-ritual-list", SelectionList)
+            self.session.set_tome_rituals(list(sl.selected))
+        except ValueError:
+            raise
+        except Exception:
+            pass
 
     def _collect_cantrips(self) -> None:
         """收集戲法步驟的資料。"""
@@ -1375,7 +1384,6 @@ class CharacterCreationApp(App[Character | None]):
             else:
                 self.session.data.tome_rituals = selected
             self._update_preview()
-            await self._render_step()
         elif sl_id == "skills-list":
             selected = self._enforce_selection_limit(sl, sl_id, limit)
             self.session.data.skills = selected
