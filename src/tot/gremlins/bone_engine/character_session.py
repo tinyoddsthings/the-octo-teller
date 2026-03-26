@@ -55,6 +55,7 @@ class StepType(StrEnum):
     EXPERTISE = "expertise"
     LANGUAGE = "language"
     INVOCATIONS = "invocations"
+    CANTRIPS = "cantrips"
     SPELLS = "spells"
     EQUIPMENT = "equipment"
     CONFIRM = "confirm"
@@ -180,12 +181,17 @@ class CharacterCreationSession:
         if cc in ("Barbarian", "Fighter", "Paladin", "Ranger", "Rogue"):
             steps.append(StepType.WEAPON_MASTERY)
 
-        # 法術（檢查是否有施法能力或專長法術）
+        # 戲法（職業戲法、專長戲法、或契約之書戲法）
         cd = CLASS_DISPLAY.get(cc)
-        has_spells = cd and (cd.num_cantrips > 0 or cd.num_prepared_spells > 0)
+        has_class_cantrips = cd and cd.num_cantrips > 0
         has_feat_spells = self.has_feat_spell_choices()
-        has_invocation_spells = self.has_pact_of_the_tome()
-        if has_spells or has_feat_spells or has_invocation_spells:
+        has_tome = self.has_pact_of_the_tome()
+        if has_class_cantrips or has_feat_spells or has_tome:
+            steps.append(StepType.CANTRIPS)
+
+        # 法術（職業 1 環法術、專長 1 環法術）
+        has_class_spells = cd and cd.num_prepared_spells > 0
+        if has_class_spells or has_feat_spells:
             steps.append(StepType.SPELLS)
 
         steps.extend([StepType.EQUIPMENT, StepType.CONFIRM])
@@ -206,7 +212,8 @@ class CharacterCreationSession:
             StepType.EXPERTISE: "專精",
             StepType.LANGUAGE: "額外語言",
             StepType.INVOCATIONS: "魔能祈喚",
-            StepType.SPELLS: "戲法與法術",
+            StepType.CANTRIPS: "選擇戲法",
+            StepType.SPELLS: "選擇法術",
             StepType.EQUIPMENT: "選擇裝備",
             StepType.CONFIRM: "角色名稱＋確認",
         }

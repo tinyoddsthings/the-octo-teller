@@ -171,6 +171,7 @@ class CharacterCreationApp(App[Character | None]):
             StepType.ABILITY_SCORES: self._widgets_ability_scores,
             StepType.SKILLS: self._widgets_skills,
             StepType.INVOCATIONS: self._widgets_invocations,
+            StepType.CANTRIPS: self._widgets_cantrips,
             StepType.SPELLS: self._widgets_spells,
             StepType.EQUIPMENT: self._widgets_equipment,
             StepType.CONFIRM: self._widgets_confirm,
@@ -541,24 +542,13 @@ class CharacterCreationApp(App[Character | None]):
                     )
                 w.append(SelectionList(*tr_opts, id="tome-ritual-list"))
 
-    # ── Step: 戲法與法術 ─────────────────────────────────────────────────────
+    # ── Step: 戲法 ──────────────────────────────────────────────────────────
 
-    def _widgets_spells(self, w: list) -> None:
+    def _widgets_cantrips(self, w: list) -> None:
         d = self.session.data
-        cc = d.char_class
-        if not cc:
-            w.append(Label("請先選擇職業"))
-            return
+        cd = CLASS_DISPLAY.get(d.char_class)
 
-        cd = CLASS_DISPLAY.get(cc)
-        has_class_spells = cd and (cd.num_cantrips > 0 or cd.num_prepared_spells > 0)
-        has_feat_spells = self.session.has_feat_spell_choices()
-
-        if not has_class_spells and not has_feat_spells:
-            w.append(Label(f"{cd.name_zh if cd else cc} 在 1 級沒有施法能力。"))
-            return
-
-        # ── 種族/血統已有的戲法（不可重複選）──
+        # 種族/血統已有的戲法
         granted = self.session.get_species_granted_cantrips()
         if granted:
             from tot.gremlins.bone_engine.spells import load_spell_db
@@ -575,72 +565,34 @@ class CharacterCreationApp(App[Character | None]):
                 )
             )
 
-        # ── 專長法術（Magic Initiate）──────────────────────────────
-        if has_feat_spells:
-            self._widgets_feat_spells(w, d)
+        # 專長戲法（Magic Initiate）
+        if self.session.has_feat_spell_choices():
+            spell_feat = self.session._get_spell_feat()
+            if spell_feat and spell_feat.num_feat_cantrips > 0:
+                self._widgets_feat_cantrips(w, d, spell_feat)
 
-        # ── 職業戲法 ──────────────────────────────────────────────
+        # 職業戲法
         if cd and cd.num_cantrips > 0:
             cantrips = self.session.get_available_cantrips()
-            w.append(
-                Label(
-                    f"── 職業戲法（選 {cd.num_cantrips} 個）──",
-                    classes="section-label",
-                )
-            )
+            w.append(Label(f"── 職業戲法（選 {cd.num_cantrips} 個）──", classes="section-label"))
             if cantrips:
                 sel = d.cantrips
                 opts = []
                 for s in cantrips:
                     tag = s["damage_type_zh"] if s["damage_type_zh"] else s["effect_type_zh"]
                     opts.append(
-                        (
-                            f"{s['name']}（{s['en_name']}）— {tag}",
-                            s["en_name"],
-                            s["en_name"] in sel,
-                        )
+                        (f"{s['name']}（{s['en_name']}）— {tag}", s["en_name"], s["en_name"] in sel)
                     )
                 w.append(SelectionList(*opts, id="cantrip-list"))
             else:
                 w.append(Label("  （法術資料庫尚無此職業的戲法）"))
 
-        # ── 職業 1 環法術 ────────────────────────────────────────
-        if cd and cd.num_prepared_spells > 0:
-            spells_1 = self.session.get_available_spells()
-            w.append(
-                Label(
-                    f"── 職業 1 環法術（選 {cd.num_prepared_spells} 個）──",
-                    classes="section-label",
-                )
-            )
-            if spells_1:
-                sel = d.spells
-                opts = []
-                for s in spells_1:
-                    tag = s["damage_type_zh"] if s["damage_type_zh"] else s["effect_type_zh"]
-                    opts.append(
-                        (
-                            f"{s['name']}（{s['en_name']}）— {tag}",
-                            s["en_name"],
-                            s["en_name"] in sel,
-                        )
-                    )
-                w.append(SelectionList(*opts, id="spell-list"))
-            else:
-                w.append(Label("  （法術資料庫尚無此職業的 1 環法術）"))
+        # 已選戲法詳情
+        self._render_spell_details(w, d, cantrips_only=True)
 
-        # 已選法術詳情預覽
-        self._render_spell_details(w, d)
-
-    def _widgets_feat_spells(self, w: list, d: CharacterCreationData) -> None:
-        """渲染 Magic Initiate 專長的法術選擇區塊。"""
-        spell_feat = self.session._get_spell_feat()
-        if not spell_feat:
-            return
-
+    def _widgets_feat_cantrips(self, w: list, d: CharacterCreationData, spell_feat) -> None:
+        """渲染 Magic Initiate 專長的戲法選擇 + 施法屬性。"""
         w.append(Label(f"── {spell_feat.name_zh} ──", classes="section-label"))
-
-        # 施法屬性選擇（INT/WIS/CHA）
         if spell_feat.spellcasting_ability_choice:
             w.append(Label("  施法屬性："))
             cur_ab = d.feat_spellcasting_ability
@@ -650,8 +602,6 @@ class CharacterCreationApp(App[Character | None]):
                 RadioButton("魅力（CHA）", value=(cur_ab == Ability.CHA)),
             ]
             w.append(RadioSet(*ab_btns, id="feat-ability-radio"))
-
-        # 專長戲法
         if spell_feat.num_feat_cantrips > 0:
             feat_cantrips = self.session.get_available_feat_cantrips()
             w.append(
@@ -666,56 +616,91 @@ class CharacterCreationApp(App[Character | None]):
                 for s in feat_cantrips:
                     tag = s["damage_type_zh"] if s["damage_type_zh"] else s["effect_type_zh"]
                     opts.append(
-                        (
-                            f"{s['name']}（{s['en_name']}）— {tag}",
-                            s["en_name"],
-                            s["en_name"] in sel,
-                        )
+                        (f"{s['name']}（{s['en_name']}）— {tag}", s["en_name"], s["en_name"] in sel)
                     )
                 w.append(SelectionList(*opts, id="feat-cantrip-list"))
-            else:
-                w.append(Label(f"  （法術資料庫尚無{spell_feat.spell_class}的戲法）"))
 
-        # 專長 1 環法術
-        if spell_feat.num_feat_spells > 0:
-            feat_spells_1 = self.session.get_available_feat_spells()
+    # ── Step: 法術 ──────────────────────────────────────────────────────────
+
+    def _widgets_spells(self, w: list) -> None:
+        d = self.session.data
+        cd = CLASS_DISPLAY.get(d.char_class)
+
+        # 專長 1 環法術（Magic Initiate）
+        if self.session.has_feat_spell_choices():
+            spell_feat = self.session._get_spell_feat()
+            if spell_feat and spell_feat.num_feat_spells > 0:
+                feat_spells_1 = self.session.get_available_feat_spells()
+                w.append(
+                    Label(
+                        f"── {spell_feat.name_zh} 1 環法術（選 {spell_feat.num_feat_spells} 個）──",
+                        classes="section-label",
+                    )
+                )
+                if feat_spells_1:
+                    sel = d.feat_spells
+                    opts = []
+                    for s in feat_spells_1:
+                        tag = s["damage_type_zh"] if s["damage_type_zh"] else s["effect_type_zh"]
+                        opts.append(
+                            (
+                                f"{s['name']}（{s['en_name']}）— {tag}",
+                                s["en_name"],
+                                s["en_name"] in sel,
+                            )
+                        )
+                    w.append(SelectionList(*opts, id="feat-spell-list"))
+
+        # 職業 1 環法術
+        if cd and cd.num_prepared_spells > 0:
+            spells_1 = self.session.get_available_spells()
             w.append(
                 Label(
-                    f"── 專長 1 環法術（選 {spell_feat.num_feat_spells} 個）──",
-                    classes="section-label",
+                    f"── 職業 1 環法術（選 {cd.num_prepared_spells} 個）──", classes="section-label"
                 )
             )
-            if feat_spells_1:
-                sel = d.feat_spells
+            if spells_1:
+                sel = d.spells
                 opts = []
-                for s in feat_spells_1:
+                for s in spells_1:
                     tag = s["damage_type_zh"] if s["damage_type_zh"] else s["effect_type_zh"]
                     opts.append(
-                        (
-                            f"{s['name']}（{s['en_name']}）— {tag}",
-                            s["en_name"],
-                            s["en_name"] in sel,
-                        )
+                        (f"{s['name']}（{s['en_name']}）— {tag}", s["en_name"], s["en_name"] in sel)
                     )
-                w.append(SelectionList(*opts, id="feat-spell-list"))
+                w.append(SelectionList(*opts, id="spell-list"))
             else:
-                w.append(Label(f"  （法術資料庫尚無{spell_feat.spell_class}的 1 環法術）"))
+                w.append(Label("  （法術資料庫尚無此職業的 1 環法術）"))
 
-    def _render_spell_details(self, w: list, d: CharacterCreationData) -> None:
-        """渲染已選法術的詳細資訊。"""
-        all_cantrips = {s["en_name"]: s for s in self.session.get_available_cantrips()}
-        all_spells = {s["en_name"]: s for s in self.session.get_available_spells()}
-        # 也加入專長法術的查找表
+        # 已選法術詳情
+        self._render_spell_details(w, d, cantrips_only=False)
+
+    def _render_spell_details(
+        self,
+        w: list,
+        d: CharacterCreationData,
+        *,
+        cantrips_only: bool = False,
+    ) -> None:
+        """渲染已選法術的詳細資訊。cantrips_only=True 只顯示戲法。"""
+        all_lookup: dict[str, dict] = {}
+        for s in self.session.get_available_cantrips():
+            all_lookup[s["en_name"]] = s
         for s in self.session.get_available_feat_cantrips():
-            all_cantrips.setdefault(s["en_name"], s)
-        for s in self.session.get_available_feat_spells():
-            all_spells.setdefault(s["en_name"], s)
-        selected = list(d.feat_cantrips) + list(d.feat_spells) + list(d.cantrips) + list(d.spells)
+            all_lookup.setdefault(s["en_name"], s)
+        if not cantrips_only:
+            for s in self.session.get_available_spells():
+                all_lookup[s["en_name"]] = s
+            for s in self.session.get_available_feat_spells():
+                all_lookup.setdefault(s["en_name"], s)
+        if cantrips_only:
+            selected = list(d.feat_cantrips) + list(d.cantrips)
+        else:
+            selected = list(d.feat_spells) + list(d.spells)
         if not selected:
             return
         w.append(Label("── 已選法術詳情 ──", classes="section-label"))
         for en in selected:
-            sd = all_cantrips.get(en) or all_spells.get(en)
+            sd = all_lookup.get(en)
             if not sd:
                 continue
             dt = sd.get("damage_type_zh", "")
@@ -912,6 +897,7 @@ class CharacterCreationApp(App[Character | None]):
             StepType.ABILITY_SCORES: self._collect_ability_scores,
             StepType.SKILLS: self._collect_skills,
             StepType.INVOCATIONS: self._collect_invocations,
+            StepType.CANTRIPS: self._collect_cantrips,
             StepType.SPELLS: self._collect_spells,
             StepType.EQUIPMENT: self._collect_equipment,
             StepType.CONFIRM: self._collect_confirm,
@@ -1156,16 +1142,12 @@ class CharacterCreationApp(App[Character | None]):
             except Exception:
                 pass
 
-    def _collect_spells(self) -> None:
-        d = self.session.data
-        cc = d.char_class
-        cd = CLASS_DISPLAY.get(cc) if cc else None
-
-        # ── 專長法術（Magic Initiate）──
+    def _collect_cantrips(self) -> None:
+        """收集戲法步驟的資料。"""
+        # 專長戲法 + 施法屬性
         if self.session.has_feat_spell_choices():
             spell_feat = self.session._get_spell_feat()
             if spell_feat:
-                # 施法屬性
                 if spell_feat.spellcasting_ability_choice:
                     try:
                         ab_rs = self.query_one("#feat-ability-radio", RadioSet)
@@ -1179,8 +1161,6 @@ class CharacterCreationApp(App[Character | None]):
                         raise
                     except Exception:
                         raise ValueError("請選擇專長施法屬性") from None
-
-                # 專長戲法
                 if spell_feat.num_feat_cantrips > 0:
                     try:
                         sl = self.query_one("#feat-cantrip-list", SelectionList)
@@ -1188,37 +1168,35 @@ class CharacterCreationApp(App[Character | None]):
                     except Exception:
                         pass
 
-                # 專長 1 環法術
-                if spell_feat.num_feat_spells > 0:
-                    try:
-                        sl = self.query_one("#feat-spell-list", SelectionList)
-                        self.session.set_feat_spells(list(sl.selected))
-                    except Exception:
-                        pass
-
-        # ── 職業法術 ──
-        if not cd:
-            return
-
-        cantrips_sel: list[str] = []
-        spells_sel: list[str] = []
-
-        if cd.num_cantrips > 0:
+        # 職業戲法
+        cd = CLASS_DISPLAY.get(self.session.data.char_class)
+        if cd and cd.num_cantrips > 0:
             try:
                 sl = self.query_one("#cantrip-list", SelectionList)
-                cantrips_sel = list(sl.selected)
+                self.session.set_cantrips(list(sl.selected))
             except Exception:
                 pass
 
-        if cd.num_prepared_spells > 0:
+    def _collect_spells(self) -> None:
+        """收集法術步驟的資料。"""
+        # 專長 1 環法術
+        if self.session.has_feat_spell_choices():
+            spell_feat = self.session._get_spell_feat()
+            if spell_feat and spell_feat.num_feat_spells > 0:
+                try:
+                    sl = self.query_one("#feat-spell-list", SelectionList)
+                    self.session.set_feat_spells(list(sl.selected))
+                except Exception:
+                    pass
+
+        # 職業 1 環法術
+        cd = CLASS_DISPLAY.get(self.session.data.char_class)
+        if cd and cd.num_prepared_spells > 0:
             try:
                 sl = self.query_one("#spell-list", SelectionList)
-                spells_sel = list(sl.selected)
+                self.session.set_spells(list(sl.selected))
             except Exception:
                 pass
-
-        self.session.set_cantrips(cantrips_sel)
-        self.session.set_spells(spells_sel)
 
     def _collect_confirm(self) -> None:
         try:
