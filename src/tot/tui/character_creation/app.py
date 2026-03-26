@@ -536,7 +536,7 @@ class CharacterCreationApp(App[Character | None]):
             for en in sel:
                 sd = lookup.get(en)
                 if sd:
-                    w.append(Static(f"  ◆ {sd['name']}：{sd.get('description', '')}"))
+                    w.append(Static(self.session.format_spell_detail(sd)))
 
     # ── Step: 暗影之書儀式（契約之書獨立步驟）──────────────────────────────────
 
@@ -561,7 +561,7 @@ class CharacterCreationApp(App[Character | None]):
             for en in sel:
                 sd = lookup.get(en)
                 if sd:
-                    w.append(Static(f"  ◆ {sd['name']}：{sd.get('description', '')}"))
+                    w.append(Static(self.session.format_spell_detail(sd)))
 
     # ── Step: 戲法 ──────────────────────────────────────────────────────────
 
@@ -724,13 +724,7 @@ class CharacterCreationApp(App[Character | None]):
             sd = all_lookup.get(en)
             if not sd:
                 continue
-            dt = sd.get("damage_type_zh", "")
-            et = sd.get("effect_type_zh", "")
-            tag = dt if dt else et
-            lv = "戲法" if sd["level"] == 0 else f"{sd['level']} 環"
-            w.append(Label(f"  ◆ {sd['name']}（{lv}・{sd['school']}・{tag}）"))
-            # 用 Static 顯示長文字，自動換行
-            w.append(Static(f"    {sd.get('description', '')}"))
+            w.append(Static(self.session.format_spell_detail(sd)))
 
     # ── Step: 名稱＋確認 ──────────────────────────────────────────────────────
 

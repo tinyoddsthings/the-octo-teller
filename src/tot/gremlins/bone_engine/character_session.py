@@ -744,6 +744,69 @@ class CharacterCreationSession:
         name = ABILITY_ZH.get(ability, ability.value)
         return f"  {name}（{ability.value}）：{val}（{sign}{mod}）"
 
+    @staticmethod
+    def format_spell_detail(spell_dict: dict) -> str:
+        """通用法術詳情格式。TUI 和 LLM 共用。
+
+        輸出格式：
+          ◆ 法術名稱（X 環・學派・類型）
+            需求：V/S/M
+            範圍：60ft　持續：1 minute
+            詳細說明
+        """
+        school_zh = {
+            "Abjuration": "防護", "Conjuration": "咒法",
+            "Divination": "預言", "Enchantment": "惑控",
+            "Evocation": "塑能", "Illusion": "幻術",
+            "Necromancy": "死靈", "Transmutation": "變化",
+        }
+        effect_zh = {
+            "damage": "傷害", "healing": "治療", "condition": "狀態",
+            "buff": "增益", "utility": "功能",
+        }
+        damage_zh = {
+            "Fire": "火焰", "Cold": "寒冷", "Lightning": "閃電",
+            "Thunder": "雷鳴", "Acid": "酸液", "Poison": "毒素",
+            "Necrotic": "黯蝕", "Radiant": "光輝", "Force": "力場",
+            "Psychic": "心靈",
+        }
+
+        name = spell_dict.get("name", "")
+        level = spell_dict.get("level", 0)
+        lv_str = "戲法" if level == 0 else f"{level} 環"
+        school = school_zh.get(spell_dict.get("school", ""), spell_dict.get("school", ""))
+        dt = damage_zh.get(spell_dict.get("damage_type", ""), "")
+        et = effect_zh.get(spell_dict.get("effect_type", ""), "")
+        tag = dt if dt else et
+
+        desc = spell_dict.get("description", "")
+        # 從 description 提取需求行（以「需求：」開頭）
+        req_line = ""
+        detail = desc
+        if desc.startswith("需求："):
+            parts = desc.split("。", 1)
+            req_line = parts[0]
+            detail = parts[1].strip() if len(parts) > 1 else ""
+
+        rng = spell_dict.get("range", "")
+        dur = spell_dict.get("duration", "")
+        conc = "（專注）" if spell_dict.get("concentration") else ""
+        ritual = "（儀式）" if spell_dict.get("ritual") else ""
+
+        lines = [f"◆ {name}（{lv_str}・{school}・{tag}）{ritual}"]
+        if req_line:
+            lines.append(f"  {req_line}")
+        meta_parts = []
+        if rng:
+            meta_parts.append(f"範圍：{rng}")
+        if dur:
+            meta_parts.append(f"持續：{dur}{conc}")
+        if meta_parts:
+            lines.append(f"  {'　'.join(meta_parts)}")
+        if detail:
+            lines.append(f"  {detail}")
+        return "\n".join(lines)
+
     def sync_point_buy_cache(self) -> None:
         """將當前 scores 同步到點數購買暫存。由 TUI 在改動後呼叫。"""
         self.data._scores_point_buy = dict(self.data.scores)
@@ -1284,6 +1347,10 @@ def _spell_to_dict(spell: object) -> dict:
         "en_name": spell.en_name,
         "level": spell.level,
         "school": spell.school.value if hasattr(spell.school, "value") else str(spell.school),
+        "casting_time": getattr(spell, "casting_time", ""),
+        "range": getattr(spell, "range", ""),
+        "duration": getattr(spell, "duration", ""),
+        "concentration": getattr(spell, "concentration", False),
         "ritual": getattr(spell, "ritual", False),
         "damage_type": spell.damage_type.value if spell.damage_type else "",
         "effect_type": (
