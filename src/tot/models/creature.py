@@ -194,6 +194,7 @@ class Character(Combatant):
             SpellGrant,
             ToolGrant,
         )
+
         rebuilt = []
         for item in self.source_packs:
             if isinstance(item, SourcePack):
@@ -226,22 +227,19 @@ class Character(Combatant):
                 )
                 for sg in item.get("spells", [])
             ]
-            tools = [
-                ToolGrant(tool=Tool(tg["tool"]))
-                for tg in item.get("tools", [])
-            ]
-            saving_throws = [
-                Ability(a) for a in item.get("saving_throws", [])
-            ]
-            rebuilt.append(SourcePack(
-                pack_type=PackType(item["pack_type"]),
-                source_name=item.get("source_name", ""),
-                source_id=item.get("source_id", ""),
-                skills=skills,
-                spells=spells,
-                tools=tools,
-                saving_throws=saving_throws,
-            ))
+            tools = [ToolGrant(tool=Tool(tg["tool"])) for tg in item.get("tools", [])]
+            saving_throws = [Ability(a) for a in item.get("saving_throws", [])]
+            rebuilt.append(
+                SourcePack(
+                    pack_type=PackType(item["pack_type"]),
+                    source_name=item.get("source_name", ""),
+                    source_id=item.get("source_id", ""),
+                    skills=skills,
+                    spells=spells,
+                    tools=tools,
+                    saving_throws=saving_throws,
+                )
+            )
         self.source_packs = rebuilt
         return self
 
