@@ -248,18 +248,10 @@ class CharacterCard:
 
         for lvl in sorted(spells_by_level.keys()):
             names = spells_by_level[lvl]
-            # 合併 spell_slots 和 pact_slots
-            cur = c.spell_slots.current_slots.get(lvl, 0)
-            mx = c.spell_slots.max_slots.get(lvl, 0)
-            pact_cur = c.pact_slots.current_slots.get(lvl, 0)
-            pact_mx = c.pact_slots.max_slots.get(lvl, 0)
-            slot_parts = []
-            if mx > 0:
-                slot_parts.append(f"{cur}/{mx} 位")
-            if pact_mx > 0:
-                slot_parts.append(f"契約 {pact_cur}/{pact_mx} 位")
-            slot_str = "＋".join(slot_parts) if slot_parts else "0 位"
-            lines.append(f"{lvl} 環法術（{slot_str}）：{', '.join(names)}")
+            # 合併 spell_slots + pact_slots
+            cur = c.spell_slots.current_slots.get(lvl, 0) + c.pact_slots.current_slots.get(lvl, 0)
+            mx = c.spell_slots.max_slots.get(lvl, 0) + c.pact_slots.max_slots.get(lvl, 0)
+            lines.append(f"{lvl} 環法術（{cur}/{mx} 位）：{', '.join(names)}")
 
         # 祈喚（Warlock）
         invocations = self._get_invocations()
@@ -616,21 +608,18 @@ class CharacterCard:
             return dc, attack
         return c.spell_dc, c.spell_attack
 
-    def _format_slot_info(self, label: str, slots) -> str:
-        """格式化法術位資訊：如「契約位 1/1」。"""
-        total_cur = sum(slots.current_slots.values())
-        total_max = sum(slots.max_slots.values())
-        return f"{label} {total_cur}/{total_max}"
+    def _get_total_slots(self) -> tuple[int, int]:
+        """合併 spell_slots + pact_slots 的總位數。"""
+        c = self.char
+        cur = sum(c.spell_slots.current_slots.values()) + sum(c.pact_slots.current_slots.values())
+        mx = sum(c.spell_slots.max_slots.values()) + sum(c.pact_slots.max_slots.values())
+        return cur, mx
 
     def _format_cost_tag(self, sg: SpellGrant) -> str:
-        """根據 SpellGrant 屬性產生消耗標記字串，含剩餘位數。"""
-        c = self.char
+        """根據 SpellGrant 屬性產生消耗標記字串。統一用「法術」。"""
         ct = sg.casting_type
-        has_pact = bool(c.pact_slots.max_slots)
-        has_slots = bool(c.spell_slots.max_slots)
-
-        pact_info = self._format_slot_info("契約位", c.pact_slots) if has_pact else ""
-        slot_info = self._format_slot_info("法術位", c.spell_slots) if has_slots else ""
+        cur, mx = self._get_total_slots()
+        slot_str = f"法術 {cur}/{mx}" if mx > 0 else "法術"
 
         if ct == SpellCastingType.INVOCATION:
             return "【隨意施放】"
@@ -638,8 +627,7 @@ class CharacterCard:
         if sg.free_uses_max > 0:
             tag = f"【免費 {sg.free_uses_current}/{sg.free_uses_max}，長休恢復"
             if sg.can_also_use_slot:
-                ref = pact_info if has_pact else slot_info
-                tag += f"，或消耗{ref}" if ref else "，或消耗法術位"
+                tag += f"，或消耗{slot_str}"
             tag += "】"
             return tag
 
@@ -647,25 +635,9 @@ class CharacterCard:
             return "【免費 1/1】"
 
         if ct == SpellCastingType.TOME and sg.can_ritual_cast:
-            ref = pact_info if has_pact else slot_info
-            return f"【儀式，或消耗{ref}】" if ref else "【儀式或法術位】"
+            return f"【儀式，或消耗{slot_str}】"
 
-        # KNOWN / PREPARED / FEAT / SPELLBOOK
-        if ct in (SpellCastingType.KNOWN, SpellCastingType.PREPARED):
-            if has_pact:
-                return f"【{pact_info}】"
-            if has_slots:
-                return f"【{slot_info}】"
-        if ct == SpellCastingType.FEAT:
-            if has_slots:
-                return f"【{slot_info}】"
-            if has_pact:
-                return f"【{pact_info}】"
-        if has_pact:
-            return f"【{pact_info}】"
-        if has_slots:
-            return f"【{slot_info}】"
-        return "【法術位】"
+        return f"【{slot_str}】"
 
     def _build_combat_spell_lines(self) -> dict[str, list[str]]:
         """從 SourcePack 讀取所有法術，按 casting_time 分組為戰鬥行。
@@ -793,30 +765,22 @@ class CharacterCard:
         return items
 
     def _format_spell_slots(self) -> list[str]:
-        """格式化法術位顯示（■/□ 方塊表示）。"""
-        lines: list[str] = []
-        slots = self.char.spell_slots
-
-        for lvl in sorted(slots.max_slots.keys()):
-            mx = slots.max_slots[lvl]
-            if mx <= 0:
-                continue
-            cur = slots.current_slots.get(lvl, 0)
-            used = mx - cur
-            blocks = "■" * cur + "□" * used
-            lines.append(f"{lvl} 環：{blocks}（{cur}/{mx}）")
-
-        # Warlock 契約法術欄位
-        pact = self.char.pact_slots
-        if pact.max_slots:
-            for lvl in sorted(pact.max_slots.keys()):
-                mx = pact.max_slots[lvl]
+        """格式化法術位顯示（■/□ 方塊表示）。合併 spell_slots + pact_slots。"""
+        # 合併所有法術位
+        combined: dict[int, tuple[int, int]] = {}  # {level: (current, max)}
+        for slots in (self.char.spell_slots, self.char.pact_slots):
+            for lvl, mx in slots.max_slots.items():
                 if mx <= 0:
                     continue
-                cur = pact.current_slots.get(lvl, 0)
-                used = mx - cur
-                blocks = "■" * cur + "□" * used
-                lines.append(f"契約 {lvl} 環：{blocks}（{cur}/{mx}）")
+                cur = slots.current_slots.get(lvl, 0)
+                old_cur, old_mx = combined.get(lvl, (0, 0))
+                combined[lvl] = (old_cur + cur, old_mx + mx)
+
+        lines: list[str] = []
+        for lvl in sorted(combined.keys()):
+            cur, mx = combined[lvl]
+            blocks = "■" * cur + "□" * (mx - cur)
+            lines.append(f"{lvl} 環：{blocks}（{cur}/{mx}）")
 
         return lines
 
