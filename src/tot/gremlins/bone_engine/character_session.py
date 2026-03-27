@@ -6,6 +6,7 @@ TUI 和未來的 LLM Narrator 都呼叫同一套 API。
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from enum import StrEnum
 
@@ -55,6 +56,8 @@ class StepType(StrEnum):
     EXPERTISE = "expertise"
     LANGUAGE = "language"
     INVOCATIONS = "invocations"
+    TOME_CANTRIPS = "tome_cantrips"  # 契約之書 3 戲法
+    TOME_RITUALS = "tome_rituals"  # 契約之書 2 儀式
     CANTRIPS = "cantrips"
     SPELLS = "spells"
     EQUIPMENT = "equipment"
@@ -176,6 +179,10 @@ class CharacterCreationSession:
             steps.extend([StepType.EXPERTISE, StepType.LANGUAGE])
         elif cc == "Warlock":
             steps.append(StepType.INVOCATIONS)
+            # 契約之書：額外的戲法和儀式步驟
+            if self.has_pact_of_the_tome():
+                steps.append(StepType.TOME_CANTRIPS)
+                steps.append(StepType.TOME_RITUALS)
 
         # 武器精通
         if cc in ("Barbarian", "Fighter", "Paladin", "Ranger", "Rogue"):
@@ -212,6 +219,8 @@ class CharacterCreationSession:
             StepType.EXPERTISE: "專精",
             StepType.LANGUAGE: "額外語言",
             StepType.INVOCATIONS: "魔能祈喚",
+            StepType.TOME_CANTRIPS: "暗影之書：戲法",
+            StepType.TOME_RITUALS: "暗影之書：儀式",
             StepType.CANTRIPS: "選擇戲法",
             StepType.SPELLS: "選擇法術",
             StepType.EQUIPMENT: "選擇裝備",
@@ -548,25 +557,16 @@ class CharacterCreationSession:
         return "Pact of the Tome" in self.data.invocations
 
     def get_available_tome_cantrips(self) -> list[dict]:
-        """全職業戲法，排除已有的（種族+職業+專長+書已選的）。"""
+        """全職業戲法。不排除其他來源已有的（SourcePack 分別追蹤）。"""
         db = load_spell_db()
         all_cantrips = [s for s in db.values() if s.level == 0]
-        # 排除已選的
-        excluded = set(self.get_species_granted_cantrips())
-        excluded.update(self.data.cantrips)
-        excluded.update(self.data.feat_cantrips)
-        excluded.update(self.data.tome_cantrips)
-        return [_spell_to_dict(s) for s in all_cantrips if s.en_name not in excluded]
+        return [_spell_to_dict(s) for s in all_cantrips]
 
     def get_available_tome_rituals(self) -> list[dict]:
-        """全職業 1 環 ritual=True 法術，排除已備妥的。"""
+        """全職業 1 環 ritual=True 法術。不排除其他來源已有的。"""
         db = load_spell_db()
         rituals = [s for s in db.values() if s.level == 1 and s.ritual]
-        # 排除已選的
-        excluded = set(self.data.spells)
-        excluded.update(self.data.feat_spells)
-        excluded.update(self.data.tome_rituals)
-        return [_spell_to_dict(s) for s in rituals if s.en_name not in excluded]
+        return [_spell_to_dict(s) for s in rituals]
 
     def set_tome_cantrips(self, cantrips: list[str]) -> None:
         """設定契約之書的 3 個戲法。"""
@@ -582,18 +582,39 @@ class CharacterCreationSession:
 
     # ── 查詢可選項 ────────────────────────────────────────────────────────────
 
+    def _current_packs(self) -> list:
+        """即時計算目前已確定的 SourcePack（不需 build_character）。"""
+        packs = []
+        if self.data.species:
+            packs.append(self._build_species_pack_sp())
+        if self.data.background:
+            packs.append(self._build_background_pack_sp())
+            bg = BACKGROUND_REGISTRY.get(self.data.background)
+            if bg:
+                fp = self._build_feat_pack_sp(bg.feat)
+                if fp:
+                    packs.append(fp)
+        if self.data.species_feat:
+            fp = self._build_feat_pack_sp(self.data.species_feat)
+            if fp:
+                packs.append(fp)
+        return packs
+
     def get_available_skills(self) -> list[Skill]:
         """取得可選技能清單。
 
-        (AllFeatPools ∪ ClassList ∪ AllSkills if Human多才) - BackgroundSkills。
-
+        (AllFeatPools ∪ ClassList ∪ AllSkills if 種族自選) - 已有技能（從 Pack）。
         職業技能優先排列。
         """
         cc = self.data.char_class
-        bg_skill_set = set(self._get_bg_skills())
+
+        # 從已確定的 Pack 取得已有技能
+        already = set()
+        for pack in self._current_packs():
+            already |= {sg.skill for sg in pack.skills}
 
         origin_feats = self.get_origin_feats()
-        has_human_versatility = self._has_species_skill_choice()
+        has_species_choice = self._has_species_skill_choice()
 
         candidate_set: set[Skill] = set()
 
@@ -603,10 +624,10 @@ class CharacterCreationSession:
                 if feat.skill_choice_pool:
                     candidate_set.update(feat.skill_choice_pool)
                 else:
-                    candidate_set.update(Skill)  # 全 18 項
+                    candidate_set.update(Skill)
 
-        # 種族自選技能（Human 多才：全 18 項；Elf 敏銳感官：限定池）
-        if has_human_versatility:
+        # 種族自選技能
+        if has_species_choice:
             sp = SPECIES_REGISTRY.get(self.data.species)
             if sp and sp.skill_choice_pool:
                 candidate_set.update(sp.skill_choice_pool)
@@ -619,8 +640,8 @@ class CharacterCreationSession:
             cls_set = set(CLASS_REGISTRY[cc].skill_choices)
             candidate_set.update(cls_set)
 
-        # 扣除背景已佔
-        candidate_set -= bg_skill_set
+        # 扣除已有技能（從 Pack 計算，比手動 bg_skill_set 更通用）
+        candidate_set -= already
 
         # 職業技能優先排列
         return sorted(candidate_set, key=lambda s: (s not in cls_set, s.value))
@@ -668,14 +689,12 @@ class CharacterCreationSession:
         return result
 
     def get_available_cantrips(self) -> list[dict]:
-        """取得可選戲法列表，排除種族/血統已給的和契約之書已選的。"""
+        """取得職業可選戲法列表。不排除其他來源已有的（SourcePack 分別追蹤）。"""
         cc = self.data.char_class
         if not cc:
             return []
-        excluded = set(self.get_species_granted_cantrips())
-        excluded.update(self.data.tome_cantrips)
         spells = list_spells(level=0, char_class=cc)
-        return [_spell_to_dict(s) for s in spells if s.en_name not in excluded]
+        return [_spell_to_dict(s) for s in spells]
 
     def get_available_spells(self) -> list[dict]:
         """取得可選 1 環法術列表。"""
@@ -731,6 +750,82 @@ class CharacterCreationSession:
         sign = "+" if mod >= 0 else ""
         name = ABILITY_ZH.get(ability, ability.value)
         return f"  {name}（{ability.value}）：{val}（{sign}{mod}）"
+
+    @staticmethod
+    def format_spell_detail(spell_dict: dict) -> str:
+        """通用法術詳情格式。TUI 和 LLM 共用。
+
+        輸出格式：
+          ◆ 法術名稱（X 環・學派・類型）
+            需求：V/S/M
+            範圍：60ft　持續：1 minute
+            詳細說明
+        """
+        school_zh = {
+            "Abjuration": "防護",
+            "Conjuration": "咒法",
+            "Divination": "預言",
+            "Enchantment": "惑控",
+            "Evocation": "塑能",
+            "Illusion": "幻術",
+            "Necromancy": "死靈",
+            "Transmutation": "變化",
+        }
+        effect_zh = {
+            "damage": "傷害",
+            "healing": "治療",
+            "condition": "狀態",
+            "buff": "增益",
+            "utility": "功能",
+        }
+        damage_zh = {
+            "Fire": "火焰",
+            "Cold": "寒冷",
+            "Lightning": "閃電",
+            "Thunder": "雷鳴",
+            "Acid": "酸液",
+            "Poison": "毒素",
+            "Necrotic": "黯蝕",
+            "Radiant": "光輝",
+            "Force": "力場",
+            "Psychic": "心靈",
+        }
+
+        name = spell_dict.get("name", "")
+        level = spell_dict.get("level", 0)
+        lv_str = "戲法" if level == 0 else f"{level} 環"
+        school = school_zh.get(spell_dict.get("school", ""), spell_dict.get("school", ""))
+        dt = damage_zh.get(spell_dict.get("damage_type", ""), "")
+        et = effect_zh.get(spell_dict.get("effect_type", ""), "")
+        tag = dt if dt else et
+
+        desc = spell_dict.get("description", "")
+        # 從 description 提取需求行（以「需求：」開頭）
+        req_line = ""
+        detail = desc
+        if desc.startswith("需求："):
+            parts = desc.split("。", 1)
+            req_line = parts[0]
+            detail = parts[1].strip() if len(parts) > 1 else ""
+
+        rng = _translate_range(spell_dict.get("range", ""))
+        dur = _translate_duration(spell_dict.get("duration", ""))
+        conc = "（專注）" if spell_dict.get("concentration") else ""
+        ritual = "（儀式）" if spell_dict.get("ritual") else ""
+
+        lines = [f"◆ {name}（{lv_str}・{school}・{tag}）{ritual}"]
+        if req_line:
+            lines.append(f"  {req_line}")
+        meta_parts = []
+        if rng:
+            meta_parts.append(f"範圍：{rng}")
+        if dur:
+            meta_parts.append(f"持續：{dur}{conc}")
+        if meta_parts:
+            lines.append(f"  {'　'.join(meta_parts)}")
+        if detail:
+            lines.append(f"  {detail}")
+        return "\n".join(lines)
 
     def sync_point_buy_cache(self) -> None:
         """將當前 scores 同步到點數購買暫存。由 TUI 在改動後呼叫。"""
@@ -1204,6 +1299,8 @@ class CharacterCreationSession:
                 if s not in character.spells_prepared:
                     character.spells_prepared.append(s)
 
+        character.source_packs = self._build_source_packs()
+
         return character
 
     # ── 內部輔助 ──────────────────────────────────────────────────────────────
@@ -1221,6 +1318,282 @@ class CharacterCreationSession:
         if bg_id and bg_id in BACKGROUND_REGISTRY:
             return list(BACKGROUND_REGISTRY[bg_id].skill_proficiencies)
         return []
+
+    # ── SourcePack 組裝 ──────────────────────────────────────────────────────
+
+    def _build_source_packs(self) -> list:
+        """從建角資料組裝所有 SourcePack。"""
+        packs = []
+        d = self.data
+
+        # 1. 種族 Pack
+        packs.append(self._build_species_pack_sp())
+
+        # 2. 背景 Pack
+        packs.append(self._build_background_pack_sp())
+
+        # 3. 背景的起源專長 Pack
+        bg_id = d.background
+        if bg_id and bg_id in BACKGROUND_REGISTRY:
+            feat_id = BACKGROUND_REGISTRY[bg_id].feat
+            feat_pack = self._build_feat_pack_sp(feat_id)
+            if feat_pack:
+                packs.append(feat_pack)
+
+        # 4. Human 多藝額外專長
+        if d.species_feat:
+            extra = self._build_feat_pack_sp(d.species_feat)
+            if extra:
+                packs.append(extra)
+
+        # 5. 職業 Pack
+        packs.append(self._build_class_pack_sp())
+
+        # 6. 祈喚 Pack（Warlock）
+        for inv_id in d.invocations:
+            inv_pack = self._build_invocation_pack_sp(inv_id)
+            if inv_pack:
+                packs.append(inv_pack)
+
+        return packs
+
+    def _build_species_pack_sp(self):
+        """組裝種族 SourcePack。"""
+        from tot.models.source_pack import (
+            PackType,
+            SourcePack,
+            SpellCastingType,
+            SpellGrant,
+        )
+
+        d = self.data
+        sp_id = d.species
+        if not sp_id or sp_id not in SPECIES_REGISTRY:
+            return SourcePack(pack_type=PackType.SPECIES, source_name="", source_id="")
+
+        sd = SPECIES_REGISTRY[sp_id]
+        lin_id = d.lineage
+        name = sd.name_zh
+        if lin_id:
+            for lo in sd.lineage_options:
+                if lo.id == lin_id:
+                    name = f"{sd.name_zh}（{lo.name_zh}）"
+                    break
+
+        pack = SourcePack(
+            pack_type=PackType.SPECIES,
+            source_name=name,
+            source_id=f"{sp_id}:{lin_id}" if lin_id else sp_id,
+        )
+
+        # 種族戲法
+        sa = d.species_spellcasting_ability  # Tiefling 等
+        for en in self.get_species_granted_cantrips():
+            pack.spells.append(
+                SpellGrant(
+                    en_name=en,
+                    casting_type=SpellCastingType.INNATE,
+                    spellcasting_ability=sa,
+                )
+            )
+
+        return pack
+
+    def _build_background_pack_sp(self):
+        """組裝背景 SourcePack。"""
+        from tot.models.source_pack import (
+            PackType,
+            SkillGrant,
+            SourcePack,
+            ToolGrant,
+        )
+
+        d = self.data
+        bg_id = d.background
+        if not bg_id or bg_id not in BACKGROUND_REGISTRY:
+            return SourcePack(pack_type=PackType.BACKGROUND, source_name="", source_id="")
+
+        bg = BACKGROUND_REGISTRY[bg_id]
+        pack = SourcePack(
+            pack_type=PackType.BACKGROUND,
+            source_name=bg.name_zh,
+            source_id=bg_id,
+        )
+
+        # 背景固定技能
+        for s in bg.skill_proficiencies:
+            pack.skills.append(SkillGrant(skill=s))
+
+        # 工具
+        if bg.tool_proficiency_enum:
+            pack.tools.append(ToolGrant(tool=bg.tool_proficiency_enum))
+        elif d.bg_tool_choice:
+            pack.tools.append(ToolGrant(tool=d.bg_tool_choice))
+
+        return pack
+
+    def _build_feat_pack_sp(self, feat_id: str):
+        """組裝專長 SourcePack。"""
+        from tot.models.source_pack import (
+            PackType,
+            SourcePack,
+            SpellCastingType,
+            SpellGrant,
+            ToolGrant,
+        )
+
+        feat = ORIGIN_FEAT_REGISTRY.get(feat_id)
+        if not feat:
+            return None
+
+        d = self.data
+        pack = SourcePack(
+            pack_type=PackType.FEAT,
+            source_name=feat.name_zh,
+            source_id=feat_id,
+        )
+
+        # Magic Initiate 法術
+        if feat.has_spell_choice and feat.spell_class:
+            sa = d.feat_spellcasting_ability
+            for en in d.feat_cantrips:
+                pack.spells.append(
+                    SpellGrant(
+                        en_name=en,
+                        casting_type=SpellCastingType.FEAT,
+                        spellcasting_ability=sa,
+                    )
+                )
+            for en in d.feat_spells:
+                pack.spells.append(
+                    SpellGrant(
+                        en_name=en,
+                        casting_type=SpellCastingType.FEAT,
+                        spellcasting_ability=sa,
+                        free_uses_max=1,
+                        free_uses_current=1,
+                        is_always_prepared=True,
+                        can_also_use_slot=True,
+                    )
+                )
+
+        # 工具選位
+        for t in d.feat_tool_choices:
+            pack.tools.append(ToolGrant(tool=t))
+
+        return pack
+
+    def _build_class_pack_sp(self):
+        """組裝職業 SourcePack。"""
+        from tot.models.source_pack import (
+            PackType,
+            SkillGrant,
+            SourcePack,
+            SpellCastingType,
+            SpellGrant,
+        )
+
+        d = self.data
+        cc = d.char_class
+        if not cc or cc not in CLASS_REGISTRY:
+            return SourcePack(pack_type=PackType.CLASS, source_name="", source_id="")
+
+        cls = CLASS_REGISTRY[cc]
+        cd = CLASS_DISPLAY.get(cc)
+        pack = SourcePack(
+            pack_type=PackType.CLASS,
+            source_name=cd.name_zh if cd else cc,
+            source_id=cc,
+            saving_throws=list(cls.saving_throws),
+        )
+
+        # 職業技能：d.skills 中排除背景已有的部分
+        bg_skills: set[Skill] = set()
+        if d.background and d.background in BACKGROUND_REGISTRY:
+            bg_skills = set(BACKGROUND_REGISTRY[d.background].skill_proficiencies)
+
+        for s in d.skills:
+            if s not in bg_skills:
+                pack.skills.append(SkillGrant(skill=s))
+
+        # 施放方式
+        casting_type = SpellCastingType.KNOWN  # Warlock/Sorcerer/Bard/Ranger
+        if cc in ("Cleric", "Druid", "Paladin", "Wizard"):
+            casting_type = SpellCastingType.PREPARED
+
+        # 職業戲法
+        for en in d.cantrips:
+            pack.spells.append(
+                SpellGrant(
+                    en_name=en,
+                    casting_type=casting_type,
+                    counts_as_class_spell=True,
+                )
+            )
+
+        # 職業法術
+        for en in d.spells:
+            pack.spells.append(
+                SpellGrant(
+                    en_name=en,
+                    casting_type=casting_type,
+                    counts_as_class_spell=True,
+                )
+            )
+
+        return pack
+
+    def _build_invocation_pack_sp(self, inv_id: str):
+        """組裝祈喚 SourcePack。"""
+        from tot.models.source_pack import (
+            PackType,
+            SourcePack,
+            SpellCastingType,
+            SpellGrant,
+        )
+
+        inv = INVOCATION_REGISTRY.get(inv_id)
+        if not inv:
+            return None
+
+        d = self.data
+        pack = SourcePack(
+            pack_type=PackType.INVOCATION,
+            source_name=inv.name_zh,
+            source_id=inv_id,
+        )
+
+        # 特定祈喚的法術授予
+        if inv_id == "Armor of Shadows":
+            pack.spells.append(
+                SpellGrant(
+                    en_name="Mage Armor",
+                    casting_type=SpellCastingType.INVOCATION,
+                    is_always_prepared=True,
+                    counts_as_class_spell=True,
+                )
+            )
+        elif inv_id == "Pact of the Tome":
+            for en in d.tome_cantrips:
+                pack.spells.append(
+                    SpellGrant(
+                        en_name=en,
+                        casting_type=SpellCastingType.TOME,
+                        counts_as_class_spell=True,
+                    )
+                )
+            for en in d.tome_rituals:
+                pack.spells.append(
+                    SpellGrant(
+                        en_name=en,
+                        casting_type=SpellCastingType.TOME,
+                        can_ritual_cast=True,
+                        counts_as_class_spell=True,
+                    )
+                )
+        # 其他祈喚（契約之刃、契約之鎖等）目前不授予法術
+
+        return pack
 
     def _apply_standard_array(self) -> None:
         """依職業建議自動分配標準陣列。"""
@@ -1265,6 +1638,60 @@ class CharacterCreationSession:
 # ── 工具函式 ──────────────────────────────────────────────────────────────────
 
 
+def _translate_range(rng: str) -> str:
+    """將法術範圍從英制轉為公制中文。5ft = 1.5m。"""
+    if not rng:
+        return ""
+    if rng == "Self":
+        return "自身"
+    if rng == "Touch":
+        return "觸碰"
+
+    def _ft_to_m(match: re.Match) -> str:
+        ft = int(match.group(1))
+        m = ft * 0.3
+        return f"{m:g}m"
+
+    result = re.sub(r"(\d+)ft", _ft_to_m, rng)
+    result = result.replace("Self", "自身")
+    result = result.replace("cone", "錐形")
+    result = result.replace("cube", "立方")
+    result = result.replace("sphere", "球形")
+    result = result.replace("line", "直線")
+    result = result.replace("emanation", "散發")
+    result = result.replace("(", "（").replace(")", "）")
+    return result
+
+
+def _translate_duration(dur: str) -> str:
+    """將法術持續時間從英文轉為中文。"""
+    if not dur:
+        return ""
+    translations = {
+        "Instantaneous": "立即",
+    }
+    if dur in translations:
+        return translations[dur]
+
+    # 解析 "N unit" 格式
+    m = re.match(r"(\d+)\s+(round|minute|minutes|hour|hours|day|days)", dur)
+    if m:
+        n = int(m.group(1))
+        unit = m.group(2)
+        unit_zh = {
+            "round": "回合",
+            "minute": "分鐘",
+            "minutes": "分鐘",
+            "hour": "小時",
+            "hours": "小時",
+            "day": "天",
+            "days": "天",
+        }
+        return f"{n} {unit_zh.get(unit, unit)}"
+
+    return dur  # 無法解析的保持原樣
+
+
 def _spell_to_dict(spell: object) -> dict:
     """將 Spell 物件轉為 dict（供 get_available_cantrips/spells 回傳）。"""
     return {
@@ -1272,6 +1699,10 @@ def _spell_to_dict(spell: object) -> dict:
         "en_name": spell.en_name,
         "level": spell.level,
         "school": spell.school.value if hasattr(spell.school, "value") else str(spell.school),
+        "casting_time": getattr(spell, "casting_time", ""),
+        "range": getattr(spell, "range", ""),
+        "duration": getattr(spell, "duration", ""),
+        "concentration": getattr(spell, "concentration", False),
         "ritual": getattr(spell, "ritual", False),
         "damage_type": spell.damage_type.value if spell.damage_type else "",
         "effect_type": (

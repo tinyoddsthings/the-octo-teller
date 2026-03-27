@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from uuid import UUID, uuid4
 
-from pydantic import BaseModel, Field, computed_field
+from pydantic import BaseModel, Field, computed_field, model_validator
 
 from tot.models.enums import (
     SKILL_ABILITY_MAP,
@@ -179,6 +179,129 @@ class Character(Combatant):
     is_ai_controlled: bool = False
 
     xp: int = 0
+
+    source_packs: list = Field(default_factory=list)  # list[SourcePack]
+
+    @model_validator(mode="after")
+    def _deserialize_source_packs(self) -> Character:
+        """JSON 反序列化時將 dict 轉回 SourcePack dataclass。"""
+        from tot.models.source_pack import (
+            PackType,
+            ProficiencyLevel,
+            SkillGrant,
+            SourcePack,
+            SpellCastingType,
+            SpellGrant,
+            ToolGrant,
+        )
+
+        rebuilt = []
+        for item in self.source_packs:
+            if isinstance(item, SourcePack):
+                rebuilt.append(item)
+                continue
+            if not isinstance(item, dict):
+                continue
+            skills = [
+                SkillGrant(
+                    skill=Skill(sg["skill"]),
+                    level=ProficiencyLevel(sg.get("level", "proficient")),
+                )
+                for sg in item.get("skills", [])
+            ]
+            spells = [
+                SpellGrant(
+                    en_name=sg["en_name"],
+                    casting_type=SpellCastingType(sg["casting_type"]),
+                    spellcasting_ability=(
+                        Ability(sg["spellcasting_ability"])
+                        if sg.get("spellcasting_ability")
+                        else None
+                    ),
+                    counts_as_class_spell=sg.get("counts_as_class_spell", False),
+                    free_uses_max=sg.get("free_uses_max", 0),
+                    free_uses_current=sg.get("free_uses_current", 0),
+                    is_always_prepared=sg.get("is_always_prepared", False),
+                    can_ritual_cast=sg.get("can_ritual_cast", False),
+                    can_also_use_slot=sg.get("can_also_use_slot", False),
+                )
+                for sg in item.get("spells", [])
+            ]
+            tools = [ToolGrant(tool=Tool(tg["tool"])) for tg in item.get("tools", [])]
+            saving_throws = [Ability(a) for a in item.get("saving_throws", [])]
+            rebuilt.append(
+                SourcePack(
+                    pack_type=PackType(item["pack_type"]),
+                    source_name=item.get("source_name", ""),
+                    source_id=item.get("source_id", ""),
+                    skills=skills,
+                    spells=spells,
+                    tools=tools,
+                    saving_throws=saving_throws,
+                )
+            )
+        self.source_packs = rebuilt
+        return self
+
+    # ---- SourcePack 查詢方法 ----
+
+    def get_proficiency_level(self, skill: Skill) -> str:
+        """從 source_packs 計算技能熟練等級。"""
+        from tot.models.source_pack import ProficiencyLevel
+
+        best = ProficiencyLevel.NONE
+        for pack in self.source_packs:
+            for sg in pack.skills:
+                if sg.skill == skill:
+                    if sg.level == ProficiencyLevel.EXPERTISE:
+                        return ProficiencyLevel.EXPERTISE
+                    best = ProficiencyLevel.PROFICIENT
+        return best
+
+    def get_spell_grants(self, en_name: str) -> list:
+        """取得某法術的所有授予來源。回傳 [(SourcePack, SpellGrant)]。"""
+        results = []
+        for pack in self.source_packs:
+            for sg in pack.spells:
+                if sg.en_name == en_name:
+                    results.append((pack, sg))
+        return results
+
+    def get_all_granted_skills(self) -> set:
+        """從所有 Pack 合併的技能集合。"""
+        return {sg.skill for pack in self.source_packs for sg in pack.skills}
+
+    def get_all_granted_spells(self) -> set:
+        """從所有 Pack 合併的法術集合。"""
+        return {sg.en_name for pack in self.source_packs for sg in pack.spells}
+
+    def can_free_cast(self, en_name: str) -> bool:
+        """檢查此法術是否可免費施放。"""
+        from tot.models.source_pack import SpellCastingType
+
+        for pack in self.source_packs:
+            for sg in pack.spells:
+                if sg.en_name == en_name:
+                    if sg.casting_type == SpellCastingType.INVOCATION:
+                        return True
+                    if sg.free_uses_current > 0:
+                        return True
+        return False
+
+    def use_free_cast(self, en_name: str) -> bool:
+        """消耗一次免費施放。"""
+        for pack in self.source_packs:
+            for sg in pack.spells:
+                if sg.en_name == en_name and sg.free_uses_current > 0:
+                    sg.free_uses_current -= 1
+                    return True
+        return False
+
+    def recover_free_casts(self) -> None:
+        """長休恢復所有免費施放次數。"""
+        for pack in self.source_packs:
+            for sg in pack.spells:
+                sg.free_uses_current = sg.free_uses_max
 
     # ---- computed fields（向後相容，可直接讀取） ----
 

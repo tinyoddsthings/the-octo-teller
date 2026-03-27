@@ -11,17 +11,50 @@
 > 📄 改造計畫：[`docs/todo-character-creation-overhaul.md`](docs/todo-character-creation-overhaul.md)
 > 📄 原始拆分：[`docs/todo-character-system.md`](docs/todo-character-system.md)（模組 3/4 仍有效）
 
-- [x] 建角 TUI 改造（CC-1~6）— 依 2024 PHB 重寫 8 步流程
-  - ~~Phase CC-1: 背景與種族資料層~~ ✅ `data/origins.py`
-  - ~~Phase CC-2: 職業資料擴充 + 起源專長~~ ✅ `data/classes.py` + `data/feats.py`
-  - ~~Phase CC-3: TUI 步驟 1~3（職業、背景、種族）~~ ✅
-  - ~~Phase CC-4: TUI 步驟 4（屬性值三種生成 + 背景調整）~~ ✅
-  - ~~Phase CC-5: TUI 步驟 5~6（技能、裝備）~~ ✅
-  - ~~Phase CC-6: TUI 步驟 7~8（戲法法術、確認）~~ ✅
-- [ ] Phase CC-7: 角色卡 I/O + 整合
-  - `save_character()` / `load_character()` / `list_saved_characters()`
-  - 存檔路徑：`~/.tot/characters/<name>.json`
-  - 建角完成後自動存檔 + 顯示路徑
+- [x] 建角 TUI 改造（CC-1~6）— 依 2024 PHB 重寫流程
+  - ~~CC-1~6~~ ✅ 資料層 + TUI + 動態步驟系統
+- [x] CC-7: 角色卡 I/O ✅ `character_io.py`
+- [x] CharacterCreationSession 狀態機 ✅ `bone_engine/character_session.py`
+- [x] 動態步驟系統 ✅ StepType enum + get_steps()
+- [x] 法術資料重構 ✅ 按環級分檔（93 筆）+ 公尺化
+- [x] 工具熟練系統 ✅ Tool enum（37 種）+ TOOL_DATA 描述
+- [x] 角色卡閱覽 ✅ `character_card.py` 5 分頁 + `character_sheet/` TUI
+
+### A-1 已完成（本輪 PR）
+
+- [x] SourcePack 能力包系統 ✅ `models/source_pack.py`
+  - SkillGrant / SpellGrant / ToolGrant / SourcePack dataclass
+  - Character.source_packs + 查詢方法（can_free_cast 等）
+  - build_character() 組裝 6 種 Pack（種族/背景/專長/職業/祈喚）
+  - JSON 序列化/反序列化 model_validator
+- [x] 法術不再排除重複來源 ✅ 不同來源 = 不同 SpellGrant
+- [x] 技能排除改用 SourcePack ✅ _current_packs()
+- [x] 角色卡從 SourcePack 讀取 ✅ 重複來源才標來源名
+- [x] 戰鬥頁完整法術列表 ✅ 按動作經濟分組 + 消耗標記
+- [x] 法術位統一顯示 ✅ spell_slots + pact_slots 合併
+
+### A-1 待完成
+
+#### 🔴 建角流程補完
+- [ ] 建角時裝備正確存入 Character.weapons / inventory
+- [ ] 武器精通步驟（Barbarian 2/Fighter 3/Paladin 2/Ranger 2/Rogue 2）
+- [ ] 戰鬥風格步驟（Fighter 1 種）
+- [ ] 神聖秩序（Cleric：守護者/奇蹟師）
+- [ ] 原初秩序（Druid：魔法師/守衛者）
+- [ ] 專精步驟（Rogue：2 項技能專精）
+- [ ] 額外語言步驟（Rogue：1 種語言）
+
+#### 🟡 角色卡強化
+- [ ] 角色卡裝備頁：武器詳情 + AC 計算來源
+- [ ] 角色卡戰鬥頁：裝備帶來的動作
+- [ ] 角色卡探索頁：從 SourcePack 讀技能來源
+- [ ] 角色卡個人頁：完善種族/職業特性描述
+
+#### 🟢 法術鉤子系統（升級時再做）
+- [ ] SpellHook：cast_spell 前後觸發特性效果
+- [ ] 升級系統：add_level + 新 Pack + 重複偵測 + 重選
+- [ ] 法術欄位消耗整合 can_free_cast → cast_spell
+- [ ] 長休恢復 recover_free_casts
 
 ### A-1b: 啟動 TUI
 > 📄 設計文件：[`docs/game-session-design.md`](docs/game-session-design.md) §2

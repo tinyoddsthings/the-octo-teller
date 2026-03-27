@@ -109,6 +109,15 @@ from tot.models.map import (
     ZoneConnection,
 )
 from tot.models.shapes import BoundingShape
+from tot.models.source_pack import (
+    PackType,
+    ProficiencyLevel,
+    SkillGrant,
+    SourcePack,
+    SpellCastingType,
+    SpellGrant,
+    ToolGrant,
+)
 from tot.models.spell import Spell, SpellAoe, SpellComponents, SpellUpcast
 from tot.models.time import GameClock, format_seconds_human
 
@@ -197,6 +206,14 @@ __all__ = [
     "ScriptEvent",
     "SkillCheckDef",
     "SpellAssistDef",
+    # source_pack
+    "PackType",
+    "ProficiencyLevel",
+    "SkillGrant",
+    "SourcePack",
+    "SpellCastingType",
+    "SpellGrant",
+    "ToolGrant",
     # exploration
     "AreaExploreState",
     "DeploymentState",

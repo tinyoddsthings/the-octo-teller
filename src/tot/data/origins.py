@@ -533,7 +533,7 @@ SPECIES_REGISTRY: dict[str, SpeciesData] = {
                 "chthonic",
                 "冥界",
                 "Chthonic",
-                "黯蝕傷害抗性，冷凍之觸戲法。3 級偽死術、5 級虛弱射線。",
+                "黯蝕傷害抗性，冷凍之觸戲法。3 級虛假生命、5 級虛弱射線。",
                 granted_cantrips=("Chill Touch",),
             ),
             LineageOption(

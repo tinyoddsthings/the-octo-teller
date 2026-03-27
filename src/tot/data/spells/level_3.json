@@ -5,13 +5,13 @@
     "level": 3,
     "school": "Abjuration",
     "casting_time": "1 reaction",
-    "range": "60ft",
+    "range": "18m",
     "duration": "Instantaneous",
     "effect_type": "utility",
     "components": [
       "S"
     ],
-    "description": "需求：S（姿勢）。中斷 60ft 內一個生物正在施放的法術。3 環以下自動成功，更高環需要施法屬性檢定（DC = 10 + 法術環級）。",
+    "description": "需求：S（姿勢）。中斷 18m 內一個生物正在施放的法術。3 環以下自動成功，更高環需要施法屬性檢定（DC = 10 + 法術環級）。",
     "classes": [
       "Sorcerer",
       "Warlock",
@@ -24,7 +24,7 @@
     "level": 3,
     "school": "Evocation",
     "casting_time": "1 action",
-    "range": "150ft",
+    "range": "45m",
     "duration": "Instantaneous",
     "effect_type": "damage",
     "save_ability": "DEX",
@@ -40,7 +40,7 @@
       "M"
     ],
     "material_description": "一小團蝙蝠糞和硫磺",
-    "description": "需求：V（語言）、S（姿勢）、M（一小團蝙蝠糞和硫磺，可用法器替代）。20ft 半徑球體內每個生物須敏捷豁免，失敗受 8d6 火焰傷害，成功減半。會點燃未被穿戴的可燃物。",
+    "description": "需求：V（語言）、S（姿勢）、M（一小團蝙蝠糞和硫磺，可用法器替代）。6m 半徑球體內每個生物須敏捷豁免，失敗受 8d6 火焰傷害，成功減半。會點燃未被穿戴的可燃物。",
     "classes": [
       "Sorcerer",
       "Wizard"

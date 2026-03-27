@@ -115,6 +115,8 @@ class CharacterCreationApp(App[Character | None]):
         self.session = CharacterCreationSession()
         # 多選上限追蹤：{widget_id: [value_order]}
         self._selection_order: dict[str, list] = {}
+        # 防止 re-render 時事件循環
+        self._rendering: bool = False
 
     # ── Step helpers ───────────────────────────────────────────────────────
 
@@ -154,6 +156,7 @@ class CharacterCreationApp(App[Character | None]):
 
     async def _render_step(self) -> None:
         """清除左側面板，重建當步 widgets。"""
+        self._rendering = True
         left = self.query_one("#left-panel", Vertical)
         await left.remove_children()
 
@@ -171,6 +174,8 @@ class CharacterCreationApp(App[Character | None]):
             StepType.ABILITY_SCORES: self._widgets_ability_scores,
             StepType.SKILLS: self._widgets_skills,
             StepType.INVOCATIONS: self._widgets_invocations,
+            StepType.TOME_CANTRIPS: self._widgets_tome_cantrips,
+            StepType.TOME_RITUALS: self._widgets_tome_rituals,
             StepType.CANTRIPS: self._widgets_cantrips,
             StepType.SPELLS: self._widgets_spells,
             StepType.EQUIPMENT: self._widgets_equipment,
@@ -194,6 +199,7 @@ class CharacterCreationApp(App[Character | None]):
             widgets.append(Button("確認 →  (Ctrl+N)", id="next-btn", variant="primary"))
 
         await left.mount(*widgets)
+        self._rendering = False
 
     def _widgets_placeholder(self, w: list) -> None:
         """未實作步驟的佔位。"""
@@ -499,48 +505,67 @@ class CharacterCreationApp(App[Character | None]):
                     )
                 )
             w.append(SelectionList(*opts, id="invocation-list"))
-            # 顯示各祈喚的完整描述
+            # 已選的祈喚顯示詳情（左面板只顯示已選的）
             for inv in available_inv:
-                marker = "▶ " if inv.id in sel else "  "
-                w.append(Static(f"{marker}{inv.name_zh}：{inv.description}"))
+                if inv.id in sel:
+                    w.append(Static(f"  ◆ {inv.name_zh}：{inv.description}"))
 
-        # 契約之書子選項
+        # 契約之書提示
         if self.session.has_pact_of_the_tome():
-            w.append(Label("── 暗影之書 ──", classes="section-label"))
+            w.append(Label("  ※ 下兩步將選擇暗影之書的戲法和儀式"))
 
-            # 選 3 個戲法（任何職業列表）
-            tome_cantrips = self.session.get_available_tome_cantrips()
-            w.append(Label("── 選 3 個戲法（任何職業列表）──", classes="section-label"))
-            if tome_cantrips:
-                sel_tc = d.tome_cantrips
-                tc_opts = []
-                for s in tome_cantrips:
-                    tag = s["damage_type_zh"] if s["damage_type_zh"] else s["effect_type_zh"]
-                    tc_opts.append(
-                        (
-                            f"{s['name']}（{s['en_name']}）— {tag}",
-                            s["en_name"],
-                            s["en_name"] in sel_tc,
-                        )
-                    )
-                w.append(SelectionList(*tc_opts, id="tome-cantrip-list"))
+    # ── Step: 暗影之書戲法（契約之書獨立步驟）──────────────────────────────────
 
-            # 選 2 個 1 環儀式法術
-            tome_rituals = self.session.get_available_tome_rituals()
-            w.append(Label("── 選 2 個 1 環儀式法術 ──", classes="section-label"))
-            if tome_rituals:
-                sel_tr = d.tome_rituals
-                tr_opts = []
-                for s in tome_rituals:
-                    tag = s["damage_type_zh"] if s["damage_type_zh"] else s["effect_type_zh"]
-                    tr_opts.append(
-                        (
-                            f"{s['name']}（{s['en_name']}）— {tag}",
-                            s["en_name"],
-                            s["en_name"] in sel_tr,
-                        )
+    def _widgets_tome_cantrips(self, w: list) -> None:
+        d = self.session.data
+        tome_cantrips = self.session.get_available_tome_cantrips()
+        w.append(Label("── 選 3 個戲法（任何職業列表）──", classes="section-label"))
+        if tome_cantrips:
+            sel = d.tome_cantrips
+            opts = []
+            for s in tome_cantrips:
+                tag = s["damage_type_zh"] if s["damage_type_zh"] else s["effect_type_zh"]
+                opts.append(
+                    (
+                        f"{s['name']}（{s['en_name']}）— {tag}",
+                        s["en_name"],
+                        s["en_name"] in sel,
                     )
-                w.append(SelectionList(*tr_opts, id="tome-ritual-list"))
+                )
+            w.append(SelectionList(*opts, id="tome-cantrip-list"))
+            # 已選詳情
+            lookup = {s["en_name"]: s for s in tome_cantrips}
+            for en in sel:
+                sd = lookup.get(en)
+                if sd:
+                    w.append(Static(self.session.format_spell_detail(sd)))
+
+    # ── Step: 暗影之書儀式（契約之書獨立步驟）──────────────────────────────────
+
+    def _widgets_tome_rituals(self, w: list) -> None:
+        d = self.session.data
+        tome_rituals = self.session.get_available_tome_rituals()
+        w.append(Label("── 選 2 個 1 環儀式法術 ──", classes="section-label"))
+        if tome_rituals:
+            sel = d.tome_rituals
+            opts = []
+            for s in tome_rituals:
+                tag = s["damage_type_zh"] if s["damage_type_zh"] else s["effect_type_zh"]
+                ritual_tag = "（儀式）" if s.get("ritual") else ""
+                opts.append(
+                    (
+                        f"{s['name']}（{s['en_name']}）— {tag}{ritual_tag}",
+                        s["en_name"],
+                        s["en_name"] in sel,
+                    )
+                )
+            w.append(SelectionList(*opts, id="tome-ritual-list"))
+            # 已選詳情
+            lookup = {s["en_name"]: s for s in tome_rituals}
+            for en in sel:
+                sd = lookup.get(en)
+                if sd:
+                    w.append(Static(self.session.format_spell_detail(sd)))
 
     # ── Step: 戲法 ──────────────────────────────────────────────────────────
 
@@ -560,7 +585,7 @@ class CharacterCreationApp(App[Character | None]):
                 names.append(sp.name if sp else en)
             w.append(
                 Label(
-                    f"── 種族戲法（已有，不可重複選）：{', '.join(names)} ──",
+                    f"── 種族戲法（已有）：{', '.join(names)}（重複選 = 不同施法來源）──",
                     classes="section-label",
                 )
             )
@@ -703,13 +728,7 @@ class CharacterCreationApp(App[Character | None]):
             sd = all_lookup.get(en)
             if not sd:
                 continue
-            dt = sd.get("damage_type_zh", "")
-            et = sd.get("effect_type_zh", "")
-            tag = dt if dt else et
-            lv = "戲法" if sd["level"] == 0 else f"{sd['level']} 環"
-            w.append(Label(f"  ◆ {sd['name']}（{lv}・{sd['school']}・{tag}）"))
-            # 用 Static 顯示長文字，自動換行
-            w.append(Static(f"    {sd.get('description', '')}"))
+            w.append(Static(self.session.format_spell_detail(sd)))
 
     # ── Step: 名稱＋確認 ──────────────────────────────────────────────────────
 
@@ -897,6 +916,8 @@ class CharacterCreationApp(App[Character | None]):
             StepType.ABILITY_SCORES: self._collect_ability_scores,
             StepType.SKILLS: self._collect_skills,
             StepType.INVOCATIONS: self._collect_invocations,
+            StepType.TOME_CANTRIPS: self._collect_tome_cantrips,
+            StepType.TOME_RITUALS: self._collect_tome_rituals,
             StepType.CANTRIPS: self._collect_cantrips,
             StepType.SPELLS: self._collect_spells,
             StepType.EQUIPMENT: self._collect_equipment,
@@ -1116,7 +1137,7 @@ class CharacterCreationApp(App[Character | None]):
         self.session.set_equipment(bg_eq, cls_eq)
 
     def _collect_invocations(self) -> None:
-        """收集魔能祈喚選擇（Warlock 獨立步驟）。"""
+        """收集魔能祈喚選擇。"""
         try:
             sl = self.query_one("#invocation-list", SelectionList)
             self.session.set_invocations(list(sl.selected))
@@ -1125,22 +1146,25 @@ class CharacterCreationApp(App[Character | None]):
         except Exception:
             pass
 
-        # 契約之書子選項
-        if self.session.has_pact_of_the_tome():
-            try:
-                tc_sl = self.query_one("#tome-cantrip-list", SelectionList)
-                self.session.set_tome_cantrips(list(tc_sl.selected))
-            except ValueError:
-                raise
-            except Exception:
-                pass
-            try:
-                tr_sl = self.query_one("#tome-ritual-list", SelectionList)
-                self.session.set_tome_rituals(list(tr_sl.selected))
-            except ValueError:
-                raise
-            except Exception:
-                pass
+    def _collect_tome_cantrips(self) -> None:
+        """收集契約之書戲法。"""
+        try:
+            sl = self.query_one("#tome-cantrip-list", SelectionList)
+            self.session.set_tome_cantrips(list(sl.selected))
+        except ValueError:
+            raise
+        except Exception:
+            pass
+
+    def _collect_tome_rituals(self) -> None:
+        """收集契約之書儀式。"""
+        try:
+            sl = self.query_one("#tome-ritual-list", SelectionList)
+            self.session.set_tome_rituals(list(sl.selected))
+        except ValueError:
+            raise
+        except Exception:
+            pass
 
     def _collect_cantrips(self) -> None:
         """收集戲法步驟的資料。"""
@@ -1333,6 +1357,8 @@ class CharacterCreationApp(App[Character | None]):
         self, event: SelectionList.SelectedChanged
     ) -> None:
         """技能/法術勾選時即時更新預覽，超過上限自動取消最早的。"""
+        if self._rendering:
+            return  # re-render 時的事件，忽略
         sl = event.selection_list
         sl_id = sl.id or ""
         limit = self._get_selection_limit(sl_id)
@@ -1349,14 +1375,14 @@ class CharacterCreationApp(App[Character | None]):
             self._update_preview()
             # 重新渲染以更新祈喚描述的 ▶ 標記和契約之書子選項
             await self._render_step()
-        elif sl_id == "tome-cantrip-list":
+        elif sl_id in ("tome-cantrip-list", "tome-ritual-list"):
             selected = self._enforce_selection_limit(sl, sl_id, limit)
-            self.session.data.tome_cantrips = selected
+            if sl_id == "tome-cantrip-list":
+                self.session.data.tome_cantrips = selected
+            else:
+                self.session.data.tome_rituals = selected
             self._update_preview()
-        elif sl_id == "tome-ritual-list":
-            selected = self._enforce_selection_limit(sl, sl_id, limit)
-            self.session.data.tome_rituals = selected
-            self._update_preview()
+            await self._render_step()  # _rendering flag 防止事件循環
         elif sl_id == "skills-list":
             selected = self._enforce_selection_limit(sl, sl_id, limit)
             self.session.data.skills = selected
