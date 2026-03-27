@@ -11,17 +11,43 @@
 > 📄 改造計畫：[`docs/todo-character-creation-overhaul.md`](docs/todo-character-creation-overhaul.md)
 > 📄 原始拆分：[`docs/todo-character-system.md`](docs/todo-character-system.md)（模組 3/4 仍有效）
 
-- [x] 建角 TUI 改造（CC-1~6）— 依 2024 PHB 重寫 8 步流程
-  - ~~Phase CC-1: 背景與種族資料層~~ ✅ `data/origins.py`
-  - ~~Phase CC-2: 職業資料擴充 + 起源專長~~ ✅ `data/classes.py` + `data/feats.py`
-  - ~~Phase CC-3: TUI 步驟 1~3（職業、背景、種族）~~ ✅
-  - ~~Phase CC-4: TUI 步驟 4（屬性值三種生成 + 背景調整）~~ ✅
-  - ~~Phase CC-5: TUI 步驟 5~6（技能、裝備）~~ ✅
-  - ~~Phase CC-6: TUI 步驟 7~8（戲法法術、確認）~~ ✅
-- [ ] Phase CC-7: 角色卡 I/O + 整合
-  - `save_character()` / `load_character()` / `list_saved_characters()`
-  - 存檔路徑：`~/.tot/characters/<name>.json`
-  - 建角完成後自動存檔 + 顯示路徑
+- [x] 建角 TUI 改造（CC-1~6）— 依 2024 PHB 重寫流程
+  - ~~CC-1~6~~ ✅ 資料層 + TUI + 動態步驟系統
+- [x] CC-7: 角色卡 I/O ✅ `character_io.py`
+- [x] CharacterCreationSession 狀態機 ✅ `bone_engine/character_session.py`
+- [x] 動態步驟系統 ✅ StepType enum + get_steps()
+- [x] 法術資料重構 ✅ 按環級分檔（93 筆）+ 公尺化
+- [x] 工具熟練系統 ✅ Tool enum（37 種）+ TOOL_DATA 描述
+- [x] 角色卡閱覽 ✅ `character_card.py` 5 分頁 + `character_sheet/` TUI
+
+### A-1 待完成
+
+#### 🔴 P0：技能/法術來源追蹤（影響所有後續系統）
+- [ ] SpellSource / SkillSource enum + Info dataclass
+- [ ] Character model 新增 `skill_sources` / `spell_sources` / `tool_sources`
+- [ ] build_character() 填入來源資訊
+- [ ] 法術免費使用次數追蹤（feat 1 次/長休、species 1 次/長休）
+- [ ] 契約之書法術：戲法永備 + 儀式不消耗位標記
+- [ ] 祈喚免費法術標記（暗影之甲等）
+- [ ] 角色卡讀取來源顯示
+- [ ] 長休恢復免費使用次數
+
+#### 🟡 P1：建角流程補完（依來源追蹤後修正）
+- [ ] 建角時裝備正確存入 Character.weapons / inventory
+- [ ] Phase B 職業特性步驟：
+  - 武器精通（Barbarian/Fighter/Paladin/Ranger/Rogue）
+  - 戰鬥風格（Fighter）
+- [ ] Phase C 職業特性步驟：
+  - 神聖秩序（Cleric：守護者/奇蹟師）
+  - 原初秩序（Druid：魔法師/守衛者）
+  - 專精（Rogue：2 項技能）
+  - 額外語言（Rogue：1 種）
+
+#### 🟢 P2：角色卡強化
+- [ ] 角色卡戰鬥頁：裝備帶來的動作
+- [ ] 角色卡裝備頁：武器詳情 + AC 計算
+- [ ] 角色卡顯示技能/法術來源
+- [ ] 角色卡戰鬥頁：免費施放標記 + 剩餘次數
 
 ### A-1b: 啟動 TUI
 > 📄 設計文件：[`docs/game-session-design.md`](docs/game-session-design.md) §2
