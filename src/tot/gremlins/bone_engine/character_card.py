@@ -30,6 +30,7 @@ from tot.models.enums import (
     Ability,
     Skill,
 )
+from tot.models.source_pack import SpellCastingType, SpellGrant
 
 # ─────────────────────────────────────────────────────────────────────────────
 # 共用翻譯輔助（從 character_session 提取，避免依賴 session）
@@ -349,6 +350,9 @@ class CharacterCard:
         )
         lines.append("")
 
+        # 從 SourcePack 建立所有法術行，按動作經濟分組
+        spell_by_action = self._build_combat_spell_lines()
+
         # ── 動作 ──
         lines.append("── 動作（Action）──")
 
@@ -356,20 +360,22 @@ class CharacterCard:
         for wpn in c.weapons:
             lines.append(f"  {self._format_weapon(wpn)}")
 
-        # 攻擊型戲法
-        cantrip_actions = self._get_combat_cantrips(action_type="1 action")
-        for text in cantrip_actions:
+        # 動作法術（戲法 + 1 環以上）
+        action_spells = spell_by_action.get("1 action", [])
+        for text in action_spells:
             lines.append(f"  {text}")
 
-        if not c.weapons and not cantrip_actions:
+        if not c.weapons and not action_spells:
             lines.append("  （無）")
         lines.append("")
 
         # ── 附贈動作 ──
         lines.append("── 附贈動作（Bonus Action）──")
-        bonus_items = self._get_bonus_actions()
-        if bonus_items:
-            for item in bonus_items:
+        bonus_spells = spell_by_action.get("1 bonus action", [])
+        bonus_items = self._get_bonus_actions_class_only()
+        all_bonus = bonus_spells + bonus_items
+        if all_bonus:
+            for item in all_bonus:
                 lines.append(f"  {item}")
         else:
             lines.append("  （無）")
@@ -377,7 +383,10 @@ class CharacterCard:
 
         # ── 反應 ──
         lines.append("── 反應（Reaction）──")
+        reaction_spells = spell_by_action.get("1 reaction", [])
         lines.append("  ⚔ 借機攻擊")
+        for text in reaction_spells:
+            lines.append(f"  {text}")
         lines.append("")
 
         # ── 法術位 ──
@@ -502,18 +511,28 @@ class CharacterCard:
         """將角色法術分為戲法和各環級法術。
 
         優先從 SourcePack 讀取（含重複來源），fallback 到 flat list。
-        回傳 (戲法「名稱（來源）」列表, {環級: 「名稱（來源）」列表})。
+        只在同一法術出現在多個 Pack 時才標註來源。
+        回傳 (戲法名稱列表, {環級: 名稱列表})。
         """
         cantrips: list[str] = []
         spells_by_level: dict[int, list[str]] = {}
 
         if self.char.source_packs:
+            # 先統計每個 en_name 出現在幾個不同的 Pack
+            from collections import Counter
+
+            name_count: Counter[str] = Counter()
+            for pack in self.char.source_packs:
+                for sg in pack.spells:
+                    name_count[sg.en_name] += 1
+
+            # 再組裝顯示名稱，重複來源才加標記
             for pack in self.char.source_packs:
                 for sg in pack.spells:
                     spell = get_spell_by_name(sg.en_name)
                     name = spell.name if spell else sg.en_name
                     level = spell.level if spell else 0
-                    entry = f"{name}（{pack.source_name}）"
+                    entry = f"{name}（{pack.source_name}）" if name_count[sg.en_name] > 1 else name
                     if level == 0:
                         cantrips.append(entry)
                     else:
@@ -583,6 +602,126 @@ class CharacterCard:
             f"{wpn.damage_dice}{_fmt_mod(damage_mod)} {dmg_type}"
         )
 
+    def _compute_grant_dc_attack(self, sg: SpellGrant) -> tuple[int, int]:
+        """根據 SpellGrant 的施法屬性計算 DC 和攻擊加值。
+
+        如果 SpellGrant 沒有指定 spellcasting_ability，就用角色預設值。
+        回傳 (dc, attack_bonus)。
+        """
+        c = self.char
+        if sg.spellcasting_ability is not None:
+            mod = c.ability_scores.modifier(sg.spellcasting_ability)
+            dc = 8 + c.proficiency_bonus + mod
+            attack = c.proficiency_bonus + mod
+            return dc, attack
+        return c.spell_dc, c.spell_attack
+
+    def _format_cost_tag(self, sg: SpellGrant) -> str:
+        """根據 SpellGrant 屬性產生消耗標記字串。"""
+        c = self.char
+        ct = sg.casting_type
+
+        if ct == SpellCastingType.INVOCATION:
+            return "【隨意施放】"
+
+        if sg.free_uses_max > 0:
+            tag = f"【免費 {sg.free_uses_current}/{sg.free_uses_max}，長休恢復"
+            if sg.can_also_use_slot:
+                tag += "或消耗法術位"
+            tag += "】"
+            return tag
+
+        if ct == SpellCastingType.INNATE:
+            return "【免費 1/1】"
+
+        if ct == SpellCastingType.TOME and sg.can_ritual_cast:
+            # 判斷是 Warlock 還是其他
+            has_pact = bool(c.pact_slots.max_slots)
+            slot_label = "契約位" if has_pact else "法術位"
+            return f"【儀式或{slot_label}】"
+
+        # KNOWN / PREPARED / FEAT / SPELLBOOK → 法術位/契約位
+        has_pact = bool(c.pact_slots.max_slots)
+        if ct in (SpellCastingType.KNOWN, SpellCastingType.PREPARED) and has_pact:
+            return "【契約位】"
+        if ct == SpellCastingType.FEAT:
+            return "【法術位】"
+        if has_pact:
+            return "【契約位】"
+        return "【法術位】"
+
+    def _build_combat_spell_lines(self) -> dict[str, list[str]]:
+        """從 SourcePack 讀取所有法術，按 casting_time 分組為戰鬥行。
+
+        回傳 {"1 action": [...], "1 bonus action": [...], "1 reaction": [...]}。
+        每個 SpellGrant 獨立一行（不同來源 = 不同行，DC 可能不同）。
+        """
+        c = self.char
+        result: dict[str, list[str]] = {}
+
+        if not c.source_packs:
+            # fallback：用舊的 _get_combat_cantrips 邏輯
+            for action_type in ("1 action", "1 bonus action", "1 reaction"):
+                lines = self._get_combat_cantrips(action_type=action_type)
+                if lines:
+                    result[action_type] = lines
+            return result
+
+        # 收集所有 (pack, spell_grant, spell_data) 三元組
+        entries: list[tuple[str, SpellGrant, object]] = []
+        for pack in c.source_packs:
+            for sg in pack.spells:
+                spell = get_spell_by_name(sg.en_name)
+                if spell is not None:
+                    entries.append((pack.source_name, sg, spell))
+
+        for _source_name, sg, spell in entries:
+            casting_time = spell.casting_time
+            level = spell.level
+            dc, attack_bonus = self._compute_grant_dc_attack(sg)
+
+            # 環級標記
+            level_str = "戲法" if level == 0 else f"{level} 環"
+            conc_str = "，專注" if spell.concentration else ""
+
+            # 範圍
+            rng = _translate_range(spell.range)
+
+            # 攻擊/豁免資訊
+            if spell.attack_type.value != "none":
+                hit_str = f"{_fmt_mod(attack_bonus)} 命中"
+            elif spell.save_ability:
+                save_zh = ABILITY_ZH.get(spell.save_ability, spell.save_ability.value)
+                hit_str = f"DC {dc} {save_zh}"
+            else:
+                hit_str = ""
+
+            # 傷害骰
+            dmg_str = ""
+            if spell.damage_dice:
+                dmg_type = DAMAGE_TYPE_ZH.get(
+                    spell.damage_type.value if spell.damage_type else "", ""
+                )
+                dmg_str = f"　{spell.damage_dice}"
+                if dmg_type:
+                    dmg_str += f" {dmg_type}"
+
+            # 消耗標記（戲法不需要）
+            cost_str = ""
+            if level > 0:
+                cost_str = f"　{self._format_cost_tag(sg)}"
+
+            # 組裝
+            line = f"🔮 {spell.name}（{level_str}{conc_str}）範圍 {rng}"
+            if hit_str:
+                line += f"　{hit_str}"
+            line += dmg_str
+            line += cost_str
+
+            result.setdefault(casting_time, []).append(line)
+
+        return result
+
     def _get_combat_cantrips(self, *, action_type: str = "1 action") -> list[str]:
         """取得可用於戰鬥的攻擊型戲法列表（格式化後的文字）。"""
         c = self.char
@@ -622,21 +761,10 @@ class CharacterCard:
 
         return results
 
-    def _get_bonus_actions(self) -> list[str]:
-        """取得附贈動作列表（法術 + 職業特性）。"""
+    def _get_bonus_actions_class_only(self) -> list[str]:
+        """取得職業特性的附贈動作列表（法術已由 _build_combat_spell_lines 處理）。"""
         items: list[str] = []
 
-        # casting_time = "1 bonus action" 的法術
-        all_spells = list(set(self.char.spells_known + self.char.spells_prepared))
-        for spell_name in sorted(all_spells):
-            spell = get_spell_by_name(spell_name)
-            if spell is None:
-                continue
-            if spell.casting_time == "1 bonus action":
-                lv = f"{spell.level} 環" if spell.level > 0 else "戲法"
-                items.append(f"🔮 {spell.name}（{lv}）")
-
-        # 職業特性的附贈動作（常見的）
         cc = self.char.char_class
         if cc == "Barbarian":
             items.append("💢 狂暴（開始/維持）")
