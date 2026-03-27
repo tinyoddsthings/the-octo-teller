@@ -180,6 +180,68 @@ class Character(Combatant):
 
     xp: int = 0
 
+    source_packs: list = Field(default_factory=list)  # list[SourcePack]
+
+    # ---- SourcePack 查詢方法 ----
+
+    def get_proficiency_level(self, skill: Skill) -> str:
+        """從 source_packs 計算技能熟練等級。"""
+        from tot.models.source_pack import ProficiencyLevel
+
+        best = ProficiencyLevel.NONE
+        for pack in self.source_packs:
+            for sg in pack.skills:
+                if sg.skill == skill:
+                    if sg.level == ProficiencyLevel.EXPERTISE:
+                        return ProficiencyLevel.EXPERTISE
+                    best = ProficiencyLevel.PROFICIENT
+        return best
+
+    def get_spell_grants(self, en_name: str) -> list:
+        """取得某法術的所有授予來源。回傳 [(SourcePack, SpellGrant)]。"""
+        results = []
+        for pack in self.source_packs:
+            for sg in pack.spells:
+                if sg.en_name == en_name:
+                    results.append((pack, sg))
+        return results
+
+    def get_all_granted_skills(self) -> set:
+        """從所有 Pack 合併的技能集合。"""
+        return {sg.skill for pack in self.source_packs for sg in pack.skills}
+
+    def get_all_granted_spells(self) -> set:
+        """從所有 Pack 合併的法術集合。"""
+        return {sg.en_name for pack in self.source_packs for sg in pack.spells}
+
+    def can_free_cast(self, en_name: str) -> bool:
+        """檢查此法術是否可免費施放。"""
+        from tot.models.source_pack import SpellCastingType
+
+        for pack in self.source_packs:
+            for sg in pack.spells:
+                if sg.en_name == en_name:
+                    if sg.casting_type == SpellCastingType.INVOCATION:
+                        return True
+                    if sg.free_uses_current > 0:
+                        return True
+        return False
+
+    def use_free_cast(self, en_name: str) -> bool:
+        """消耗一次免費施放。"""
+        for pack in self.source_packs:
+            for sg in pack.spells:
+                if sg.en_name == en_name and sg.free_uses_current > 0:
+                    sg.free_uses_current -= 1
+                    return True
+        return False
+
+    def recover_free_casts(self) -> None:
+        """長休恢復所有免費施放次數。"""
+        for pack in self.source_packs:
+            for sg in pack.spells:
+                sg.free_uses_current = sg.free_uses_max
+
     # ---- computed fields（向後相容，可直接讀取） ----
 
     @computed_field

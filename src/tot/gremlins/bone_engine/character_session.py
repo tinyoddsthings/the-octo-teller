@@ -56,8 +56,8 @@ class StepType(StrEnum):
     EXPERTISE = "expertise"
     LANGUAGE = "language"
     INVOCATIONS = "invocations"
-    TOME_CANTRIPS = "tome_cantrips"    # 契約之書 3 戲法
-    TOME_RITUALS = "tome_rituals"      # 契約之書 2 儀式
+    TOME_CANTRIPS = "tome_cantrips"  # 契約之書 3 戲法
+    TOME_RITUALS = "tome_rituals"  # 契約之書 2 儀式
     CANTRIPS = "cantrips"
     SPELLS = "spells"
     EQUIPMENT = "equipment"
@@ -756,19 +756,32 @@ class CharacterCreationSession:
             詳細說明
         """
         school_zh = {
-            "Abjuration": "防護", "Conjuration": "咒法",
-            "Divination": "預言", "Enchantment": "惑控",
-            "Evocation": "塑能", "Illusion": "幻術",
-            "Necromancy": "死靈", "Transmutation": "變化",
+            "Abjuration": "防護",
+            "Conjuration": "咒法",
+            "Divination": "預言",
+            "Enchantment": "惑控",
+            "Evocation": "塑能",
+            "Illusion": "幻術",
+            "Necromancy": "死靈",
+            "Transmutation": "變化",
         }
         effect_zh = {
-            "damage": "傷害", "healing": "治療", "condition": "狀態",
-            "buff": "增益", "utility": "功能",
+            "damage": "傷害",
+            "healing": "治療",
+            "condition": "狀態",
+            "buff": "增益",
+            "utility": "功能",
         }
         damage_zh = {
-            "Fire": "火焰", "Cold": "寒冷", "Lightning": "閃電",
-            "Thunder": "雷鳴", "Acid": "酸液", "Poison": "毒素",
-            "Necrotic": "黯蝕", "Radiant": "光輝", "Force": "力場",
+            "Fire": "火焰",
+            "Cold": "寒冷",
+            "Lightning": "閃電",
+            "Thunder": "雷鳴",
+            "Acid": "酸液",
+            "Poison": "毒素",
+            "Necrotic": "黯蝕",
+            "Radiant": "光輝",
+            "Force": "力場",
             "Psychic": "心靈",
         }
 
@@ -1280,6 +1293,8 @@ class CharacterCreationSession:
                 if s not in character.spells_prepared:
                     character.spells_prepared.append(s)
 
+        character.source_packs = self._build_source_packs()
+
         return character
 
     # ── 內部輔助 ──────────────────────────────────────────────────────────────
@@ -1297,6 +1312,282 @@ class CharacterCreationSession:
         if bg_id and bg_id in BACKGROUND_REGISTRY:
             return list(BACKGROUND_REGISTRY[bg_id].skill_proficiencies)
         return []
+
+    # ── SourcePack 組裝 ──────────────────────────────────────────────────────
+
+    def _build_source_packs(self) -> list:
+        """從建角資料組裝所有 SourcePack。"""
+        packs = []
+        d = self.data
+
+        # 1. 種族 Pack
+        packs.append(self._build_species_pack_sp())
+
+        # 2. 背景 Pack
+        packs.append(self._build_background_pack_sp())
+
+        # 3. 背景的起源專長 Pack
+        bg_id = d.background
+        if bg_id and bg_id in BACKGROUND_REGISTRY:
+            feat_id = BACKGROUND_REGISTRY[bg_id].feat
+            feat_pack = self._build_feat_pack_sp(feat_id)
+            if feat_pack:
+                packs.append(feat_pack)
+
+        # 4. Human 多藝額外專長
+        if d.species_feat:
+            extra = self._build_feat_pack_sp(d.species_feat)
+            if extra:
+                packs.append(extra)
+
+        # 5. 職業 Pack
+        packs.append(self._build_class_pack_sp())
+
+        # 6. 祈喚 Pack（Warlock）
+        for inv_id in d.invocations:
+            inv_pack = self._build_invocation_pack_sp(inv_id)
+            if inv_pack:
+                packs.append(inv_pack)
+
+        return packs
+
+    def _build_species_pack_sp(self):
+        """組裝種族 SourcePack。"""
+        from tot.models.source_pack import (
+            PackType,
+            SourcePack,
+            SpellCastingType,
+            SpellGrant,
+        )
+
+        d = self.data
+        sp_id = d.species
+        if not sp_id or sp_id not in SPECIES_REGISTRY:
+            return SourcePack(pack_type=PackType.SPECIES, source_name="", source_id="")
+
+        sd = SPECIES_REGISTRY[sp_id]
+        lin_id = d.lineage
+        name = sd.name_zh
+        if lin_id:
+            for lo in sd.lineage_options:
+                if lo.id == lin_id:
+                    name = f"{sd.name_zh}（{lo.name_zh}）"
+                    break
+
+        pack = SourcePack(
+            pack_type=PackType.SPECIES,
+            source_name=name,
+            source_id=f"{sp_id}:{lin_id}" if lin_id else sp_id,
+        )
+
+        # 種族戲法
+        sa = d.species_spellcasting_ability  # Tiefling 等
+        for en in self.get_species_granted_cantrips():
+            pack.spells.append(
+                SpellGrant(
+                    en_name=en,
+                    casting_type=SpellCastingType.INNATE,
+                    spellcasting_ability=sa,
+                )
+            )
+
+        return pack
+
+    def _build_background_pack_sp(self):
+        """組裝背景 SourcePack。"""
+        from tot.models.source_pack import (
+            PackType,
+            SkillGrant,
+            SourcePack,
+            ToolGrant,
+        )
+
+        d = self.data
+        bg_id = d.background
+        if not bg_id or bg_id not in BACKGROUND_REGISTRY:
+            return SourcePack(pack_type=PackType.BACKGROUND, source_name="", source_id="")
+
+        bg = BACKGROUND_REGISTRY[bg_id]
+        pack = SourcePack(
+            pack_type=PackType.BACKGROUND,
+            source_name=bg.name_zh,
+            source_id=bg_id,
+        )
+
+        # 背景固定技能
+        for s in bg.skill_proficiencies:
+            pack.skills.append(SkillGrant(skill=s))
+
+        # 工具
+        if bg.tool_proficiency_enum:
+            pack.tools.append(ToolGrant(tool=bg.tool_proficiency_enum))
+        elif d.bg_tool_choice:
+            pack.tools.append(ToolGrant(tool=d.bg_tool_choice))
+
+        return pack
+
+    def _build_feat_pack_sp(self, feat_id: str):
+        """組裝專長 SourcePack。"""
+        from tot.models.source_pack import (
+            PackType,
+            SourcePack,
+            SpellCastingType,
+            SpellGrant,
+            ToolGrant,
+        )
+
+        feat = ORIGIN_FEAT_REGISTRY.get(feat_id)
+        if not feat:
+            return None
+
+        d = self.data
+        pack = SourcePack(
+            pack_type=PackType.FEAT,
+            source_name=feat.name_zh,
+            source_id=feat_id,
+        )
+
+        # Magic Initiate 法術
+        if feat.has_spell_choice and feat.spell_class:
+            sa = d.feat_spellcasting_ability
+            for en in d.feat_cantrips:
+                pack.spells.append(
+                    SpellGrant(
+                        en_name=en,
+                        casting_type=SpellCastingType.FEAT,
+                        spellcasting_ability=sa,
+                    )
+                )
+            for en in d.feat_spells:
+                pack.spells.append(
+                    SpellGrant(
+                        en_name=en,
+                        casting_type=SpellCastingType.FEAT,
+                        spellcasting_ability=sa,
+                        free_uses_max=1,
+                        free_uses_current=1,
+                        is_always_prepared=True,
+                        can_also_use_slot=True,
+                    )
+                )
+
+        # 工具選位
+        for t in d.feat_tool_choices:
+            pack.tools.append(ToolGrant(tool=t))
+
+        return pack
+
+    def _build_class_pack_sp(self):
+        """組裝職業 SourcePack。"""
+        from tot.models.source_pack import (
+            PackType,
+            SkillGrant,
+            SourcePack,
+            SpellCastingType,
+            SpellGrant,
+        )
+
+        d = self.data
+        cc = d.char_class
+        if not cc or cc not in CLASS_REGISTRY:
+            return SourcePack(pack_type=PackType.CLASS, source_name="", source_id="")
+
+        cls = CLASS_REGISTRY[cc]
+        cd = CLASS_DISPLAY.get(cc)
+        pack = SourcePack(
+            pack_type=PackType.CLASS,
+            source_name=cd.name_zh if cd else cc,
+            source_id=cc,
+            saving_throws=list(cls.saving_throws),
+        )
+
+        # 職業技能：d.skills 中排除背景已有的部分
+        bg_skills: set[Skill] = set()
+        if d.background and d.background in BACKGROUND_REGISTRY:
+            bg_skills = set(BACKGROUND_REGISTRY[d.background].skill_proficiencies)
+
+        for s in d.skills:
+            if s not in bg_skills:
+                pack.skills.append(SkillGrant(skill=s))
+
+        # 施放方式
+        casting_type = SpellCastingType.KNOWN  # Warlock/Sorcerer/Bard/Ranger
+        if cc in ("Cleric", "Druid", "Paladin", "Wizard"):
+            casting_type = SpellCastingType.PREPARED
+
+        # 職業戲法
+        for en in d.cantrips:
+            pack.spells.append(
+                SpellGrant(
+                    en_name=en,
+                    casting_type=casting_type,
+                    counts_as_class_spell=True,
+                )
+            )
+
+        # 職業法術
+        for en in d.spells:
+            pack.spells.append(
+                SpellGrant(
+                    en_name=en,
+                    casting_type=casting_type,
+                    counts_as_class_spell=True,
+                )
+            )
+
+        return pack
+
+    def _build_invocation_pack_sp(self, inv_id: str):
+        """組裝祈喚 SourcePack。"""
+        from tot.models.source_pack import (
+            PackType,
+            SourcePack,
+            SpellCastingType,
+            SpellGrant,
+        )
+
+        inv = INVOCATION_REGISTRY.get(inv_id)
+        if not inv:
+            return None
+
+        d = self.data
+        pack = SourcePack(
+            pack_type=PackType.INVOCATION,
+            source_name=inv.name_zh,
+            source_id=inv_id,
+        )
+
+        # 特定祈喚的法術授予
+        if inv_id == "Armor of Shadows":
+            pack.spells.append(
+                SpellGrant(
+                    en_name="Mage Armor",
+                    casting_type=SpellCastingType.INVOCATION,
+                    is_always_prepared=True,
+                    counts_as_class_spell=True,
+                )
+            )
+        elif inv_id == "Pact of the Tome":
+            for en in d.tome_cantrips:
+                pack.spells.append(
+                    SpellGrant(
+                        en_name=en,
+                        casting_type=SpellCastingType.TOME,
+                        counts_as_class_spell=True,
+                    )
+                )
+            for en in d.tome_rituals:
+                pack.spells.append(
+                    SpellGrant(
+                        en_name=en,
+                        casting_type=SpellCastingType.TOME,
+                        can_ritual_cast=True,
+                        counts_as_class_spell=True,
+                    )
+                )
+        # 其他祈喚（契約之刃、契約之鎖等）目前不授予法術
+
+        return pack
 
     def _apply_standard_array(self) -> None:
         """依職業建議自動分配標準陣列。"""
@@ -1383,9 +1674,12 @@ def _translate_duration(dur: str) -> str:
         unit = m.group(2)
         unit_zh = {
             "round": "回合",
-            "minute": "分鐘", "minutes": "分鐘",
-            "hour": "小時", "hours": "小時",
-            "day": "天", "days": "天",
+            "minute": "分鐘",
+            "minutes": "分鐘",
+            "hour": "小時",
+            "hours": "小時",
+            "day": "天",
+            "days": "天",
         }
         return f"{n} {unit_zh.get(unit, unit)}"
 
