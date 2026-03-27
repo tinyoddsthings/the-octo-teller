@@ -616,10 +616,21 @@ class CharacterCard:
             return dc, attack
         return c.spell_dc, c.spell_attack
 
+    def _format_slot_info(self, label: str, slots) -> str:
+        """格式化法術位資訊：如「契約位 1/1」。"""
+        total_cur = sum(slots.current_slots.values())
+        total_max = sum(slots.max_slots.values())
+        return f"{label} {total_cur}/{total_max}"
+
     def _format_cost_tag(self, sg: SpellGrant) -> str:
-        """根據 SpellGrant 屬性產生消耗標記字串。"""
+        """根據 SpellGrant 屬性產生消耗標記字串，含剩餘位數。"""
         c = self.char
         ct = sg.casting_type
+        has_pact = bool(c.pact_slots.max_slots)
+        has_slots = bool(c.spell_slots.max_slots)
+
+        pact_info = self._format_slot_info("契約位", c.pact_slots) if has_pact else ""
+        slot_info = self._format_slot_info("法術位", c.spell_slots) if has_slots else ""
 
         if ct == SpellCastingType.INVOCATION:
             return "【隨意施放】"
@@ -627,7 +638,8 @@ class CharacterCard:
         if sg.free_uses_max > 0:
             tag = f"【免費 {sg.free_uses_current}/{sg.free_uses_max}，長休恢復"
             if sg.can_also_use_slot:
-                tag += "或消耗法術位"
+                ref = pact_info if has_pact else slot_info
+                tag += f"，或消耗{ref}" if ref else "，或消耗法術位"
             tag += "】"
             return tag
 
@@ -635,19 +647,24 @@ class CharacterCard:
             return "【免費 1/1】"
 
         if ct == SpellCastingType.TOME and sg.can_ritual_cast:
-            # 判斷是 Warlock 還是其他
-            has_pact = bool(c.pact_slots.max_slots)
-            slot_label = "契約位" if has_pact else "法術位"
-            return f"【儀式或{slot_label}】"
+            ref = pact_info if has_pact else slot_info
+            return f"【儀式，或消耗{ref}】" if ref else "【儀式或法術位】"
 
-        # KNOWN / PREPARED / FEAT / SPELLBOOK → 法術位/契約位
-        has_pact = bool(c.pact_slots.max_slots)
-        if ct in (SpellCastingType.KNOWN, SpellCastingType.PREPARED) and has_pact:
-            return "【契約位】"
+        # KNOWN / PREPARED / FEAT / SPELLBOOK
+        if ct in (SpellCastingType.KNOWN, SpellCastingType.PREPARED):
+            if has_pact:
+                return f"【{pact_info}】"
+            if has_slots:
+                return f"【{slot_info}】"
         if ct == SpellCastingType.FEAT:
-            return "【法術位】"
+            if has_slots:
+                return f"【{slot_info}】"
+            if has_pact:
+                return f"【{pact_info}】"
         if has_pact:
-            return "【契約位】"
+            return f"【{pact_info}】"
+        if has_slots:
+            return f"【{slot_info}】"
         return "【法術位】"
 
     def _build_combat_spell_lines(self) -> dict[str, list[str]]:
