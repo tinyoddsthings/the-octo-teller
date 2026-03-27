@@ -616,28 +616,35 @@ class CharacterCard:
         return cur, mx
 
     def _format_cost_tag(self, sg: SpellGrant) -> str:
-        """根據 SpellGrant 屬性產生消耗標記字串。統一用「法術」。"""
+        """根據 SpellGrant 屬性產生消耗標記字串。"""
         ct = sg.casting_type
-        cur, mx = self._get_total_slots()
-        slot_str = f"法術 {cur}/{mx}" if mx > 0 else "法術"
+
+        # 查法術環級
+        spell = get_spell_by_name(sg.en_name)
+        lvl = spell.level if spell else 1
+        slot_desc = f"{lvl} 環法術欄位 × 1"
 
         if ct == SpellCastingType.INVOCATION:
             return "【隨意施放】"
 
         if sg.free_uses_max > 0:
-            tag = f"【免費 {sg.free_uses_current}/{sg.free_uses_max}，長休恢復"
+            tag = f"【免費 {sg.free_uses_current}/{sg.free_uses_max}（長休恢復）"
             if sg.can_also_use_slot:
-                tag += f"，或消耗{slot_str}"
+                tag += f"，或 {slot_desc}"
             tag += "】"
             return tag
 
         if ct == SpellCastingType.INNATE:
-            return "【免費 1/1】"
+            return "【免費 1/1（長休恢復）】"
 
         if ct == SpellCastingType.TOME and sg.can_ritual_cast:
-            return f"【儀式，或消耗{slot_str}】"
+            return f"【儀式，或 {slot_desc}】"
 
-        return f"【{slot_str}】"
+        # 戲法不顯示消耗
+        if lvl == 0:
+            return ""
+
+        return f"【{slot_desc}】"
 
     def _build_combat_spell_lines(self) -> dict[str, list[str]]:
         """從 SourcePack 讀取所有法術，按 casting_time 分組為戰鬥行。
