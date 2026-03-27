@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from uuid import UUID, uuid4
 
-from pydantic import BaseModel, Field, computed_field
+from pydantic import BaseModel, Field, computed_field, model_validator
 
 from tot.models.enums import (
     SKILL_ABILITY_MAP,
@@ -181,6 +181,69 @@ class Character(Combatant):
     xp: int = 0
 
     source_packs: list = Field(default_factory=list)  # list[SourcePack]
+
+    @model_validator(mode="after")
+    def _deserialize_source_packs(self) -> Character:
+        """JSON 反序列化時將 dict 轉回 SourcePack dataclass。"""
+        from tot.models.source_pack import (
+            PackType,
+            ProficiencyLevel,
+            SkillGrant,
+            SourcePack,
+            SpellCastingType,
+            SpellGrant,
+            ToolGrant,
+        )
+        rebuilt = []
+        for item in self.source_packs:
+            if isinstance(item, SourcePack):
+                rebuilt.append(item)
+                continue
+            if not isinstance(item, dict):
+                continue
+            skills = [
+                SkillGrant(
+                    skill=Skill(sg["skill"]),
+                    level=ProficiencyLevel(sg.get("level", "proficient")),
+                )
+                for sg in item.get("skills", [])
+            ]
+            spells = [
+                SpellGrant(
+                    en_name=sg["en_name"],
+                    casting_type=SpellCastingType(sg["casting_type"]),
+                    spellcasting_ability=(
+                        Ability(sg["spellcasting_ability"])
+                        if sg.get("spellcasting_ability")
+                        else None
+                    ),
+                    counts_as_class_spell=sg.get("counts_as_class_spell", False),
+                    free_uses_max=sg.get("free_uses_max", 0),
+                    free_uses_current=sg.get("free_uses_current", 0),
+                    is_always_prepared=sg.get("is_always_prepared", False),
+                    can_ritual_cast=sg.get("can_ritual_cast", False),
+                    can_also_use_slot=sg.get("can_also_use_slot", False),
+                )
+                for sg in item.get("spells", [])
+            ]
+            tools = [
+                ToolGrant(tool=Tool(tg["tool"]))
+                for tg in item.get("tools", [])
+            ]
+            saving_throws = [
+                Ability(a) for a in item.get("saving_throws", [])
+            ]
+            rebuilt.append(SourcePack(
+                pack_type=PackType(item["pack_type"]),
+                source_name=item.get("source_name", ""),
+                source_id=item.get("source_id", ""),
+                skills=skills,
+                spells=spells,
+                tools=tools,
+                saving_throws=saving_throws,
+            ))
+        self.source_packs = rebuilt
+        return self
 
     # ---- SourcePack 查詢方法 ----
 
