@@ -557,29 +557,16 @@ class CharacterCreationSession:
         return "Pact of the Tome" in self.data.invocations
 
     def get_available_tome_cantrips(self) -> list[dict]:
-        """全職業戲法，排除其他來源已有的（種族+職業+專長）。
-
-        不排除 tome_cantrips 自己已選的，否則 re-render 時選項會消失。
-        """
+        """全職業戲法。不排除其他來源已有的（SourcePack 分別追蹤）。"""
         db = load_spell_db()
         all_cantrips = [s for s in db.values() if s.level == 0]
-        excluded = set(self.get_species_granted_cantrips())
-        excluded.update(self.data.cantrips)
-        excluded.update(self.data.feat_cantrips)
-        # 不排除 self.data.tome_cantrips
-        return [_spell_to_dict(s) for s in all_cantrips if s.en_name not in excluded]
+        return [_spell_to_dict(s) for s in all_cantrips]
 
     def get_available_tome_rituals(self) -> list[dict]:
-        """全職業 1 環 ritual=True 法術，排除其他來源已備妥的。
-
-        不排除 tome_rituals 自己已選的。
-        """
+        """全職業 1 環 ritual=True 法術。不排除其他來源已有的。"""
         db = load_spell_db()
         rituals = [s for s in db.values() if s.level == 1 and s.ritual]
-        excluded = set(self.data.spells)
-        excluded.update(self.data.feat_spells)
-        # 不排除 self.data.tome_rituals
-        return [_spell_to_dict(s) for s in rituals if s.en_name not in excluded]
+        return [_spell_to_dict(s) for s in rituals]
 
     def set_tome_cantrips(self, cantrips: list[str]) -> None:
         """設定契約之書的 3 個戲法。"""
@@ -595,18 +582,39 @@ class CharacterCreationSession:
 
     # ── 查詢可選項 ────────────────────────────────────────────────────────────
 
+    def _current_packs(self) -> list:
+        """即時計算目前已確定的 SourcePack（不需 build_character）。"""
+        packs = []
+        if self.data.species:
+            packs.append(self._build_species_pack_sp())
+        if self.data.background:
+            packs.append(self._build_background_pack_sp())
+            bg = BACKGROUND_REGISTRY.get(self.data.background)
+            if bg:
+                fp = self._build_feat_pack_sp(bg.feat)
+                if fp:
+                    packs.append(fp)
+        if self.data.species_feat:
+            fp = self._build_feat_pack_sp(self.data.species_feat)
+            if fp:
+                packs.append(fp)
+        return packs
+
     def get_available_skills(self) -> list[Skill]:
         """取得可選技能清單。
 
-        (AllFeatPools ∪ ClassList ∪ AllSkills if Human多才) - BackgroundSkills。
-
+        (AllFeatPools ∪ ClassList ∪ AllSkills if 種族自選) - 已有技能（從 Pack）。
         職業技能優先排列。
         """
         cc = self.data.char_class
-        bg_skill_set = set(self._get_bg_skills())
+
+        # 從已確定的 Pack 取得已有技能
+        already = set()
+        for pack in self._current_packs():
+            already |= {sg.skill for sg in pack.skills}
 
         origin_feats = self.get_origin_feats()
-        has_human_versatility = self._has_species_skill_choice()
+        has_species_choice = self._has_species_skill_choice()
 
         candidate_set: set[Skill] = set()
 
@@ -616,10 +624,10 @@ class CharacterCreationSession:
                 if feat.skill_choice_pool:
                     candidate_set.update(feat.skill_choice_pool)
                 else:
-                    candidate_set.update(Skill)  # 全 18 項
+                    candidate_set.update(Skill)
 
-        # 種族自選技能（Human 多才：全 18 項；Elf 敏銳感官：限定池）
-        if has_human_versatility:
+        # 種族自選技能
+        if has_species_choice:
             sp = SPECIES_REGISTRY.get(self.data.species)
             if sp and sp.skill_choice_pool:
                 candidate_set.update(sp.skill_choice_pool)
@@ -632,8 +640,8 @@ class CharacterCreationSession:
             cls_set = set(CLASS_REGISTRY[cc].skill_choices)
             candidate_set.update(cls_set)
 
-        # 扣除背景已佔
-        candidate_set -= bg_skill_set
+        # 扣除已有技能（從 Pack 計算，比手動 bg_skill_set 更通用）
+        candidate_set -= already
 
         # 職業技能優先排列
         return sorted(candidate_set, key=lambda s: (s not in cls_set, s.value))
@@ -681,14 +689,12 @@ class CharacterCreationSession:
         return result
 
     def get_available_cantrips(self) -> list[dict]:
-        """取得可選戲法列表，排除種族/血統已給的和契約之書已選的。"""
+        """取得職業可選戲法列表。不排除其他來源已有的（SourcePack 分別追蹤）。"""
         cc = self.data.char_class
         if not cc:
             return []
-        excluded = set(self.get_species_granted_cantrips())
-        excluded.update(self.data.tome_cantrips)
         spells = list_spells(level=0, char_class=cc)
-        return [_spell_to_dict(s) for s in spells if s.en_name not in excluded]
+        return [_spell_to_dict(s) for s in spells]
 
     def get_available_spells(self) -> list[dict]:
         """取得可選 1 環法術列表。"""

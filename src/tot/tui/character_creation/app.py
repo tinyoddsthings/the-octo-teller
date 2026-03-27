@@ -525,11 +525,13 @@ class CharacterCreationApp(App[Character | None]):
             opts = []
             for s in tome_cantrips:
                 tag = s["damage_type_zh"] if s["damage_type_zh"] else s["effect_type_zh"]
-                opts.append((
-                    f"{s['name']}（{s['en_name']}）— {tag}",
-                    s["en_name"],
-                    s["en_name"] in sel,
-                ))
+                opts.append(
+                    (
+                        f"{s['name']}（{s['en_name']}）— {tag}",
+                        s["en_name"],
+                        s["en_name"] in sel,
+                    )
+                )
             w.append(SelectionList(*opts, id="tome-cantrip-list"))
             # 已選詳情
             lookup = {s["en_name"]: s for s in tome_cantrips}
@@ -550,11 +552,13 @@ class CharacterCreationApp(App[Character | None]):
             for s in tome_rituals:
                 tag = s["damage_type_zh"] if s["damage_type_zh"] else s["effect_type_zh"]
                 ritual_tag = "（儀式）" if s.get("ritual") else ""
-                opts.append((
-                    f"{s['name']}（{s['en_name']}）— {tag}{ritual_tag}",
-                    s["en_name"],
-                    s["en_name"] in sel,
-                ))
+                opts.append(
+                    (
+                        f"{s['name']}（{s['en_name']}）— {tag}{ritual_tag}",
+                        s["en_name"],
+                        s["en_name"] in sel,
+                    )
+                )
             w.append(SelectionList(*opts, id="tome-ritual-list"))
             # 已選詳情
             lookup = {s["en_name"]: s for s in tome_rituals}
@@ -581,7 +585,7 @@ class CharacterCreationApp(App[Character | None]):
                 names.append(sp.name if sp else en)
             w.append(
                 Label(
-                    f"── 種族戲法（已有，不可重複選）：{', '.join(names)} ──",
+                    f"── 種族戲法（已有）：{', '.join(names)}（重複選 = 不同施法來源）──",
                     classes="section-label",
                 )
             )
