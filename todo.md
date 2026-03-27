@@ -20,34 +20,41 @@
 - [x] 工具熟練系統 ✅ Tool enum（37 種）+ TOOL_DATA 描述
 - [x] 角色卡閱覽 ✅ `character_card.py` 5 分頁 + `character_sheet/` TUI
 
+### A-1 已完成（本輪 PR）
+
+- [x] SourcePack 能力包系統 ✅ `models/source_pack.py`
+  - SkillGrant / SpellGrant / ToolGrant / SourcePack dataclass
+  - Character.source_packs + 查詢方法（can_free_cast 等）
+  - build_character() 組裝 6 種 Pack（種族/背景/專長/職業/祈喚）
+  - JSON 序列化/反序列化 model_validator
+- [x] 法術不再排除重複來源 ✅ 不同來源 = 不同 SpellGrant
+- [x] 技能排除改用 SourcePack ✅ _current_packs()
+- [x] 角色卡從 SourcePack 讀取 ✅ 重複來源才標來源名
+- [x] 戰鬥頁完整法術列表 ✅ 按動作經濟分組 + 消耗標記
+- [x] 法術位統一顯示 ✅ spell_slots + pact_slots 合併
+
 ### A-1 待完成
 
-#### 🔴 P0：技能/法術來源追蹤（影響所有後續系統）
-- [ ] SpellSource / SkillSource enum + Info dataclass
-- [ ] Character model 新增 `skill_sources` / `spell_sources` / `tool_sources`
-- [ ] build_character() 填入來源資訊
-- [ ] 法術免費使用次數追蹤（feat 1 次/長休、species 1 次/長休）
-- [ ] 契約之書法術：戲法永備 + 儀式不消耗位標記
-- [ ] 祈喚免費法術標記（暗影之甲等）
-- [ ] 角色卡讀取來源顯示
-- [ ] 長休恢復免費使用次數
-
-#### 🟡 P1：建角流程補完（依來源追蹤後修正）
+#### 🔴 建角流程補完
 - [ ] 建角時裝備正確存入 Character.weapons / inventory
-- [ ] Phase B 職業特性步驟：
-  - 武器精通（Barbarian/Fighter/Paladin/Ranger/Rogue）
-  - 戰鬥風格（Fighter）
-- [ ] Phase C 職業特性步驟：
-  - 神聖秩序（Cleric：守護者/奇蹟師）
-  - 原初秩序（Druid：魔法師/守衛者）
-  - 專精（Rogue：2 項技能）
-  - 額外語言（Rogue：1 種）
+- [ ] 武器精通步驟（Barbarian 2/Fighter 3/Paladin 2/Ranger 2/Rogue 2）
+- [ ] 戰鬥風格步驟（Fighter 1 種）
+- [ ] 神聖秩序（Cleric：守護者/奇蹟師）
+- [ ] 原初秩序（Druid：魔法師/守衛者）
+- [ ] 專精步驟（Rogue：2 項技能專精）
+- [ ] 額外語言步驟（Rogue：1 種語言）
 
-#### 🟢 P2：角色卡強化
+#### 🟡 角色卡強化
+- [ ] 角色卡裝備頁：武器詳情 + AC 計算來源
 - [ ] 角色卡戰鬥頁：裝備帶來的動作
-- [ ] 角色卡裝備頁：武器詳情 + AC 計算
-- [ ] 角色卡顯示技能/法術來源
-- [ ] 角色卡戰鬥頁：免費施放標記 + 剩餘次數
+- [ ] 角色卡探索頁：從 SourcePack 讀技能來源
+- [ ] 角色卡個人頁：完善種族/職業特性描述
+
+#### 🟢 法術鉤子系統（升級時再做）
+- [ ] SpellHook：cast_spell 前後觸發特性效果
+- [ ] 升級系統：add_level + 新 Pack + 重複偵測 + 重選
+- [ ] 法術欄位消耗整合 can_free_cast → cast_spell
+- [ ] 長休恢復 recover_free_casts
 
 ### A-1b: 啟動 TUI
 > 📄 設計文件：[`docs/game-session-design.md`](docs/game-session-design.md) §2
