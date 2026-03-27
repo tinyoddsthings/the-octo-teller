@@ -247,10 +247,18 @@ class CharacterCard:
 
         for lvl in sorted(spells_by_level.keys()):
             names = spells_by_level[lvl]
-            slots = c.spell_slots
-            cur = slots.current_slots.get(lvl, 0)
-            mx = slots.max_slots.get(lvl, 0)
-            lines.append(f"{lvl} 環法術（{cur}/{mx} 位）：{', '.join(names)}")
+            # 合併 spell_slots 和 pact_slots
+            cur = c.spell_slots.current_slots.get(lvl, 0)
+            mx = c.spell_slots.max_slots.get(lvl, 0)
+            pact_cur = c.pact_slots.current_slots.get(lvl, 0)
+            pact_mx = c.pact_slots.max_slots.get(lvl, 0)
+            slot_parts = []
+            if mx > 0:
+                slot_parts.append(f"{cur}/{mx} 位")
+            if pact_mx > 0:
+                slot_parts.append(f"契約 {pact_cur}/{pact_mx} 位")
+            slot_str = "＋".join(slot_parts) if slot_parts else "0 位"
+            lines.append(f"{lvl} 環法術（{slot_str}）：{', '.join(names)}")
 
         # 祈喚（Warlock）
         invocations = self._get_invocations()
@@ -491,21 +499,36 @@ class CharacterCard:
     # ═══════════════════════════════════════════════════════════════════════════
 
     def _categorize_spells(self) -> tuple[list[str], dict[int, list[str]]]:
-        """將角色法術分為戲法和各環級法術。回傳 (戲法名稱列表, {環級: 名稱列表})。"""
+        """將角色法術分為戲法和各環級法術。
+
+        優先從 SourcePack 讀取（含重複來源），fallback 到 flat list。
+        回傳 (戲法「名稱（來源）」列表, {環級: 「名稱（來源）」列表})。
+        """
         cantrips: list[str] = []
         spells_by_level: dict[int, list[str]] = {}
 
-        all_spells = list(set(self.char.spells_known + self.char.spells_prepared))
-        for spell_name in sorted(all_spells):
-            spell = get_spell_by_name(spell_name)
-            if spell is None:
-                # 找不到法術資料，嘗試直接歸類
-                cantrips.append(spell_name)
-                continue
-            if spell.level == 0:
-                cantrips.append(spell.name)
-            else:
-                spells_by_level.setdefault(spell.level, []).append(spell.name)
+        if self.char.source_packs:
+            for pack in self.char.source_packs:
+                for sg in pack.spells:
+                    spell = get_spell_by_name(sg.en_name)
+                    name = spell.name if spell else sg.en_name
+                    level = spell.level if spell else 0
+                    entry = f"{name}（{pack.source_name}）"
+                    if level == 0:
+                        cantrips.append(entry)
+                    else:
+                        spells_by_level.setdefault(level, []).append(entry)
+        else:
+            all_spells = list(set(self.char.spells_known + self.char.spells_prepared))
+            for spell_name in sorted(all_spells):
+                spell = get_spell_by_name(spell_name)
+                if spell is None:
+                    cantrips.append(spell_name)
+                    continue
+                if spell.level == 0:
+                    cantrips.append(spell.name)
+                else:
+                    spells_by_level.setdefault(spell.level, []).append(spell.name)
 
         return cantrips, spells_by_level
 
