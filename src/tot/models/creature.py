@@ -93,6 +93,10 @@ class Weapon(BaseModel):
     range_long: float | None = None  # 遠程/投擲武器的長射程（公尺）
     is_martial: bool = False
     mastery: WeaponMastery | None = None  # 2024 武器專精
+    en_name: str = ""  # 英文名（查詢用）
+    weight: float = 0.0  # 磅
+    cost_gp: float = 0.0  # 金幣價格
+    versatile_dice: str = ""  # 多用武器的雙手傷害骰（如 "1d10"）
 
     @computed_field
     @property
