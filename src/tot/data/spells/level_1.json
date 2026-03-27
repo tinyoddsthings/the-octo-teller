@@ -5,7 +5,7 @@
     "level": 1,
     "school": "Evocation",
     "casting_time": "1 action",
-    "range": "120ft",
+    "range": "36m",
     "duration": "Instantaneous",
     "effect_type": "damage",
     "damage_dice": "3d4+3",
@@ -27,7 +27,7 @@
     "level": 1,
     "school": "Evocation",
     "casting_time": "1 action",
-    "range": "Self (15ft cone)",
+    "range": "Self (4.5m cone)",
     "duration": "Instantaneous",
     "effect_type": "damage",
     "save_ability": "DEX",
@@ -41,7 +41,7 @@
       "V",
       "S"
     ],
-    "description": "需求：V（語言）、S（姿勢）。15ft 錐形範圍內每個生物須進行敏捷豁免，失敗受 3d6 火焰傷害，成功減半。",
+    "description": "需求：V（語言）、S（姿勢）。4.5m 錐形範圍內每個生物須進行敏捷豁免，失敗受 3d6 火焰傷害，成功減半。",
     "classes": [
       "Wizard",
       "Sorcerer"
@@ -77,7 +77,7 @@
     "level": 1,
     "school": "Abjuration",
     "casting_time": "1 bonus action",
-    "range": "60ft",
+    "range": "18m",
     "duration": "Instantaneous",
     "effect_type": "healing",
     "healing_dice": "2d4",
@@ -117,7 +117,7 @@
     "level": 1,
     "school": "Evocation",
     "casting_time": "1 action",
-    "range": "120ft",
+    "range": "36m",
     "duration": "1 round",
     "effect_type": "damage",
     "attack_type": "ranged",
@@ -139,7 +139,7 @@
     "level": 1,
     "school": "Evocation",
     "casting_time": "1 action",
-    "range": "Self (15ft cube)",
+    "range": "Self (4.5m cube)",
     "duration": "Instantaneous",
     "effect_type": "damage",
     "save_ability": "CON",
@@ -153,7 +153,7 @@
       "V",
       "S"
     ],
-    "description": "需求：V（語言）、S（姿勢）。15ft 立方區域內每個生物須進行體質豁免，失敗受 2d8 雷鳴傷害並推開 10ft。",
+    "description": "需求：V（語言）、S（姿勢）。4.5m 立方區域內每個生物須進行體質豁免，失敗受 2d8 雷鳴傷害並推開 3m。",
     "classes": [
       "Wizard",
       "Sorcerer",
@@ -167,7 +167,7 @@
     "level": 1,
     "school": "Enchantment",
     "casting_time": "1 action",
-    "range": "30ft",
+    "range": "9m",
     "duration": "1 minute",
     "concentration": true,
     "effect_type": "buff",
@@ -191,7 +191,7 @@
     "level": 1,
     "school": "Enchantment",
     "casting_time": "1 action",
-    "range": "30ft",
+    "range": "9m",
     "duration": "1 minute",
     "concentration": true,
     "effect_type": "condition",
@@ -217,7 +217,7 @@
     "level": 1,
     "school": "Enchantment",
     "casting_time": "1 action",
-    "range": "60ft",
+    "range": "18m",
     "duration": "1 minute",
     "concentration": true,
     "effect_type": "condition",
@@ -287,7 +287,7 @@
     "level": 1,
     "school": "Evocation",
     "casting_time": "1 action",
-    "range": "90ft",
+    "range": "27m",
     "duration": "Instantaneous",
     "effect_type": "damage",
     "attack_type": "ranged",
@@ -313,7 +313,7 @@
     "level": 1,
     "school": "Illusion",
     "casting_time": "1 action",
-    "range": "Self (15ft cone)",
+    "range": "Self (4.5m cone)",
     "duration": "Instantaneous",
     "effect_type": "condition",
     "save_ability": "CON",
@@ -324,7 +324,7 @@
       "M"
     ],
     "material_description": "一撮紅黃藍染色的粉末或沙子",
-    "description": "需求：V（語言）、S（姿勢）、M（一撮紅黃藍染色的粉末或沙子，可用法器替代）。15ft 錐形範圍內每個生物須體質豁免，失敗則目盲至你下回合結束。",
+    "description": "需求：V（語言）、S（姿勢）、M（一撮紅黃藍染色的粉末或沙子，可用法器替代）。4.5m 錐形範圍內每個生物須體質豁免，失敗則目盲至你下回合結束。",
     "classes": [
       "Wizard",
       "Sorcerer",
@@ -337,7 +337,7 @@
     "level": 1,
     "school": "Necromancy",
     "casting_time": "1 action",
-    "range": "60ft",
+    "range": "18m",
     "duration": "Instantaneous",
     "effect_type": "damage",
     "attack_type": "ranged",
@@ -361,7 +361,7 @@
     "level": 1,
     "school": "Conjuration",
     "casting_time": "1 action",
-    "range": "60ft",
+    "range": "18m",
     "duration": "Instantaneous",
     "effect_type": "damage",
     "attack_type": "ranged",
@@ -373,7 +373,7 @@
       "M"
     ],
     "material_description": "一滴水或一片冰",
-    "description": "需求：S（姿勢）、M（一滴水或一片冰，可用法器替代）。遠程法術攻擊。命中造成 1d10 穿刺傷害，然後爆裂，5ft 內 DEX 豁免否則 2d6 寒冷傷害。",
+    "description": "需求：S（姿勢）、M（一滴水或一片冰，可用法器替代）。遠程法術攻擊。命中造成 1d10 穿刺傷害，然後爆裂，1.5m 內 DEX 豁免否則 2d6 寒冷傷害。",
     "classes": [
       "Wizard",
       "Sorcerer",
@@ -386,7 +386,7 @@
     "level": 1,
     "school": "Evocation",
     "casting_time": "1 action",
-    "range": "60ft",
+    "range": "18m",
     "duration": "1 minute",
     "concentration": true,
     "effect_type": "condition",
@@ -394,7 +394,7 @@
     "components": [
       "V"
     ],
-    "description": "需求：V（語言）。20ft 立方區域內生物須 DEX 豁免，失敗時發光且無法隱形，對其攻擊有優勢。",
+    "description": "需求：V（語言）。6m 立方區域內生物須 DEX 豁免，失敗時發光且無法隱形，對其攻擊有優勢。",
     "classes": [
       "Bard",
       "Druid"
@@ -406,7 +406,7 @@
     "level": 1,
     "school": "Conjuration",
     "casting_time": "1 action",
-    "range": "90ft",
+    "range": "27m",
     "duration": "1 minute",
     "concentration": true,
     "effect_type": "condition",
@@ -416,7 +416,7 @@
       "V",
       "S"
     ],
-    "description": "需求：V（語言）、S（姿勢）。20ft 正方形區域內生物須力量豁免，失敗時被束縛。區域為難行地形。",
+    "description": "需求：V（語言）、S（姿勢）。6m 正方形區域內生物須力量豁免，失敗時被束縛。區域為難行地形。",
     "classes": [
       "Druid",
       "Ranger"
@@ -448,7 +448,7 @@
     "level": 1,
     "school": "Conjuration",
     "casting_time": "1 action",
-    "range": "Self (10ft emanation)",
+    "range": "Self (3m emanation)",
     "duration": "Instantaneous",
     "effect_type": "damage",
     "save_ability": "STR",
@@ -462,7 +462,7 @@
       "V",
       "S"
     ],
-    "description": "需求：V（語言）、S（姿勢）。10ft 散發區域內每個生物須力量豁免，失敗受 2d6 黯蝕傷害且下回合開始前不能使用反應，成功傷害減半。",
+    "description": "需求：V（語言）、S（姿勢）。3m 散發區域內每個生物須力量豁免，失敗受 2d6 黯蝕傷害且下回合開始前不能使用反應，成功傷害減半。",
     "classes": [
       "Warlock"
     ]
@@ -473,7 +473,7 @@
     "level": 1,
     "school": "Enchantment",
     "casting_time": "1 bonus action",
-    "range": "90ft",
+    "range": "27m",
     "duration": "1 hour",
     "concentration": true,
     "effect_type": "damage",
@@ -496,7 +496,7 @@
     "level": 1,
     "school": "Evocation",
     "casting_time": "1 reaction",
-    "range": "60ft",
+    "range": "18m",
     "duration": "Instantaneous",
     "effect_type": "damage",
     "save_ability": "DEX",
@@ -508,7 +508,7 @@
       "V",
       "S"
     ],
-    "description": "需求：V（語言）、S（姿勢）。反應：當你受到 60ft 內可見生物傷害時施放。傷害你的生物須敏捷豁免，失敗受 2d10 火焰傷害，成功減半。",
+    "description": "需求：V（語言）、S（姿勢）。反應：當你受到 18m 內可見生物傷害時施放。傷害你的生物須敏捷豁免，失敗受 2d10 火焰傷害，成功減半。",
     "classes": [
       "Warlock"
     ]
@@ -519,7 +519,7 @@
     "level": 1,
     "school": "Enchantment",
     "casting_time": "1 action",
-    "range": "30ft",
+    "range": "9m",
     "duration": "1 hour",
     "effect_type": "condition",
     "save_ability": "WIS",
@@ -576,7 +576,7 @@
       "V",
       "S"
     ],
-    "description": "需求：V（語言）、S（姿勢）。持續時間內感知 30ft 內魔法效果的存在，可用魔法動作看到光環並得知法術學派。被石/土/木/金屬/鉛阻擋。可以儀式施放。",
+    "description": "需求：V（語言）、S（姿勢）。持續時間內感知 9m 內魔法效果的存在，可用魔法動作看到光環並得知法術學派。被石/土/木/金屬/鉛阻擋。可以儀式施放。",
     "classes": [
       "Bard",
       "Cleric",
@@ -637,7 +637,7 @@
     "level": 1,
     "school": "Enchantment",
     "casting_time": "1 action",
-    "range": "30ft",
+    "range": "9m",
     "duration": "1 minute",
     "concentration": true,
     "effect_type": "condition",
@@ -662,7 +662,7 @@
     "level": 1,
     "school": "Evocation",
     "casting_time": "1 action",
-    "range": "60ft",
+    "range": "18m",
     "duration": "1 minute",
     "concentration": true,
     "effect_type": "damage",
@@ -714,7 +714,7 @@
     "school": "Conjuration",
     "ritual": true,
     "casting_time": "1 action",
-    "range": "60ft",
+    "range": "18m",
     "duration": "1 hour",
     "effect_type": "utility",
     "components": [
@@ -723,7 +723,7 @@
       "M"
     ],
     "material_description": "一段繩子和一塊木頭",
-    "description": "需求：V（語言）、S（姿勢）、M（一段繩子和一塊木頭，可用法器替代）。創造隱形無心智中型力場僕從（AC 10、HP 1、STR 2）。可用附贈動作命令移動 15ft 並執行簡單任務。離開 60ft 法術結束。可以儀式施放。",
+    "description": "需求：V（語言）、S（姿勢）、M（一段繩子和一塊木頭，可用法器替代）。創造隱形無心智中型力場僕從（AC 10、HP 1、STR 2）。可用附贈動作命令移動 4.5m 並執行簡單任務。離開 18m 法術結束。可以儀式施放。",
     "classes": [
       "Bard",
       "Warlock",
@@ -763,7 +763,7 @@
     "level": 1,
     "school": "Enchantment",
     "casting_time": "1 action",
-    "range": "60ft",
+    "range": "18m",
     "duration": "Instantaneous",
     "effect_type": "condition",
     "save_ability": "WIS",
@@ -803,7 +803,7 @@
     "level": 1,
     "school": "Transmutation",
     "casting_time": "1 reaction",
-    "range": "60ft",
+    "range": "18m",
     "duration": "1 minute",
     "effect_type": "utility",
     "components": [
@@ -811,7 +811,7 @@
       "M"
     ],
     "material_description": "一根小羽毛或一片絨毛",
-    "description": "需求：V（語言）、M（一根小羽毛或一片絨毛，可用法器替代）。反應：你或 60ft 內可見生物墜落時施放。至多五個墜落生物下降速率降至每輪 60ft，著地時不受墜落傷害。",
+    "description": "需求：V（語言）、M（一根小羽毛或一片絨毛，可用法器替代）。反應：你或 18m 內可見生物墜落時施放。至多五個墜落生物下降速率降至每輪 18m，著地時不受墜落傷害。",
     "classes": [
       "Bard",
       "Sorcerer",
@@ -825,7 +825,7 @@
     "school": "Conjuration",
     "ritual": true,
     "casting_time": "1 hour",
-    "range": "10ft",
+    "range": "3m",
     "duration": "Instantaneous",
     "effect_type": "utility",
     "components": [
@@ -847,7 +847,7 @@
     "level": 1,
     "school": "Conjuration",
     "casting_time": "1 action",
-    "range": "120ft",
+    "range": "36m",
     "duration": "1 hour",
     "concentration": true,
     "effect_type": "utility",
@@ -857,7 +857,7 @@
       "V",
       "S"
     ],
-    "description": "需求：V（語言）、S（姿勢）。以射程內一點為中心創造 20ft 半徑球形霧氣，區域為嚴重遮蔽。強風可吹散。升環每環半徑 +20ft。",
+    "description": "需求：V（語言）、S（姿勢）。以射程內一點為中心創造 6m 半徑球形霧氣，區域為嚴重遮蔽。強風可吹散。升環每環半徑 +6m。",
     "classes": [
       "Druid",
       "Ranger",
@@ -892,7 +892,7 @@
     "level": 1,
     "school": "Conjuration",
     "casting_time": "1 action",
-    "range": "60ft",
+    "range": "18m",
     "duration": "1 minute",
     "effect_type": "condition",
     "save_ability": "DEX",
@@ -905,7 +905,7 @@
       "M"
     ],
     "material_description": "一小塊豬皮或奶油",
-    "description": "需求：V（語言）、S（姿勢）、M（一小塊豬皮或奶油，可用法器替代）。10ft 見方區域覆蓋不可燃油脂，為難行地形。區域內生物須敏捷豁免，失敗則倒地。進入或結束回合在區域內也須豁免。",
+    "description": "需求：V（語言）、S（姿勢）、M（一小塊豬皮或奶油，可用法器替代）。3m 見方區域覆蓋不可燃油脂，為難行地形。區域內生物須敏捷豁免，失敗則倒地。進入或結束回合在區域內也須豁免。",
     "classes": [
       "Sorcerer",
       "Wizard"
@@ -955,7 +955,7 @@
     "level": 1,
     "school": "Abjuration",
     "casting_time": "1 bonus action",
-    "range": "60ft",
+    "range": "18m",
     "duration": "10 minutes",
     "concentration": true,
     "effect_type": "buff",
@@ -977,7 +977,7 @@
     "level": 1,
     "school": "Abjuration",
     "casting_time": "1 bonus action",
-    "range": "30ft",
+    "range": "9m",
     "duration": "1 minute",
     "effect_type": "buff",
     "save_ability": "WIS",
@@ -998,7 +998,7 @@
     "level": 1,
     "school": "Illusion",
     "casting_time": "1 action",
-    "range": "60ft",
+    "range": "18m",
     "duration": "10 minutes",
     "concentration": true,
     "effect_type": "utility",
@@ -1008,7 +1008,7 @@
       "M"
     ],
     "material_description": "一點羊毛",
-    "description": "需求：V（語言）、S（姿勢）、M（一點羊毛，可用法器替代）。創造不大於 15ft 立方的視覺幻象。可用魔法動作移動幻象。物理互動揭露幻象。識破需研究動作和智力（調查）檢定。",
+    "description": "需求：V（語言）、S（姿勢）、M（一點羊毛，可用法器替代）。創造不大於 4.5m 立方的視覺幻象。可用魔法動作移動幻象。物理互動揭露幻象。識破需研究動作和智力（調查）檢定。",
     "classes": [
       "Bard",
       "Sorcerer",
@@ -1065,7 +1065,7 @@
     "level": 1,
     "school": "Enchantment",
     "casting_time": "1 action",
-    "range": "30ft",
+    "range": "9m",
     "duration": "24 hours",
     "effect_type": "condition",
     "save_ability": "WIS",
@@ -1089,7 +1089,7 @@
     "level": 1,
     "school": "Enchantment",
     "casting_time": "1 bonus action",
-    "range": "30ft",
+    "range": "9m",
     "duration": "1 minute",
     "concentration": true,
     "effect_type": "condition",
@@ -1097,7 +1097,7 @@
     "components": [
       "V"
     ],
-    "description": "需求：V（語言）。目標須感知豁免，失敗則對你以外的生物攻擊有劣勢，且不能自願離開你超過 30ft。你攻擊其他生物、對其他敵人施法、盟友傷害目標或離開 30ft 則法術結束。",
+    "description": "需求：V（語言）。目標須感知豁免，失敗則對你以外的生物攻擊有劣勢，且不能自願離開你超過 9m。你攻擊其他生物、對其他敵人施法、盟友傷害目標或離開 9m 則法術結束。",
     "classes": [
       "Paladin"
     ]
@@ -1109,7 +1109,7 @@
     "school": "Abjuration",
     "ritual": true,
     "casting_time": "1 minute",
-    "range": "30ft",
+    "range": "9m",
     "duration": "8 hours",
     "effect_type": "utility",
     "components": [
@@ -1118,7 +1118,7 @@
       "M"
     ],
     "material_description": "一個鈴鐺和一根銀線",
-    "description": "需求：V（語言）、S（姿勢）、M（一個鈴鐺和一根銀線，可用法器替代）。對門、窗或至多 20ft 立方區域設警報。可指定不觸發者。聽覺型：60ft 內響鈴 10 秒。心靈型：1 英里內收到提示。可以儀式施放。",
+    "description": "需求：V（語言）、S（姿勢）、M（一個鈴鐺和一根銀線，可用法器替代）。對門、窗或至多 6m 立方區域設警報。可指定不觸發者。聽覺型：18m 內響鈴 10 秒。心靈型：1 英里內收到提示。可以儀式施放。",
     "classes": [
       "Ranger",
       "Wizard"
@@ -1160,7 +1160,7 @@
     "components": [
       "V"
     ],
-    "description": "需求：V（語言）。附贈動作：以近戰武器或徒手打擊命中後施放。目標額外受 2d6 雷鳴傷害，並須力量豁免，失敗被推開 10ft 且倒地。",
+    "description": "需求：V（語言）。附贈動作：以近戰武器或徒手打擊命中後施放。目標額外受 2d6 雷鳴傷害，並須力量豁免，失敗被推開 3m 且倒地。",
     "classes": [
       "Paladin"
     ]
@@ -1180,7 +1180,7 @@
       "M"
     ],
     "material_description": "一條蚱蜢的後腿",
-    "description": "需求：V（語言）、S（姿勢）、M（一條蚱蜢的後腿，可用法器替代）。觸碰目標在持續時間內每回合可花費 10ft 移動力跳躍至多 30ft。升環每環多 1 目標。",
+    "description": "需求：V（語言）、S（姿勢）、M（一條蚱蜢的後腿，可用法器替代）。觸碰目標在持續時間內每回合可花費 3m 移動力跳躍至多 9m。升環每環多 1 目標。",
     "classes": [
       "Druid",
       "Ranger",
@@ -1203,7 +1203,7 @@
       "M"
     ],
     "material_description": "一撮泥土",
-    "description": "需求：V（語言）、S（姿勢）、M（一撮泥土，可用法器替代）。觸碰目標速度 +10ft 持續 1 小時。升環每環多 1 目標。",
+    "description": "需求：V（語言）、S（姿勢）、M（一撮泥土，可用法器替代）。觸碰目標速度 +3m 持續 1 小時。升環每環多 1 目標。",
     "classes": [
       "Bard",
       "Druid",
@@ -1237,14 +1237,14 @@
     "level": 1,
     "school": "Transmutation",
     "casting_time": "1 action",
-    "range": "10ft",
+    "range": "3m",
     "duration": "Instantaneous",
     "effect_type": "utility",
     "components": [
       "V",
       "S"
     ],
-    "description": "需求：V（語言）、S（姿勢）。移除 5ft 半徑球體內非魔法食物和飲料中的毒素和腐壞。可以儀式施放。",
+    "description": "需求：V（語言）、S（姿勢）。移除 1.5m 半徑球體內非魔法食物和飲料中的毒素和腐壞。可以儀式施放。",
     "classes": [
       "Cleric",
       "Druid",

@@ -5,7 +5,7 @@
     "level": 0,
     "school": "Evocation",
     "casting_time": "1 action",
-    "range": "120ft",
+    "range": "36m",
     "duration": "Instantaneous",
     "effect_type": "damage",
     "attack_type": "ranged",
@@ -27,7 +27,7 @@
     "level": 0,
     "school": "Evocation",
     "casting_time": "1 action",
-    "range": "120ft",
+    "range": "36m",
     "duration": "Instantaneous",
     "effect_type": "damage",
     "attack_type": "ranged",
@@ -48,7 +48,7 @@
     "level": 0,
     "school": "Evocation",
     "casting_time": "1 action",
-    "range": "60ft",
+    "range": "18m",
     "duration": "Instantaneous",
     "effect_type": "damage",
     "save_ability": "DEX",
@@ -92,7 +92,7 @@
     "level": 0,
     "school": "Evocation",
     "casting_time": "1 action",
-    "range": "60ft",
+    "range": "18m",
     "duration": "Instantaneous",
     "effect_type": "damage",
     "attack_type": "ranged",
@@ -102,7 +102,7 @@
       "V",
       "S"
     ],
-    "description": "需求：V（語言）、S（姿勢）。遠程法術攻擊。命中時造成 1d8 寒冷傷害，目標速度降低 10ft。",
+    "description": "需求：V（語言）、S（姿勢）。遠程法術攻擊。命中時造成 1d8 寒冷傷害，目標速度降低 3m。",
     "classes": [
       "Wizard",
       "Sorcerer"
@@ -114,7 +114,7 @@
     "level": 0,
     "school": "Conjuration",
     "casting_time": "1 action",
-    "range": "30ft",
+    "range": "9m",
     "duration": "Instantaneous",
     "effect_type": "damage",
     "save_ability": "CON",
@@ -159,7 +159,7 @@
     "level": 0,
     "school": "Necromancy",
     "casting_time": "1 action",
-    "range": "60ft",
+    "range": "18m",
     "duration": "Instantaneous",
     "effect_type": "damage",
     "save_ability": "WIS",
@@ -181,7 +181,7 @@
     "level": 0,
     "school": "Enchantment",
     "casting_time": "1 action",
-    "range": "60ft",
+    "range": "18m",
     "duration": "Instantaneous",
     "effect_type": "damage",
     "save_ability": "INT",
@@ -202,7 +202,7 @@
     "level": 0,
     "school": "Enchantment",
     "casting_time": "1 action",
-    "range": "60ft",
+    "range": "18m",
     "duration": "Instantaneous",
     "effect_type": "damage",
     "save_ability": "WIS",
@@ -222,7 +222,7 @@
     "level": 0,
     "school": "Evocation",
     "casting_time": "1 action",
-    "range": "60ft",
+    "range": "18m",
     "duration": "Instantaneous",
     "effect_type": "damage",
     "save_ability": "DEX",
@@ -232,7 +232,7 @@
       "V",
       "S"
     ],
-    "description": "需求：V（語言）、S（姿勢）。5ft 半徑球體內每個生物須進行敏捷豁免，失敗時受到 1d6 酸液傷害。",
+    "description": "需求：V（語言）、S（姿勢）。1.5m 半徑球體內每個生物須進行敏捷豁免，失敗時受到 1d6 酸液傷害。",
     "classes": [
       "Wizard",
       "Sorcerer"
@@ -266,7 +266,7 @@
     "level": 0,
     "school": "Illusion",
     "casting_time": "1 action",
-    "range": "120ft",
+    "range": "36m",
     "duration": "1 minute",
     "concentration": true,
     "effect_type": "utility",
@@ -276,7 +276,7 @@
       "M"
     ],
     "material_description": "一點磷光物質",
-    "description": "需求：V（語言）、S（姿勢）、M（一點磷光物質）。創造至多四個火把大小的光點，每個光點在 10ft 半徑散發微光。可用附贈動作移動光點至多 60ft。",
+    "description": "需求：V（語言）、S（姿勢）、M（一點磷光物質）。創造至多四個火把大小的光點，每個光點在 3m 半徑散發微光。可用附贈動作移動光點至多 18m。",
     "classes": [
       "Bard",
       "Sorcerer",
@@ -289,7 +289,7 @@
     "level": 0,
     "school": "Transmutation",
     "casting_time": "1 action",
-    "range": "30ft",
+    "range": "9m",
     "duration": "Instantaneous",
     "effect_type": "utility",
     "components": [
@@ -307,7 +307,7 @@
     "level": 0,
     "school": "Transmutation",
     "casting_time": "1 action",
-    "range": "30ft",
+    "range": "9m",
     "duration": "Instantaneous",
     "effect_type": "utility",
     "components": [
@@ -327,7 +327,7 @@
     "level": 0,
     "school": "Enchantment",
     "casting_time": "1 action",
-    "range": "10ft",
+    "range": "3m",
     "duration": "1 minute",
     "concentration": true,
     "effect_type": "condition",
@@ -379,7 +379,7 @@
       "M"
     ],
     "material_description": "一隻螢火蟲或磷光苔蘚",
-    "description": "需求：V（語言）、M（一隻螢火蟲或磷光苔蘚）。觸碰一件大型或更小的物體，使其發出 20ft 半徑明亮光照和額外 20ft 微光。",
+    "description": "需求：V（語言）、M（一隻螢火蟲或磷光苔蘚）。觸碰一件大型或更小的物體，使其發出 6m 半徑明亮光照和額外 6m 微光。",
     "classes": [
       "Bard",
       "Cleric",
@@ -402,7 +402,7 @@
       "M"
     ],
     "material_description": "兩塊磁石",
-    "description": "需求：V（語言）、S（姿勢）、M（兩塊磁石）。修復觸碰物體上一處不超過 1ft 的斷裂或撕裂，不留痕跡。可修復魔法物品但無法恢復魔力。",
+    "description": "需求：V（語言）、S（姿勢）、M（兩塊磁石）。修復觸碰物體上一處不超過 0.3m 的斷裂或撕裂，不留痕跡。可修復魔法物品但無法恢復魔力。",
     "classes": [
       "Bard",
       "Cleric",
@@ -417,7 +417,7 @@
     "level": 0,
     "school": "Transmutation",
     "casting_time": "1 action",
-    "range": "120ft",
+    "range": "36m",
     "duration": "1 round",
     "effect_type": "utility",
     "components": [
@@ -439,7 +439,7 @@
     "level": 0,
     "school": "Illusion",
     "casting_time": "1 action",
-    "range": "30ft",
+    "range": "9m",
     "duration": "1 minute",
     "effect_type": "utility",
     "components": [
@@ -461,7 +461,7 @@
     "level": 0,
     "school": "Transmutation",
     "casting_time": "1 action",
-    "range": "10ft",
+    "range": "3m",
     "duration": "1 hour",
     "effect_type": "utility",
     "components": [
@@ -492,7 +492,7 @@
       "V",
       "S"
     ],
-    "description": "需求：V（語言）、S（姿勢）。手中出現火焰，在 20ft 半徑散發明亮光線。可用魔法動作將火焰投向 60ft 內目標，進行遠程法術攻擊，命中時造成 1d8 火焰傷害。",
+    "description": "需求：V（語言）、S（姿勢）。手中出現火焰，在 6m 半徑散發明亮光線。可用魔法動作將火焰投向 18m 內目標，進行遠程法術攻擊，命中時造成 1d8 火焰傷害。",
     "classes": [
       "Druid"
     ]
@@ -523,7 +523,7 @@
     "level": 0,
     "school": "Evocation",
     "casting_time": "1 action",
-    "range": "120ft",
+    "range": "36m",
     "duration": "Instantaneous",
     "effect_type": "damage",
     "attack_type": "ranged",
@@ -544,7 +544,7 @@
     "level": 0,
     "school": "Necromancy",
     "casting_time": "1 action",
-    "range": "15ft",
+    "range": "4.5m",
     "duration": "Instantaneous",
     "effect_type": "healing",
     "components": [
@@ -563,7 +563,7 @@
     "level": 0,
     "school": "Evocation",
     "casting_time": "1 action",
-    "range": "60ft",
+    "range": "18m",
     "duration": "Instantaneous",
     "effect_type": "damage",
     "attack_type": "ranged",
@@ -573,7 +573,7 @@
       "V",
       "S"
     ],
-    "description": "需求：V（語言）、S（姿勢）。遠程法術攻擊，命中時造成 1d8 光輝傷害，目標在 10ft 半徑散發微光且無法從隱形中獲益。",
+    "description": "需求：V（語言）、S（姿勢）。遠程法術攻擊，命中時造成 1d8 光輝傷害，目標在 3m 半徑散發微光且無法從隱形中獲益。",
     "classes": [
       "Bard",
       "Druid"
@@ -585,7 +585,7 @@
     "level": 0,
     "school": "Transmutation",
     "casting_time": "1 action",
-    "range": "30ft",
+    "range": "9m",
     "duration": "1 minute",
     "effect_type": "utility",
     "components": [
@@ -602,7 +602,7 @@
     "level": 0,
     "school": "Transmutation",
     "casting_time": "1 action",
-    "range": "30ft",
+    "range": "9m",
     "duration": "Instantaneous",
     "effect_type": "damage",
     "attack_type": "melee",
@@ -614,7 +614,7 @@
       "M"
     ],
     "material_description": "一根多刺植物的莖",
-    "description": "需求：V（語言）、S（姿勢）、M（一根多刺植物的莖）。近戰法術攻擊，命中時造成 1d6 穿刺傷害，若目標為大型或更小可將其拉近 10ft。",
+    "description": "需求：V（語言）、S（姿勢）、M（一根多刺植物的莖）。近戰法術攻擊，命中時造成 1d6 穿刺傷害，若目標為大型或更小可將其拉近 3m。",
     "classes": [
       "Druid"
     ]
@@ -625,7 +625,7 @@
     "level": 0,
     "school": "Evocation",
     "casting_time": "1 action",
-    "range": "Self (5ft emanation)",
+    "range": "Self (1.5m emanation)",
     "duration": "Instantaneous",
     "effect_type": "damage",
     "save_ability": "CON",
@@ -634,7 +634,7 @@
     "components": [
       "S"
     ],
-    "description": "需求：S（姿勢）。5ft 散發範圍內每個生物須進行體質豁免，失敗時受到 1d6 雷鳴傷害。雷鳴聲可在 100ft 外聽到。",
+    "description": "需求：S（姿勢）。1.5m 散發範圍內每個生物須進行體質豁免，失敗時受到 1d6 雷鳴傷害。雷鳴聲可在 30m 外聽到。",
     "classes": [
       "Bard",
       "Druid",
@@ -673,7 +673,7 @@
     "level": 0,
     "school": "Evocation",
     "casting_time": "1 action",
-    "range": "Self (5ft emanation)",
+    "range": "Self (1.5m emanation)",
     "duration": "Instantaneous",
     "effect_type": "damage",
     "save_ability": "CON",
@@ -684,7 +684,7 @@
       "M"
     ],
     "material_description": "一枚日出徽記",
-    "description": "需求：V（語言）、M（一枚日出徽記）。5ft 散發範圍內你選擇的每個生物須進行體質豁免，失敗時受到 1d6 光輝傷害。",
+    "description": "需求：V（語言）、M（一枚日出徽記）。1.5m 散發範圍內你選擇的每個生物須進行體質豁免，失敗時受到 1d6 光輝傷害。",
     "classes": [
       "Cleric"
     ]

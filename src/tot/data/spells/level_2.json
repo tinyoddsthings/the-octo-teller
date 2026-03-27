@@ -5,7 +5,7 @@
     "level": 2,
     "school": "Enchantment",
     "casting_time": "1 action",
-    "range": "60ft",
+    "range": "18m",
     "duration": "1 minute",
     "concentration": true,
     "effect_type": "condition",
@@ -35,7 +35,7 @@
     "level": 2,
     "school": "Evocation",
     "casting_time": "1 action",
-    "range": "60ft",
+    "range": "18m",
     "duration": "Instantaneous",
     "effect_type": "damage",
     "save_ability": "CON",
@@ -51,7 +51,7 @@
       "M"
     ],
     "material_description": "一片雲母",
-    "description": "需求：V（語言）、S（姿勢）、M（一片雲母，可用法器替代）。10ft 半徑球體內每個生物須體質豁免，失敗受 3d8 雷鳴傷害，成功減半。無機物質構成的生物劣勢。",
+    "description": "需求：V（語言）、S（姿勢）、M（一片雲母，可用法器替代）。3m 半徑球體內每個生物須體質豁免，失敗受 3d8 雷鳴傷害，成功減半。無機物質構成的生物劣勢。",
     "classes": [
       "Bard",
       "Sorcerer",
@@ -65,7 +65,7 @@
     "level": 2,
     "school": "Necromancy",
     "casting_time": "1 action",
-    "range": "30ft",
+    "range": "9m",
     "duration": "1 minute",
     "effect_type": "condition",
     "save_ability": "CON",
@@ -95,7 +95,7 @@
     "components": [
       "V"
     ],
-    "description": "需求：V（語言）。瞬間傳送至 30ft 內你能看見的未佔用空間。",
+    "description": "需求：V（語言）。瞬間傳送至 9m 內你能看見的未佔用空間。",
     "classes": [
       "Sorcerer",
       "Warlock",
